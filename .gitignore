@@ -1,0 +1,18 @@
+# Gradle files.
+/.gradle/
+/build/
+
+# Eclipse files.
+/bin/
+/.classpath
+/.project
+/.settings/
+
+# Generated files
+/src/gen/
+/src/gen-res/
+/*.jar
+/*.zip
+
+# Vim swap files.
+*.swp
