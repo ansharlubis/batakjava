@@ -1,0 +1,19 @@
+// TODO: Implements:Access* is not yet supported
+OverviewClassDecl : ClassDecl
+  ::= Modifiers <ID:String> [SuperClass:Access] Implements:Access* BodyDecl*
+;
+VersionRequiredDecl : BodyDecl
+  ::= <VersionNum:String> DependencyDecl
+;
+DependencyDecl
+  ::= <PackageDecl:String> Version*
+;
+OverviewFieldDecl : FieldDecl
+  ::= Version*
+;
+OverviewConstructorDecl : ConstructorDecl
+  ::= Version*
+;
+OverviewMethodDecl : MethodDecl
+  ::= Version*
+;

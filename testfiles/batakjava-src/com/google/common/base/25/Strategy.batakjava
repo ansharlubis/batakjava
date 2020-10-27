@@ -1,0 +1,10 @@
+package com.google.common.base version 25;
+
+import java.util.List requires version 1;
+
+public class Strategy {
+  public Strategy recursiveField;
+  public Strategy() {}
+  public Strategy(int someArgument) {}
+  public void newMethod(int someArgument) {}
+}

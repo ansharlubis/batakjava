@@ -1,0 +1,113 @@
+aspect Version {
+
+  /**
+   *  version : () -> int
+   *  Returns the version number attached to the package declaration
+   *  Default = 0
+   */
+  syn lazy int CompilationUnit.version() = 0;
+  eq BatakjavaCompilationUnit.version() = Integer.parseInt(getVersionNum());
+
+  syn lazy int TypeDecl.version() = hostVersion();
+
+  syn lazy int Access.version() = 0;
+  eq TypeAccessWithVersion.version() = Integer.parseInt(getVersionNum());
+
+  /**
+   *  hostVersion : () -> int
+   *  Returns the version number of the compilation unit
+   *  Default = 0
+   */
+  eq CompilationUnit.getChild().hostVersion() = version();
+
+  inh int ImportDecl.hostVersion();
+  inh int TypeDecl.hostVersion();
+  inh int BodyDecl.hostVersion();
+  inh int Expr.hostVersion();
+  inh int Variable.hostVersion();
+
+  eq TypeDecl.getChild().hostVersion() = hostVersion();
+
+  /**
+   *  versionSet : () -> Set<Integer>
+   *  Returns the set of version an overview body decl has
+   */
+  syn SimpleSet<Integer> CompilationUnit.versionSet() {
+    SimpleSet<Integer> result = emptySet();
+    for (TypeDecl decl: getTypeDeclList()) {
+      for (Integer version: decl.versionSet()) {
+        result = result.add(version);
+      }
+    }
+    if (version() != 0) result = result.add(Integer.valueOf(version()));
+    return result;
+  }
+
+  syn SimpleSet<Integer> TypeDecl.versionSet() = emptySet();
+
+  eq ClassDecl.versionSet() {
+    SimpleSet<Integer> result = emptySet();
+    int hostVersion = hostVersion();
+    if (hostVersion != 0) result = result.add(Integer.valueOf(hostVersion));
+    return result;
+  }
+
+  eq OverviewClassDecl.versionSet() {
+    SimpleSet<Integer> result = emptySet();
+    for (BodyDecl decl: getBodyDeclList()) {
+      for (Integer version: decl.versionSet()) {
+        result = result.add(version);
+      }
+    }
+    return result;
+  }
+
+  syn SimpleSet<Integer> BodyDecl.versionSet() = emptySet();
+
+  eq VersionRequiredDecl.versionSet() {
+    SimpleSet<Integer> result = emptySet();
+    result = result.add(Integer.parseInt(getVersionNum()));
+    return result;
+  }
+
+  eq OverviewFieldDecl.versionSet() {
+    SimpleSet<Integer> result = emptySet();
+    for (Version version: getVersionList()) {
+      result = result.add(Integer.parseInt(version.getVersionNum()));
+    }
+    return result;
+  }
+
+  eq OverviewConstructorDecl.versionSet() {
+    SimpleSet<Integer> result = emptySet();
+    for (Version version: getVersionList()) {
+      result = result.add(Integer.parseInt(version.getVersionNum()));
+    }
+    return result;
+  }
+
+  eq OverviewMethodDecl.versionSet() {
+    SimpleSet<Integer> result = emptySet();
+    for (Version version: getVersionList()) {
+      result = result.add(Integer.parseInt(version.getVersionNum()));
+    }
+    return result;
+  }
+
+  syn SimpleSet<Integer> DependencyDecl.versionSet() {
+    SimpleSet<Integer> result = emptySet();
+    for (Version version: getVersionList()) {
+      result = result.add(Integer.parseInt(version.getVersionNum()));
+    }
+    return result;
+  }
+
+  /**
+   *  equals : (Version) -> boolean
+   *  Checks whether two version are equal
+   */
+  public boolean Version.equals(Version other) {
+    return getVersionNum().equals(other.getVersionNum());
+  }
+
+}

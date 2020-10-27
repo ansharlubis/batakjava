@@ -1,0 +1,18 @@
+BatakjavaCompilationUnit : CompilationUnit
+  ::= <PackageDecl:String> <VersionNum:String> ImportDecl* TypeDecl*;
+
+SingleTypeImportDeclWithVersion : SingleTypeImportDecl
+  ::= Version*
+;
+TypeImportOnDemandDeclWithVersion : TypeImportOnDemandDecl
+  ::= Version*
+;
+TypeAccessWithVersion : Access
+  ::= TypeAccess:Access <VersionNum:String>
+;
+PairIdUse
+  ::= <IDX:String> <IDY:String>
+;
+Version
+  ::= <VersionNum:String>
+;

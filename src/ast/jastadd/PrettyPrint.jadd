@@ -1,0 +1,172 @@
+aspect BatakjavaPrettyPrint {
+
+  public void OverviewClassDecl.prettyPrint(PrettyPrinter out) {
+    if (hasDocComment()) {
+      out.print(docComment());
+    }
+    if (!out.isNewLine()) {
+      out.println();
+    }
+    out.print("overview ");
+    out.print(getModifiers());
+    out.print("class ");
+    out.print(getID());
+    if (hasSuperClass()) {
+      out.print(" extends ");
+      out.print(getSuperClass());
+    }
+    if (hasImplements()) {
+      out.print(" implements ");
+      out.join(getImplementss(), new PrettyPrinter.Joiner() {
+        @Override
+        public void printSeparator(PrettyPrinter out) {
+          out.print(", ");
+        }
+      });
+    }
+    out.print(" {");
+    out.println();
+    out.indent(1);
+    out.join(getBodyDecls(), new PrettyPrinter.Joiner() {
+      @Override
+      public void printSeparator(PrettyPrinter out) {
+        out.println();
+      }
+    });
+    if (!out.isNewLine()) {
+      out.println();
+    }
+    out.print("}");
+  }
+
+  public void VersionRequiredDecl.prettyPrint(PrettyPrinter out) {
+    out.print("version ");
+    out.print(getVersionNum());
+    out.print(" requires ");
+    out.print(importedPackage());
+    out.print(" version ");
+    out.join(getDependencyDecl().getVersionList(), new PrettyPrinter.Joiner() {
+      @Override
+      public void printSeparator(PrettyPrinter out) {
+        out.print(", ");
+      }
+    });
+    out.print(";");
+  }
+
+  public void OverviewFieldDecl.prettyPrint(PrettyPrinter out) {
+    if (!isSynthetic()) {
+      if (hasDocComment()) {
+        out.print(docComment());
+      }
+      if (!out.isNewLine()) {
+        out.println();
+      }
+      out.print(getModifiers());
+      out.print(getTypeAccess());
+      out.print(" ");
+      out.join(getDeclarators(), new PrettyPrinter.Joiner() {
+        @Override
+        public void printSeparator(PrettyPrinter out) {
+          out.print(", ");
+        }
+      });
+      out.print(" in version ");
+      out.join(getVersionList(), new PrettyPrinter.Joiner() {
+        @Override
+        public void printSeparator(PrettyPrinter out) {
+          out.print(", ");
+        }
+      });
+      out.print(";");
+    }
+  }
+
+  public void OverviewConstructorDecl.prettyPrint(PrettyPrinter out) {
+    if (!isImplicitConstructor()) {
+      if (hasDocComment()) {
+        out.print(docComment());
+      }
+      if (!out.isNewLine()) {
+        out.println();
+      }
+      out.print(getModifiers());
+      out.print(getID());
+      out.print("(");
+      out.join(getParameterList(), new PrettyPrinter.Joiner() {
+        @Override
+        public void printSeparator(PrettyPrinter out) {
+          out.print(", ");
+        }
+      });
+      out.print(")");
+      if (hasExceptions()) {
+        out.print(" throws ");
+        out.join(getExceptionList(), new PrettyPrinter.Joiner() {
+          @Override
+          public void printSeparator(PrettyPrinter out) {
+            out.print(", ");
+          }
+        });
+      }
+      out.print(" in version ");
+      out.join(getVersionList(), new PrettyPrinter.Joiner() {
+        @Override
+        public void printSeparator(PrettyPrinter out) {
+          out.print(", ");
+        }
+      });
+      out.print(";");
+    }
+  }
+
+  public void OverviewMethodDecl.prettyPrint(PrettyPrinter out) {
+    if (!isSynthetic()) {
+      if (hasDocComment()) {
+        out.print(docComment());
+      }
+      if (!out.isNewLine()) {
+        out.println();
+      }
+      out.print(getModifiers());
+      out.print(getTypeAccess());
+      out.print(" ");
+      out.print(getID());
+      out.print("(");
+      out.join(getParameterList(), new PrettyPrinter.Joiner() {
+        @Override
+        public void printSeparator(PrettyPrinter out) {
+          out.print(", ");
+        }
+      });
+      out.print(")");
+      if (hasExceptions()) {
+        out.print(" throws ");
+        out.join(getExceptionList(), new PrettyPrinter.Joiner() {
+          @Override
+          public void printSeparator(PrettyPrinter out) {
+            out.print(", ");
+          }
+        });
+      }
+      out.print(" in version ");
+      out.join(getVersionList(), new PrettyPrinter.Joiner() {
+        @Override
+        public void printSeparator(PrettyPrinter out) {
+          out.print(", ");
+        }
+      });
+      if (hasBlock()) {
+        out.print(" ");
+        out.print(getBlock());
+      } else {
+        out.print(";");
+      }
+    }
+  }
+
+  public void Version.prettyPrint(PrettyPrinter out) {
+    out.print(getVersionNum());
+  }
+
+}

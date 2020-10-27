@@ -1,0 +1,390 @@
+aspect Overview {
+
+  /**
+   *  getOverview: () -> OverviewClassDecl
+   *  Unsafe method to get the overview class contained in an .overview file
+   */
+  public OverviewClassDecl CompilationUnit.getOverview() { return ((OverviewClassDecl) getTypeDecl(0)); }
+
+  syn boolean CompilationUnit.isOverview() {
+    for (TypeDecl typeDecl: getTypeDeclList()) {
+      if (typeDecl instanceof OverviewClassDecl) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   *  importedPackages: () -> String
+   *  Used for version required decl, getting the imported package name.
+   */
+  syn String BodyDecl.importedPackage() = null;
+  eq VersionRequiredDecl.importedPackage() = getDependencyDecl().getPackageDecl();
+
+  /**
+   *  importedVersions: () -> SimpleSet<Integer>
+   *  Used for version required decl, getting the set of imported version.
+   */
+  syn SimpleSet<Integer> BodyDecl.importedVersions() = emptySet();
+  eq VersionRequiredDecl.importedVersions() = getDependencyDecl().versionSet();
+
+}
+
+aspect OverviewUpdater {
+
+  /**
+   *  updateOverview : (CompilationUnit) -> void
+   *  Already type checked compilation unit as receiver, takes another compilation unit
+   *  which consists of the overview class as an argument, then updates the overview class
+   *  This also assumes that the new class has been checked against the existing overview
+   *  and there is no problem with the new class.
+   */
+  public CompilationUnit CompilationUnit.updateOverview(CompilationUnit overview) {
+    if (getPackageDecl().equals(overview.getPackageDecl())) {
+      OverviewClassDecl overviewClass = overview.getOverview();
+      for (ImportDecl importDecl: getImportDeclList()) importDecl.updateOverview(overview);
+      for (TypeDecl typeDecl: getTypeDeclList()) {
+        if (typeDecl.name().equals(splitFilename()[0]) && typeDecl.isPublic() && (typeDecl instanceof ClassDecl)) {
+          for (BodyDecl bodyDecl: typeDecl.getBodyDeclList()) {
+            bodyDecl.updateOverview(overviewClass);
+          }
+        }
+      }
+    }
+    return overview;
+  }
+
+  public void ImportDecl.updateOverview(CompilationUnit overview) {
+    boolean importFound = false;
+    for (ImportDecl overviewImport: overview.getImportDeclList()) {
+      if (typeName().equals(overviewImport.typeName())) importFound = true;
+    }
+    if (!importFound) overview.addImportDecl(this);
+  }
+
+  public void SingleTypeImportDeclWithVersion.updateOverview(CompilationUnit overview) {
+    boolean importFound = false;
+    String importName = typeName();
+    int classVersion = hostVersion();
+    for (ImportDecl overviewImport: overview.getImportDeclList()) {
+      if (importName.equals(overviewImport.typeName())) importFound = true;
+    }
+    if (!importFound) overview.addImportDecl(this);
+    for (Version version: getVersionList()) {
+      overview.getOverview().addVersionRequiredDecl(classVersion, importName, version);
+    }
+  }
+
+  public void TypeDecl.addVersionRequiredDecl(int classVersion, String importName, Version importVersion) { }
+
+  public void OverviewClassDecl.addVersionRequiredDecl(int classVersion, String importName, Version importVersion) {
+    boolean found = false;
+    for (BodyDecl bodyDecl: getBodyDeclList()) {
+      if (bodyDecl instanceof VersionRequiredDecl) {
+        if (bodyDecl.importedPackage().equals(importName)) {
+          found = true;
+          VersionRequiredDecl versionRequired = (VersionRequiredDecl) bodyDecl;
+          if (!versionRequired.importedVersions().contains(Integer.valueOf(importVersion.getVersionNum()))) {
+            versionRequired.getDependencyDecl().addVersion(importVersion);
+          }
+        }
+      }
+      if (found) {
+        break;
+      }
+    }
+    if (!found) {
+      this.addBodyDecl(new VersionRequiredDecl(String.valueOf(classVersion),
+      new DependencyDecl(importName, new List().add(importVersion))));
+    }
+  }
+
+  public void BodyDecl.updateOverview(OverviewClassDecl overviewClass) { }
+
+  public void FieldDecl.updateOverview(OverviewClassDecl overviewClass) {
+    if (isPublic()) {
+      for (FieldDeclarator classDeclarator: getDeclaratorList()) {
+        boolean found = false;
+        for (BodyDecl overviewBody: overviewClass.getBodyDeclList()) {
+          if (overviewBody instanceof OverviewFieldDecl) {
+            OverviewFieldDecl overviewField = (OverviewFieldDecl) overviewBody;
+            if (type() == overviewField.type()) {
+              if (overviewField.getDeclarator(0).getID().equals(classDeclarator.getID())) {
+                found = true;
+                if (!overviewField.versionSet().contains(Integer.valueOf(hostVersion()))) {
+                  overviewField.addVersion(new Version(String.valueOf(hostVersion())));
+                }
+              }
+            }
+          }
+          if (found) break;
+        }
+        if (!found) {
+          overviewClass.addBodyDecl(new OverviewFieldDecl(getModifiers(), getTypeAccess(),
+          new List().add(classDeclarator), new List().add(new Version(String.valueOf(hostVersion())))));
+        }
+      }
+    }
+  }
+
+  public void ConstructorDecl.updateOverview(OverviewClassDecl overviewClass) {
+    if (isPublic()) {
+      boolean found = false;
+      for (BodyDecl overviewBody: overviewClass.getBodyDeclList()) {
+        if (overviewBody instanceof OverviewConstructorDecl) {
+          OverviewConstructorDecl overviewConstructor = (OverviewConstructorDecl) overviewBody;
+          if (sameSignature(overviewConstructor)) {
+            found = true;
+            if (!overviewConstructor.versionSet().contains(Integer.valueOf(hostVersion()))) {
+              overviewConstructor.addVersion(new Version(String.valueOf(hostVersion())));
+            }
+          }
+        }
+        if (found) break;
+      }
+      if (!found) {
+        overviewClass.addBodyDecl(new OverviewConstructorDecl(getModifiers(), getID(), getParameterList(),
+        getExceptionList(), new Opt(), new Block(), new List().add(new Version(String.valueOf(hostVersion())))));
+      }
+    }
+  }
+
+  public void MethodDecl.updateOverview(OverviewClassDecl overviewClass) {
+    if (isPublic()) {
+      boolean found = false;
+      for (BodyDecl overviewBody: overviewClass.getBodyDeclList()) {
+        if (overviewBody instanceof OverviewMethodDecl) {
+          OverviewMethodDecl overviewMethod = (OverviewMethodDecl) overviewBody;
+          if (sameSignature(overviewMethod)) {
+            found = true;
+            if (!overviewMethod.versionSet().contains(Integer.valueOf(hostVersion()))) {
+              overviewMethod.addVersion(new Version(String.valueOf(hostVersion())));
+            }
+          }
+        }
+        if (found) break;
+      }
+      if (!found) {
+        overviewClass.addBodyDecl(new OverviewMethodDecl(getModifiers(), getTypeAccess(), getID(),
+        getParameterList(), getExceptionList(), new Opt(), new List().add(new Version(String.valueOf(hostVersion())))));
+      }
+    }
+  }
+
+}
+
+aspect OverviewGenerator {
+
+  /**
+   *  writeOverview : () -> String
+   *  Grab an already type checked compilation unit as receiver, then convert it
+   *  into an overview class, if it is a class and the name of the file
+   *  matches the name of the class.
+   */
+  public String CompilationUnit.writeOverview() {
+    StringBuffer overviewCode = new StringBuffer();
+    StringBuffer priorityCode = new StringBuffer();
+
+    // Append the package declaration
+    overviewCode.append("package ");
+    overviewCode.append(getPackageDecl());
+    overviewCode.append(";\n");
+
+    // Append the import declarations
+    for (ImportDecl importDecl: getImportDecls()) {
+      overviewCode.append(importDecl.prettyPrint());
+      priorityCode.append(importDecl.writeRequires());
+    }
+    overviewCode.append("\n");
+
+    // Append the overview class declaration
+    String[] splitPathName = pathName().split("/");
+    for (TypeDecl typeDecl: getTypeDecls()) {
+      if (typeDecl.name().equals(splitPathName[splitPathName.length-1].split("\\.")[0])
+          && (typeDecl instanceof ClassDecl) && typeDecl.isPublic()) {
+        overviewCode.append(((ClassDecl)typeDecl).writeOverview(priorityCode.toString()));
+        break;
+      }
+    }
+
+    return overviewCode.toString();
+  }
+
+  public String ClassDecl.writeOverview(String priorityCode) {
+    StringBuffer code = new StringBuffer();
+
+    // Append the header
+    code.append("overview ");
+    for (Modifier modifier: getModifiers().getModifierList()) {
+      if (!modifier.getID().equals("public")) {
+        code.append(modifier.getID());
+        code.append(" ");
+      }
+    }
+    code.append("class ");
+    code.append(getID());
+    code.append(" ");
+    if (hasSuperClass()) {
+      code.append("super ");
+      code.append(((TypeAccess)getSuperClass()).name());
+      code.append(" ");
+    }
+
+    // Append the body decls
+    code.append("{\n");
+    code.append(priorityCode);
+    for (BodyDecl bodyDecl: getBodyDeclList()) { code.append(bodyDecl.writeOverview()); }
+    code.append("}");
+
+    return code.toString();
+  }
+
+  public String BodyDecl.writeOverview() { return ""; }
+
+  public String FieldDecl.writeOverview() {
+    if (getModifiers().isPublic()) {
+      StringBuffer code = new StringBuffer();
+      // Loop through each declarator
+      for (Declarator declarator: getDeclaratorList()) {
+        code.append("  ");
+
+        // Append modifiers
+        for (Modifier modifier: getModifiers().getModifierList()) {
+          code.append(modifier.getID());
+          code.append(" ");
+        }
+
+        // Append type access
+        code.append(((TypeAccess) getTypeAccess()).name());
+        code.append(" ");
+
+        // Append name
+        code.append(declarator.getID());
+
+        code.append(" ");
+
+        // Append version
+        code.append("in version ");
+        code.append(String.valueOf(hostVersion()));
+
+        code.append(";\n");
+      }
+      return code.toString();
+    }
+    return "";
+  }
+
+  public String ConstructorDecl.writeOverview() {
+    if (getModifiers().isPublic()) {
+      StringBuffer code = new StringBuffer();
+      code.append("  ");
+
+      // Append modifiers
+      for (Modifier modifier: getModifiers().getModifierList()) {
+        code.append(modifier.getID());
+        code.append(" ");
+      }
+
+      // Append name
+      code.append(getID());
+
+      // Append formal parameters
+      int i = 0;
+      code.append("(");
+      for (ParameterDeclaration parameter: getParameterList()) {
+        if (i != 0) code.append(", ");
+        code.append(parameter.prettyPrint());
+      }
+      code.append(") ");
+
+      // Append version
+      code.append("in version ");
+      code.append(String.valueOf(hostVersion()));
+
+      code.append(";\n");
+      return code.toString();
+    }
+    return "";
+  }
+
+  public String MethodDecl.writeOverview() {
+    if (getModifiers().isPublic()) {
+      StringBuffer code = new StringBuffer();
+      code.append("  ");
+
+      // Append modifiers
+      for (Modifier modifier: getModifiers().getModifierList()) {
+        code.append(modifier.getID());
+        code.append(" ");
+      }
+
+      // Append return type
+      code.append(((TypeAccess)getTypeAccess()).name());
+      code.append(" ");
+
+      // Append method name
+      code.append(getID());
+
+      // Append formal parameters
+      int i = 0;
+      code.append("(");
+      for (ParameterDeclaration parameter: getParameterList()) {
+        if (i != 0) code.append(", ");
+        code.append(parameter.prettyPrint());
+      }
+      code.append(") ");
+
+      // Append version
+      code.append("in version ");
+      code.append(String.valueOf(hostVersion()));
+
+      code.append(";\n");
+      return code.toString();
+    }
+    return "";
+  }
+
+  /**
+   *  writePriority : () -> String
+   *  Extract version required declaration from the import declaration
+   */
+  public String ImportDecl.writeRequires() {
+    return "";
+  }
+
+  public String SingleTypeImportDeclWithVersion.writeRequires() {
+    StringBuffer result = new StringBuffer();
+    result.append("  version ");
+    result.append(String.valueOf(hostVersion()));
+    result.append(" requires ");
+    result.append(getAccess().prettyPrint());
+    result.append(" version ");
+    int i = 0;
+    for (Version version: getVersionList()) {
+      if (i != 0) result.append(", ");
+      result.append(version.getVersionNum());
+      i++;
+    }
+    result.append(";\n");
+    return result.toString();
+  }
+
+  public String TypeImportOnDemandDeclWithVersion.writeRequires() {
+    StringBuffer result = new StringBuffer();
+    result.append("  version ");
+    result.append(String.valueOf(hostVersion()));
+    result.append(" requires ");
+    result.append(getAccess().prettyPrint());
+    result.append(".* version ");
+    int i = 0;
+    for (Version version: getVersionList()) {
+      if (i != 0) result.append(", ");
+      result.append(version.getVersionNum());
+      i++;
+    }
+    result.append(";\n");
+    return result.toString();
+  }
+
+}
