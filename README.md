@@ -1,154 +1,430 @@
-# ExtendJ Analysis Extension Template
+## Case Study
 
-This is a minimal template for ExtendJ extensions.
+The case study is similar to the one used in the paper before. We consider three different packages. The package *com.google.common.base* (Guava), *ru.lanwen.verbalregex* (VerbalExpression), and the package *example*.
 
-This template adds a simple string equality error check to the compiler.
-The resulting error checker will not generate Java bytecode, only check for string
-equality errors. If you require Java bytecode generation, look at the 
-[compiler template](https://bitbucket.org/extendj/compiler-template/) instead.
+The package *com.google.common.base* contains the class *Splitter* facilitates splitting a string based on a regular expression and iterating through the resulting list.
 
-The string equality check is added by the file `src/jastadd/StringEqCheck.jrag`.
-An input file that should trigger this error is in the `testfiles` directory.
+The package *ru.lanwen.verbalregex* contains some classes that can help facilitate writing difficult regular expression by replacing complex notations with simple method invocations in natural language. The class *VerbalExpression* would be used in the class *Splitter* to replace Java's class *Pattern*. This is done to illustrate how diamond dependency can be handled with Batakjava.
 
+Lastly, the package *example* is the application where both the other packages would be mixed in.
 
-## License
+## Scenario
 
-This code is simple template code that is meant to be copied,
-and I give anyone permission to use it without attribution.  If you copy this
-code to create your own project, you can delete the LICENSE file.  The license
-is there just to make it possible to use this project if your employer is
-strict about Open Source licensing.
+First, we suppose that the VerbalExpression library would first be defined. We'll suppose that it is the version 1 of the package.
 
+### VerbalExpression Ver.1
 
-## Cloning this Project
+We suppose that there package's version management is done through directory management. In this case, we will suppose that VerbalExpression's developers would have a directory tree that looks as follow:
 
-To clone this project you will need [Git][3] installed.
+````
+main
+|- batakjava-src
+   |- ru.lanwen.verbalregex
+      |- 1
+````
+VerbalExpression's developers then add declare two classes: VerbalExpression and VerbalExpressionBuilder.
+````
+main
+|- batakjava-src
+   |- ru.lanwen.verbalregex
+      |- 1
+         |- VerbalExpression.batakjava
+         |- VerbalExpression.batakjava 
+````
 
-Use this command to clone the project with Git:
+**VerbalExpression.batakjava**
+````
+package ru.lanwen.verbalregex version 1;
+public class VerbalExpression {
+  public boolean testExact(String pToTest) {...}
+}
+````
+**VerbalExpressionBuilder.batakjava**
+````
+package ru.lanwen.verbalregex version 1;
+public class VerbalExpressionBuilder {
+  public VerbalExpressionBuilder add(String pValue) {...}
+}
+````
 
-    git clone --recursive <REPOSITORY URL>
+If both pass the test check, two overview classes would be produced in the parent directory. The directory tree would look as follow:
+````
+main
+|- batakjava-src
+   |- ru.lanwen.verbalregex
+      |- 1
+      |  |- VerbalExpression.batakjava
+      |  |- VerbalExpressionBuilder.batakjava
+      |- VerbalExpression.overview
+      |- VerbalExpressionBuilder.overview
+````
+**VerbalExpression.overview**
+````
+package ru.lanwen.verbalregex;
+overview class VerbalExpression {
+  boolean testExact(String pToTest) in version 1;
+}
+````
+**VerbalExpressionBuilder.overview**
+````
+package ru.lanwen.verbalregex;
+overview class VerbalExpressionBuilder {
+  VerbalExpressionBuilder add(String pValue) in version 1;
+  VerbalExpression build() in version 1;
+}
+````
+The transpiler then produces Java files for from the .batakjava and .overview files. The resulting directory tree may look as follows:
+````
+main
+|- batakjava-src
+| |- ru.lanwen.verbalregex
+|     |- 1
+|     |  |- VerbalExpression.batakjava
+|     |  |- VerbalExpressionBuilder.batakjava
+|     |- VerbalExpression.overview
+|     |- VerbalExpressionBuilder.overview
+|- java-src
+   |- ru.lanwen.verbalregex
+      |- VerbalExpression.java
+      |- VerbalExpressionBuilder.java
+      |- VerbalExpression_1.java
+      |- VerbalExpressionBuilder_1.java
+````
+The name ending with *_1* denotes the class that was defined in the directory *ru/lanwen/verbalregex/1*, while those that don't have any ending are generated from the overview files.
 
-The `--recursive` flag makes Git also clone the ExtendJ submodule while cloning
-the template repository.
+### Guava Ver.28
 
-To manually clone or update ExtendJ, use these commands:
+Next we have the Guava library. The library is fully packed with many utility classes, but here I would only show the class that is intertwined in the dependency, namely the class *Splitter*. I will skip the directory tree explanation, because it works the same way as in VerbalExpression.
 
-    cd backend-extension-base
-    git submodule init
-    git submodule update
+**Splitter.batakjava**
+````
+package com.google.common.base version 28;
+import ru.lanwen.verbalregex requires version 1;
 
-This downloads the ExtendJ Git repository into a subdirectory named `extendj`.
+public class Splitter {
+  public static Splitter on(VerbalExpression separator) {
+    ... separator.testExact("") ...
+    ... separator.getPattern() ...   
+  }
+}
+````
 
+**Splitter.overview**
+````
+package com.google.common.base;
+import ru.lanwen.verbalregex;
 
-## Build and Run
+overview class Splitter {
+  version 1 requires ru.lanwen.verbalregex version 1;
+  static Splitter on(VerbalExpression separator);
+}
+````
 
-This project is built with [Gradle][1], but you do not need to install Gradle to use it.
-If you have Java installed, run the following commands to build the project:
+### Application Ver.1
 
-    ./gradlew jar
+Following that, we have the Application that uses both Guava and VerbalExpression. Let's suppose we have a class called *Test*.
 
+````
+package example version 1;
+import ru.lanwen.verbalregex.* requires version 1;
+import com.google.common.base.Splitter requires version 28;
 
-If you are running on Windows, replace `./gradlew` by just `gradlew`.
+public class Test {
+  public static void main(String[] args) {
+    VerbalExpression regex = new VerbalExpressionBuilder()....build();
+    new Splitter(...).on(regex);
+  }
+}
+````
 
-Run the generated compiler with
+### VerbalExpression Ver.2
 
-    java -jar template.jar <Java Source File>
+Next the developer of VerbalExpression update the library. On their directory tree they add a new directory for the new version, so that it will look as follow:
+````
+main
+|- batakjava-src
+| |- ru.lanwen.verbalregex
+|     |- 1
+|     |  |- VerbalExpression.batakjava
+|     |  |- VerbalExpressionBuilder.batakjava
+|     |- 2
+|     |  |- VerbalExpression.batakjava
+|     |  |- VerbalExpressionBuilder.batakjava
+|     |- VerbalExpression.overview
+|     |- VerbalExpressionBuilder.overview
+|- java-src
+   |- ...
+````
 
+**../2/VerbalExpression.batakjava**
+````
+package ru.lanwen.verbalregex version 2;
+public class VerbalExpression {
+  public boolean match(String pToTest) {...}    // new method
+}
+````
 
-The jarfile name is based on the project name in `settings.gradle`.
+**../2/VerbalExpressionBuilder.batakjava**
+````
+package ru.lanwen.verbalregex version 2;
+public class VerbalExpressionBuilder {
+  public VerbalExpressionBuilder add(String pValue) {...}
+  public VerbalExpressionBuilder append(String pValue) {...}    // new method
+}
+````
+After both of these classes passed through type check, instead of creating two new overviews, because *VerbalExpression.overview* and *VerbalExpressionBuilder.overview* are already generated, those two overviews would be updated with the new functionalities that are introduced in the second version.
 
+**VerbalExpression.overview**
+````
+package ru.lanwen.verbalregex;
+overview class VerbalExpression {
+  boolean testExact(String pToTest) in version 1;
+  boolean match(String pToTest) in version 2;
+}
+````
+**VerbalExpressionBuilder.overview**
+````
+package ru.lanwen.verbalregex;
+overview class VerbalExpressionBuilder {
+  VerbalExpressionBuilder add(String pValue) in version 1, 2;
+  VerbalExpressionBuilder append(String pValue) in version 2;
+  VerbalExpression build() in version 1, 2;
+}
+````
 
-## File Overview
+### Application Ver. 2
 
-Here is a short description of some notable files in this project:
+Now that VerbalExpression is updated, we want to update our application to use the new VerbalExpression.
 
-* `build.gradle` - the main Gradle build script. More about this below.
-* `gradlew.bat` - script for building on Windows.
-* `gradlew` - script for building on Unix-likes.
-* `testfiles/Test.java` - a simple Java file to test the generated compiler.
-* `settings.gradle` - sets the Gradle project name to `template`. Edit this.
-* `<PROJECT NAME>.jar` - the generated compiler Jar file.
+**../2/Test.batakjava**
+````
+package example version 2;
+import ru.lanwen.verbalregex.* requires version 2;
+import com.google.common.base.Splitter requires version 28;
 
+public class Test {
+  public static void main(String[] args) {
+    VerbalExpression regexNG = new VerbalExpressionBuilder()... .append(...).build();    
+    VerbalExpression regexOK = new VerbalExpressionBuilder()... .add(...).build();
+    new Splitter(...).on(regexNG);        // result in type error
+    new Splitter(...).on(regexOK);        // no problem 
+  }
+}
+````
 
-## Extension Architecture
+The first results in type error because when VersionExpressionBuilder invokes append, the context of the object is restricted to the version 2 of *ru.lanwen.verbalregex*, so the resulting object VerbalExpression would also be restricted to the version 2. When this is passed as an argument ot Splitter's method on invocation, this would be a problem because the class Splitter requires version 1 (as denoted by the priority declaration).
+## Case Study
 
-We use the [JastAdd Gradle plugin][2] to build this project. This plugin has its own
-DSL for JastAdd modules which significantly simplifies the process for
-combining extensions with the core ExtendJ compiler.
+The case study is similar to the one used in the paper before. We consider three different packages. The package *com.google.common.base* (Guava), *ru.lanwen.verbalregex* (VerbalExpression), and the package *example*.
 
-The template build script has a small module specification which starts with this line:
+The package *com.google.common.base* contains the class *Splitter* facilitates splitting a string based on a regular expression and iterating through the resulting list.
 
-    include("extendj/jastadd_modules")
+The package *ru.lanwen.verbalregex* contains some classes that can help facilitate writing difficult regular expression by replacing complex notations with simple method invocations in natural language. The class *VerbalExpression* would be used in the class *Splitter* to replace Java's class *Pattern*. This is done to illustrate how diamond dependency can be handled with Batakjava.
 
+Lastly, the package *example* is the application where both the other packages would be mixed in.
 
-This line includes the core ExtendJ modules by loading the file with the path
-`extendj/jastadd_modules`. That file is a module specification which in turn
-includes modules from subdirectories in the `extendj` directory.
+## Scenario
 
-Module specifications can define multiple modules. In the build script,
-there is just one module named `template`:
+First, we suppose that the VerbalExpression library would first be defined. We'll suppose that it is the version 1 of the package.
 
-    module "template", {
-        imports "java8 frontend"
-        java {
-            basedir "src/java/"
-            include "**/*.java"
-        }
-        jastadd {
-            basedir "src/jastadd/"
-            include "**/*.ast"
-            include "**/*.jadd"
-            include "**/*.jrag"
-        }
-    }
+### VerbalExpression Ver.1
 
+We suppose that there package's version management is done through directory management. In this case, we will suppose that VerbalExpression's developers would have a directory tree that looks as follow:
 
-The build script has comments to show how to add parser or scanner files to the module.
-Parser and scanner files will be necessary if you want to make Java language extensions.
+````
+main
+|- batakjava-src
+   |- ru.lanwen.verbalregex
+      |- 1
+````
+VerbalExpression's developers then add declare two classes: VerbalExpression and VerbalExpressionBuilder.
+````
+main
+|- batakjava-src
+   |- ru.lanwen.verbalregex
+      |- 1
+         |- VerbalExpression.batakjava
+         |- VerbalExpression.batakjava 
+````
 
-The module uses an `imports` clause to import all of the JastAdd files from
-the core ExtendJ module `java8 frontend`. Each supported Java version in
-ExtendJ has a frontend and backend module. The frontend module is used if you do not
-want to generate bytecode.
+**VerbalExpression.batakjava**
+````
+package ru.lanwen.verbalregex version 1;
+public class VerbalExpression {
+  public boolean testExact(String pToTest) {...}
+}
+````
+**VerbalExpressionBuilder.batakjava**
+````
+package ru.lanwen.verbalregex version 1;
+public class VerbalExpressionBuilder {
+  public VerbalExpressionBuilder add(String pValue) {...}
+}
+````
 
+If both pass the test check, two overview classes would be produced in the parent directory. The directory tree would look as follow:
+````
+main
+|- batakjava-src
+   |- ru.lanwen.verbalregex
+      |- 1
+      |  |- VerbalExpression.batakjava
+      |  |- VerbalExpressionBuilder.batakjava
+      |- VerbalExpression.overview
+      |- VerbalExpressionBuilder.overview
+````
+**VerbalExpression.overview**
+````
+package ru.lanwen.verbalregex;
+overview class VerbalExpression {
+  boolean testExact(String pToTest) in version 1;
+}
+````
+**VerbalExpressionBuilder.overview**
+````
+package ru.lanwen.verbalregex;
+overview class VerbalExpressionBuilder {
+  VerbalExpressionBuilder add(String pValue) in version 1;
+  VerbalExpression build() in version 1;
+}
+````
+The transpiler then produces Java files for from the .batakjava and .overview files. The resulting directory tree may look as follows:
+````
+main
+|- batakjava-src
+| |- ru.lanwen.verbalregex
+|     |- 1
+|     |  |- VerbalExpression.batakjava
+|     |  |- VerbalExpressionBuilder.batakjava
+|     |- VerbalExpression.overview
+|     |- VerbalExpressionBuilder.overview
+|- java-src
+   |- ru.lanwen.verbalregex
+      |- VerbalExpression.java
+      |- VerbalExpressionBuilder.java
+      |- VerbalExpression_1.java
+      |- VerbalExpressionBuilder_1.java
+````
+The name ending with *_1* denotes the class that was defined in the directory *ru/lanwen/verbalregex/1*, while those that don't have any ending are generated from the overview files.
 
-## Rebuilding
+### Guava Ver.28
 
-Although the Gradle plugin can handle some automatic rebuilding when a source
-file changes, it does not handle all possible cases. In some situations you
-will need to force Gradle to rebuild your project. This can be done with the following command:
+Next we have the Guava library. The library is fully packed with many utility classes, but here I would only show the class that is intertwined in the dependency, namely the class *Splitter*. I will skip the directory tree explanation, because it works the same way as in VerbalExpression.
 
-    ./gradlew clean jar
+**Splitter.batakjava**
+````
+package com.google.common.base version 28;
+import ru.lanwen.verbalregex requires version 1;
 
+public class Splitter {
+  public static Splitter on(VerbalExpression separator) {
+    ... separator.testExact("") ...
+    ... separator.getPattern() ...   
+  }
+}
+````
 
-It is necessary to rebuild the project if you remove any JastAdd AST class.
-The Gradle plugin will otherwise leave the old AST classes among the
-generated Java code and this can cause compilation problems.
+**Splitter.overview**
+````
+package com.google.common.base;
+import ru.lanwen.verbalregex;
 
+overview class Splitter {
+  version 1 requires ru.lanwen.verbalregex version 1;
+  static Splitter on(VerbalExpression separator);
+}
+````
 
-## Upgrading ExtendJ
+### Application Ver.1
 
-Use the following commands to update to the latest version of ExtendJ:
+Following that, we have the Application that uses both Guava and VerbalExpression. Let's suppose we have a class called *Test*.
 
-    cd extendj
-    git fetch origin
-    git reset --hard origin/master
+````
+package example version 1;
+import ru.lanwen.verbalregex.* requires version 1;
+import com.google.common.base.Splitter requires version 28;
 
+public class Test {
+  public static void main(String[] args) {
+    VerbalExpression regex = new VerbalExpressionBuilder()....build();
+    new Splitter(...).on(regex);
+  }
+}
+````
 
-This may be necessary if a bugfix that you need was committed to ExtendJ in a version
-later than the version that this template repository links to.
+### VerbalExpression Ver.2
 
-I recommend that you use a test suite to ensure that your extension
-functionality is preserved after upgrading the core ExtendJ compiler.
+Next the developer of VerbalExpression update the library. On their directory tree they add a new directory for the new version, so that it will look as follow:
+````
+main
+|- batakjava-src
+| |- ru.lanwen.verbalregex
+|     |- 1
+|     |  |- VerbalExpression.batakjava
+|     |  |- VerbalExpressionBuilder.batakjava
+|     |- 2
+|     |  |- VerbalExpression.batakjava
+|     |  |- VerbalExpressionBuilder.batakjava
+|     |- VerbalExpression.overview
+|     |- VerbalExpressionBuilder.overview
+|- java-src
+   |- ...
+````
 
+**../2/VerbalExpression.batakjava**
+````
+package ru.lanwen.verbalregex version 2;
+public class VerbalExpression {
+  public boolean match(String pToTest) {...}    // new method
+}
+````
 
-## Additional Resources
+**../2/VerbalExpressionBuilder.batakjava**
+````
+package ru.lanwen.verbalregex version 2;
+public class VerbalExpressionBuilder {
+  public VerbalExpressionBuilder add(String pValue) {...}
+  public VerbalExpressionBuilder append(String pValue) {...}    // new method
+}
+````
+After both of these classes passed through type check, instead of creating two new overviews, because *VerbalExpression.overview* and *VerbalExpressionBuilder.overview* are already generated, those two overviews would be updated with the new functionalities that are introduced in the second version.
 
-More examples on how to build ExtendJ-like projects with the [JastAdd Gradle
-plugin][2] can be found here:
+**VerbalExpression.overview**
+````
+package ru.lanwen.verbalregex;
+overview class VerbalExpression {
+  boolean testExact(String pToTest) in version 1;
+  boolean match(String pToTest) in version 2;
+}
+````
+**VerbalExpressionBuilder.overview**
+````
+package ru.lanwen.verbalregex;
+overview class VerbalExpressionBuilder {
+  VerbalExpressionBuilder add(String pValue) in version 1, 2;
+  VerbalExpressionBuilder append(String pValue) in version 2;
+  VerbalExpression build() in version 1, 2;
+}
+````
 
-* [JastAdd Example: GradleBuild](http://jastadd.org/web/examples.php?example=GradleBuild)
+### Application Ver. 2
 
-[1]:https://gradle.org/
-[2]:https://github.com/jastadd/jastaddgradle
-[3]:https://git-scm.com/
+Now that VerbalExpression is updated, we want to update our application to use the new VerbalExpression.
+
+**../2/Test.batakjava**
+````
+package example version 2;
+import ru.lanwen.verbalregex.* requires version 2;
+import com.google.common.base.Splitter requires version 28;
+
+public class Test {
+  public static void main(String[] args) {
+    VerbalExpression regexNG = new VerbalExpressionBuilder()... .append(...).build();    
+    VerbalExpression regexOK = new VerbalExpressionBuilder()... .add(...).build();
+    new Splitter(...).on(regexNG);        // result in type error
+    new Splitter(...).on(regexOK);        // no problem 
+  }
+}
+````
+
+The first results in type error because when VersionExpressionBuilder invokes append, the context of the object is restricted to the version 2 of *ru.lanwen.verbalregex*, so the resulting object VerbalExpression would also be restricted to the version 2. When this is passed as an argument ot Splitter's method on invocation, this would be a problem because the class Splitter requires version 1 (as denoted by the priority declaration).
