@@ -1,0 +1,14 @@
+package mid.utility ver 1,2;
+
+class PointUtility extends Object;
+
+ver 1 requires
+  upstream.collection.Point ver 1;
+ver 2 requires
+  upstream.collection.Point ver 2;
+
+Point target in ver 1,2;
+PointUtility(Point) in ver 1,2;
+Point mirrorField() in ver 1,2
+static Point mirror(Point) in ver 1,2;
+static boolean equals(Point, Point) in ver 1,2;

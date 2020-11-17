@@ -1,0 +1,20 @@
+package upstream.collection ver 1;
+
+public class Point {
+  private float x;
+  private float y;
+  public Point(float x, float y) {
+    this.x = x; this.y = y;
+  }
+  public float getX() { return x; }
+  public float getY() { return y; }
+                        //n1
+  public float distance(Point other) {
+    return java.lang.Math.sqrt(
+            //n1               //n1
+      ((x - other.getX())*(x - other.getX())) +
+            //n1               //n1
+      ((y - other.getY())*(y - other.getY()))
+    );
+  }
+}

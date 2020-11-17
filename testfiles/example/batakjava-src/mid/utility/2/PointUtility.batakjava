@@ -1,0 +1,39 @@
+package mid.utility ver 2;
+
+import upstream.collection.Point;
+/**
+ *  upstream/collection/Point.overview
+ *
+ *  package upstream.collection ver 1,2;
+ *  class Point extends Object;
+ *  Point(float, float) in ver 1,2;
+ *  float getX() in ver 1;
+ *  float getY() in ver 1;
+ *  float getR() in ver 2;
+ *  float getAngle() in ver 2;
+ *  float distance(Point) in ver 1,2;
+ */
+public class PointUtility {
+         //n1
+  public Point target;
+                      //n2
+  public PointUtility(Point target) {
+       //n1        //n2
+    this.target = target;
+  }
+          //n3
+  public Point mirrorField() {
+               //n4   //n1            //n1
+    return new Point(target.getR(), (target.getAngle()+180)%360);
+  }
+                //n5         //n6
+  public static Point mirror(Point p) {
+               //n7  //n6       //n6
+    return new Point(p.getR(), (p.getAngle()+180)%360);
+  }
+                         //n8     //n9
+  public boolean equals(Point p1, Point p2) {
+           //n8         //n9           //n8             //n9
+    return (p1.getR() == p2.getR()) && (p1.getAngle() == p2.getAngle());
+  }
+}

@@ -1,0 +1,5 @@
+package mid.empty ver 1;
+
+public class Empty {
+  public Empty() {}
+}

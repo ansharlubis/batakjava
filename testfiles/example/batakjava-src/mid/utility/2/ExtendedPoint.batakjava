@@ -1,0 +1,30 @@
+package mid.utility ver 2;
+
+import upstream.collection.Point;
+/**
+ *  upstream/collection/Point.overview
+ *
+ *  package upstream.collection ver 1,2;
+ *  class Point extends Object;
+ *  Point(float, float) in ver 1,2;
+ *  float getX() in ver 1;
+ *  float getY() in ver 1;
+ *  float getR() in ver 2;
+ *  float getAngle() in ver 2;
+ *  float distance(Point) in ver 1,2;
+ */
+                                   //n1
+public class ExtendedPoint extends Point {
+  public ExtendedPoint(float r, float angle) {
+    super(x,y);
+  }
+  public float distanceFromZero() {
+              //n2                 //this
+   return new Point(0f,0f).distance(this);
+  }
+         //n3
+  public Point parent() {
+               //n4  //this  //this
+    return new Point(getR(), getAngle());
+  }
+}

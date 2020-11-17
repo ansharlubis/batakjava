@@ -1,0 +1,11 @@
+package upstream.collection ver 1,2,3;
+
+class Point extends Object;
+
+Point(float, float) in ver 1,2,3;
+float getX() in ver 1;
+float getY() in ver 1;
+float distance(Point) in ver 1,2,3;
+float getR() in ver 2,3;
+float getAngle() in ver 2,3;
+boolean returnTrue() in ver 3;

@@ -1,0 +1,5 @@
+package mid.empty ver 1,2;
+
+class Empty extends Object;
+
+Empty() in ver 1,2;

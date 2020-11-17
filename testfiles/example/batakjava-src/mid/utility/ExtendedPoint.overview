@@ -1,0 +1,12 @@
+package mid.utility ver 1,2;
+
+class ExtendedPoint extends Point;
+
+ver 1 requires
+  upstream.collection.Point ver 1;
+ver 2 requires
+  upstream.collection.Point ver 2;
+
+ExtendedPoint(float, float) in ver 1,2;
+float distanceFromZero() in ver 1,2;
+Point parent() in ver 1,2;

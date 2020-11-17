@@ -1,0 +1,16 @@
+package downstream.application ver 1,2;
+
+class Main extends Object;
+
+version 1 requires
+  upstream.collection.Point version 1,
+  mid.utility.* version 1,
+  mid.empty.Empty version 1,2;
+version 2 requires
+  upstream.collection.Point version 1,2;
+  mid.utility.* version 1;
+  mid.empty.Empty version 1,2;
+
+static Point createPoint(Point, Empty) in version 1,2;
+static Empty createEmpty(Empty) in version 1,2;
+static void main(String[]) in version 1,2;
