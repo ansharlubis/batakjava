@@ -32,11 +32,8 @@ OverviewFieldDecl overview_field_header =
     {: return new OverviewFieldDecl(new Modifiers(m), t, new List().add(f), v, new List()); :}
 ;
 List unambiguous_field_decl_list =
-    unambiguous_field_decl.i                                {: return new List().add(i); :}
-  | unambiguous_field_decl_list.l unambiguous_field_decl.i  {: return l.add(i); :}
-;
-BodyDecl unambiguous_field_decl =
-    overview_field_header.m SEMICOLON                       {: return m; :}
+    overview_field_decl.i                                {: return new List().add(i); :}
+  | unambiguous_field_decl_list.l overview_field_decl.i  {: return l.add(i); :}
 ;
 // OverviewConstructorDecl
 BodyDecl overview_constructor_decl =
@@ -48,11 +45,8 @@ OverviewConstructorDecl overview_constructor_header =
     {: return new OverviewConstructorDecl(new Modifiers(m), IDENTIFIER, l, tl, new Opt(), new Block(), v, new List()); :}
 ;
 List unambiguous_constructor_decl_list =
-    unambiguous_constructor_decl.i                                      {: return new List().add(i); :}
-  | unambiguous_constructor_decl_list.l unambiguous_constructor_decl.i  {: return l.add(i); :}
-;
-BodyDecl unambiguous_constructor_decl =
-    overview_constructor_header.m SEMICOLON                             {: return m; :}
+    overview_constructor_decl.i                                       {: return new List().add(i); :}
+  | unambiguous_constructor_decl_list.l overview_constructor_decl.i   {: return l.add(i); :}
 ;
 // OverviewMethodDecl
 BodyDecl overview_method_decl =
@@ -66,11 +60,8 @@ OverviewMethodDecl overview_method_header =
     {: return new OverviewMethodDecl(new Modifiers(m), new PrimitiveTypeAccess("void"), IDENTIFIER, l, tl, new Opt(), v, new List()); :}
 ;
 List unambiguous_method_decl_list =
-    unambiguous_method_decl.i                                       {: return new List().add(i); :}
-  | unambiguous_method_decl_list.l unambiguous_method_decl.i        {: return l.add(i); :}
-;
-BodyDecl unambiguous_method_decl =
-    overview_method_header.m SEMICOLON                              {: return m; :}
+    overview_method_decl.i                                       {: return new List().add(i); :}
+  | unambiguous_method_decl_list.l overview_method_decl.i        {: return l.add(i); :}
 ;
 // ExtendsVersionDecl
 BodyDecl extends_version_decl =
