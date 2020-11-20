@@ -1,0 +1,41 @@
+aspect VersionInference {
+  /**
+   * Attributes for version:
+   * TypeDecl
+   *  .availableVersions: () -> Set<Integer>
+   *  Get the set of versions the class is available in.
+   * ASTNode
+   *  .hostVersion: () -> Integer
+   *  Get the version of the class' host package.
+   */
+
+  syn SimpleSet<Integer> TypeDecl.availableVersions() = emptySet();
+
+  eq ClassDecl.availableVersions() {
+    SimpleSet<Integer> result = emptySet();
+    if (hostVersion() != 0) { result = result.add(hostVersion()); }
+    return result;
+  }
+
+  eq OverviewClassDecl.availableVersions() {
+    SimpleSet<Integer> result = emptySet();
+    for (Version ver: getVersionList()) { result = result.add(Integer.valueOf(ver.getVersionNum())); }
+    return result;
+  }
+
+  syn SimpleSet<Integer> Access.availableVersions() = type().availableVersions();
+
+  //
+
+  syn lazy Integer CompilationUnit.packageVersion() = 0;
+  eq BatakjavaCompilationUnit.packageVersion() = Integer.valueOf(getVersionNum());
+
+  //
+
+  eq CompilationUnit.getChild().hostVersion() = packageVersion();
+  inh Integer TypeDecl.hostVersion();
+  inh Integer BodyDecl.hostVersion();
+  inh Integer Expr.hostVersion();
+  inh Integer Variable.hostVersion();
+
+}

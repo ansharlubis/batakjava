@@ -6,7 +6,7 @@ PairIdUse package_and_version_with_comment =
     doc_comment_list? package_and_version_declaration
   ;
 PairIdUse package_and_version_declaration =
-    PACKAGE name_decl.n VERSION version_number.v SEMICOLON
+    PACKAGE name_decl.n VER version_number.v SEMICOLON
     {: return new PairIdUse(n.getID(), v); :}
   ;
 String version_number =

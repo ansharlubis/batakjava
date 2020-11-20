@@ -1,0 +1,12 @@
+aspect Test {
+
+  Access contributes each addProblems() to CompilationUnit.problems();
+  syn Collection<Problem> Access.addProblems() {
+    Collection<Problem> problems = new LinkedList();
+    if (!availableVersions().isEmpty()) {
+      System.err.println(prettyPrint());
+      System.err.println(assignedVariable());
+    }
+    return problems;
+  }
+}
