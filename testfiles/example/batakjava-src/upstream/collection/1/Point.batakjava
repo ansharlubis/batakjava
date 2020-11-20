@@ -8,7 +8,7 @@ public class Point {
   }
   public float getX() { return x; }
   public float getY() { return y; }
-                        //n1
+                         //n1
   public float distance(Point other) {
     return java.lang.Math.sqrt(
             //n1               //n1

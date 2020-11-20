@@ -10,3 +10,21 @@ ver 2 requires
 ExtendedPoint(float, float) in ver 1,2;
 float distanceFromZero() in ver 1,2;
 Point parent() in ver 1,2;
+
+
+//
+
+package mid.utility;
+import upstream.collection.Point;
+
+overview of class ExtendedPoint extends Point {
+  ver1 extends ver1;
+  ver2 extends ver2;
+
+  ExtendedPoint(float, float) in ver 1 2;
+  float distanceFromZero() in ver 1 2;
+  Point parent() where
+    ver1_Point parent_ver1() in ver 1,
+    ver2_Point parent_ver2() in ver 2;
+
+}
