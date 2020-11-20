@@ -2,6 +2,27 @@ CompilationUnit compilation_unit =
     package_and_version_with_comment.pv import_declarations.i? type_declarations.t? doc_comment_list?
     {: return new BatakjavaCompilationUnit(pv.getIDX(), pv.getIDY(), i, t); :}
   ;
+PairIdUse package_and_version_with_comment =
+    doc_comment_list? package_and_version_declaration
+  ;
+PairIdUse package_and_version_declaration =
+    PACKAGE name_decl.n VERSION version_number.v SEMICOLON
+    {: return new PairIdUse(n.getID(), v); :}
+  ;
+String version_number =
+    NUMERIC_LITERAL
+  ;
+
+
+/*
+List version_list =
+    version_number.v                                          {: return new List().add(new Version(v)); :}
+  | version_list.vl COMMA version_number.v                    {: return vl.add(new Version(v)); :}
+  ;
+Access class_or_interface_type =
+    name.n SHARP version_number.v
+    {: return new TypeAccessWithVersion(n, v); :}
+  ;
 ImportDecl import_declaration =
     single_type_import_declaration_with_version
   | type_import_on_demand_declaration_with_version
@@ -14,21 +35,4 @@ ImportDecl type_import_on_demand_declaration_with_version =
     IMPORT name DOT MULT REQUIRES VERSION version_list.vl SEMICOLON
     {: return new TypeImportOnDemandDeclWithVersion(name, vl); :}
   ;
-Access class_or_interface_type =
-    name.n SHARP version_number.v
-    {: return new TypeAccessWithVersion(n, v); :}
-  ;
-PairIdUse package_and_version_with_comment =
-    doc_comment_list? package_and_version_declaration
-  ;
-PairIdUse package_and_version_declaration =
-    PACKAGE name_decl.n VERSION version_number.v SEMICOLON
-    {: return new PairIdUse(n.getID(), v); :}
-  ;
-List version_list =
-    version_number.v                                          {: return new List().add(new Version(v)); :}
-  | version_list.vl COMMA version_number.v                    {: return vl.add(new Version(v)); :}
-;
-String version_number =
-    NUMERIC_LITERAL
-  ;
+ */

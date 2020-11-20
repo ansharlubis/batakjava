@@ -3,6 +3,8 @@ import java.io.FileWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.HashMap;
 
 aspect BatakjavaFrontendMain {
 
@@ -66,6 +68,39 @@ aspect BatakjavaFrontendMain {
 
         int compileResult = EXIT_SUCCESS;
 
+        // Version inference
+        /**
+         * Processes from-source compilation units to infer versions
+         * of classes. If non-successful, then the map would be assigned
+         * null.
+         *
+         * @return zero on success, non-zero on error
+         */
+        /*
+        Iterator<CompilationUnit> iter = program.compilationUnitIterator();
+        while (iter.hasNext()) {
+          CompilationUnit unit = iter.next();
+          work.add(unit);
+          int result = processInference(unit);
+          switch (result) {
+            case EXIT_SUCCESS:
+              break;
+            case EXIT_UNHANDLED_ERROR:
+              return result;
+            default:
+              compileResult = result;
+          }
+        }
+         */
+
+        // Transpilation
+
+        // Build new program with the transpiled CompilationUnit(s)
+
+        // Type-checking
+
+        // Overview generation
+
         // Process source compilation units.
         Iterator<CompilationUnit> iter = program.compilationUnitIterator();
         while (iter.hasNext()) {
@@ -82,6 +117,7 @@ aspect BatakjavaFrontendMain {
           }
         }
 
+        /*
         for (CompilationUnit source: work) {
           int result = processOverview(source);
           switch (result) {
@@ -93,6 +129,7 @@ aspect BatakjavaFrontendMain {
               compileResult = result;
           }
         }
+        */
 
         // Process library compilation units.
         Iterator<CompilationUnit> libraryIterator = program.libraryCompilationUnitIterator();
@@ -137,6 +174,20 @@ aspect BatakjavaFrontendMain {
       return EXIT_SUCCESS;
     }
 
+    protected int processInference(CompilationUnit unit) {
+      /*
+      if (unit != null && unit.fromSource()) {
+        try {
+
+        } else {
+
+        }
+      }
+      */
+      return 0;
+    }
+
+    /*
     protected int processOverview(CompilationUnit unit) throws Error, IOException {
       if (unit != null && unit.fromSource()) {
         try {
@@ -182,5 +233,6 @@ aspect BatakjavaFrontendMain {
         System.err.println(warning);
       }
     }
+     */
   }
 }
