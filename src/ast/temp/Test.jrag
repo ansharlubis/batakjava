@@ -1,5 +1,7 @@
 aspect Test {
 
+  /*
+
   Access contributes each addProblems() to CompilationUnit.problems();
   syn Collection<Problem> Access.addProblems() {
     Collection<Problem> problems = new LinkedList();
@@ -9,4 +11,22 @@ aspect Test {
     }
     return problems;
   }
+
+  CompilationUnit contributes each addProblems() to CompilationUnit.problems();
+  syn Collection<Problem> CompilationUnit.addProblems() {
+    Collection<Problem> problems = new LinkedList();
+    for (String variable: domains().keySet()) {
+      System.err.print(variable + " : ");
+      for (Integer version: domains().get(variable)) {
+        System.err.print(version);
+        System.err.print(" ");
+      }
+      System.err.println();
+    }
+    return problems;
+
+  }
+
+   */
+
 }

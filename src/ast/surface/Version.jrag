@@ -4,12 +4,15 @@ aspect VersionInference {
    * TypeDecl
    *  .availableVersions: () -> Set<Integer>
    *  Get the set of versions the class is available in.
+   * Access
+   *  .availableVersions: () -> Set<Integer>
+   *  Refers to TypeDecl for version information
    * ASTNode
    *  .hostVersion: () -> Integer
    *  Get the version of the class' host package.
    */
 
-  syn SimpleSet<Integer> TypeDecl.availableVersions() = emptySet();
+  syn lazy SimpleSet<Integer> TypeDecl.availableVersions() = emptySet();
 
   eq ClassDecl.availableVersions() {
     SimpleSet<Integer> result = emptySet();
@@ -23,14 +26,10 @@ aspect VersionInference {
     return result;
   }
 
-  syn SimpleSet<Integer> Access.availableVersions() = type().availableVersions();
-
-  //
+  syn lazy SimpleSet<Integer> Access.availableVersions() = type().availableVersions();
 
   syn lazy Integer CompilationUnit.packageVersion() = 0;
   eq BatakjavaCompilationUnit.packageVersion() = Integer.valueOf(getVersionNum());
-
-  //
 
   eq CompilationUnit.getChild().hostVersion() = packageVersion();
   inh Integer TypeDecl.hostVersion();
