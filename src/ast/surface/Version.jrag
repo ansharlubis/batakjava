@@ -4,6 +4,8 @@ aspect VersionInference {
    * TypeDecl
    *  .availableVersions: () -> Set<Integer>
    *  Get the set of versions the class is available in.
+   *  .isVersioned: () -> boolean
+   *  Check if the class has version or not
    * Access
    *  .availableVersions: () -> Set<Integer>
    *  Refers to TypeDecl for version information
@@ -26,9 +28,13 @@ aspect VersionInference {
     return result;
   }
 
+  syn lazy boolean TypeDecl.isVersioned() = false;
+  eq ClassDecl.isVersioned() = hostVersion() != 0;
+  eq OverviewClassDecl.isVersioned() = true;
+
   syn lazy SimpleSet<Integer> Access.availableVersions() = type().availableVersions();
 
-  syn lazy Integer CompilationUnit.packageVersion() = 0;
+  syn Integer CompilationUnit.packageVersion() = 0;
   eq BatakjavaCompilationUnit.packageVersion() = Integer.valueOf(getVersionNum());
 
   eq CompilationUnit.getChild().hostVersion() = packageVersion();

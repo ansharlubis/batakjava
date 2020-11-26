@@ -5,7 +5,7 @@ aspect Test {
   Access contributes each addProblems() to CompilationUnit.problems();
   syn Collection<Problem> Access.addProblems() {
     Collection<Problem> problems = new LinkedList();
-    if (!availableVersions().isEmpty()) {
+    if (type().isVersioned()) {
       System.err.println(prettyPrint());
       System.err.println(assignedVariable());
     }
@@ -15,18 +15,27 @@ aspect Test {
   CompilationUnit contributes each addProblems() to CompilationUnit.problems();
   syn Collection<Problem> CompilationUnit.addProblems() {
     Collection<Problem> problems = new LinkedList();
-    for (String variable: domains().keySet()) {
+    for (String variable: varToType().keySet()) {
       System.err.print(variable + " : ");
-      for (Integer version: domains().get(variable)) {
-        System.err.print(version);
-        System.err.print(" ");
-      }
+      System.err.print(varToType().get(variable).name());
       System.err.println();
     }
     return problems;
-
   }
 
-   */
+  BodyDecl contributes each addProblems() to CompilationUnit.problems();
+  syn Collection<Problem> BodyDecl.addProblems() {
+    System.err.println(getEqualVars());
+    return Collections.emptySet();
+  }
+
+
+  CompilationUnit contributes each addProblems() to CompilationUnit.problems();
+  syn Collection<Problem> CompilationUnit.addProblems() {
+    System.err.println(program().equalConstraints());
+    return Collections.emptySet();
+  }
+
+  */
 
 }

@@ -1,60 +1,167 @@
 import java.util.Map;
 import java.util.HashMap;
 
-aspect VersionInference {
+aspect VersionInferenceProgram {
 
-  protected Integer CompilationUnit.variableCount = 0;
+  protected Integer Program.variableCount = 0;
 
-  private void CompilationUnit.initializeVariable() { variableCount = 0; }
+  private void Program.initializeVariable() { variableCount = 0; }
 
-  public String CompilationUnit.freshVariable() {
+  public String Program.freshVariable() {
     variableCount++;
-    return "n" + variableCount.toString();
+    return "var" + variableCount.toString();
   }
 
-  syn lazy String Access.assignedVariable() = compilationUnit().freshVariable();
+  syn lazy String Access.assignedVariable() = program().freshVariable();
   eq VarAccess.assignedVariable() = decl().assignedVariable();
+  eq ThisAccess.assignedVariable() = "var" + hostType().name();
 
   syn lazy String Variable.assignedVariable();
   eq ParameterDeclaration.assignedVariable() = getTypeAccess().assignedVariable();
   eq Declarator.assignedVariable() = getTypeAccess().assignedVariable();
-  eq EnumConstant.assignedVariable() = compilationUnit().freshVariable();
+  eq EnumConstant.assignedVariable() = program().freshVariable();
 
   // Exception not handled yet
   eq CatchParameterDeclaration.assignedVariable() = null;
   // This one is from lambda expression, unsupported for now
   eq InferredParameterDeclaration.assignedVariable() = null;
 
-  syn SimpleSet<String> CompilationUnit.variables() {
-    SimpleSet<String> result = emptySet();
-    for (String variable: domains().keySet()) { result = result.add(variable); }
-    return result;
-  }
-
-  syn Map<String,SimpleSet<Integer>> CompilationUnit.domains() {
-    Map<String,SimpleSet<Integer>> result = new HashMap();
-    for (Map<String,SimpleSet<Integer>> domain: getDomains()) {
-      for (String variable: domain.keySet()) {
-        if (!result.containsKey(variable)) {
-          result.put(variable, domain.get(variable));
+  /**
+   * Domain for variables can be checked by calling availableVersions on each TypeDecl
+   */
+  syn Map<String,TypeDecl> Program.varToType() {
+    Map<String,TypeDecl> result = new HashMap();
+    for (Map<String,TypeDecl> varToType: getVarToType()) {
+      for (String var: varToType.keySet()) {
+        if (!result.containsKey(var)) {
+          result.put(var, varToType.get(var));
         }
       }
     }
     return result;
   }
 
-  coll LinkedList<Map<String,SimpleSet<Integer>>> CompilationUnit.getDomains() root CompilationUnit;
+  coll LinkedList<Map<String,TypeDecl>> Program.getVarToType() root Program;
 
-  Access contributes each getDomain() to CompilationUnit.getDomains();
-  syn Collection<Map<String,SimpleSet<Integer>>> Access.getDomain() {
-    SimpleSet<Integer> versions = availableVersions();
-    if (!versions.isEmpty()) {
-      Map<String,SimpleSet<Integer>> element = new HashMap(1);
-      element.put(assignedVariable(), versions);
-      return Collections.singleton(element);
+  Access contributes each getVarToType() to Program.getVarToType();
+  syn Collection<Map<String,TypeDecl>> Access.getVarToType() {
+    Map<String,TypeDecl> varToType = new HashMap(1);
+    TypeDecl type = type();
+    if (type.isVersioned()) {
+      varToType.put(assignedVariable(), type());
+      return Collections.singleton(varToType);
     }
     return Collections.emptySet();
   }
 
+  coll LinkedList<Map<String,Integer>> Program.invocationConstraints() root Program;
+
+  MethodAccess contributes each invocationConstraints() to Program.invocationConstraints();
+  syn Collection<Map<String,Integer>> MethodAccess.invocationConstraints() {
+    Collection<Map<String,Integer>> result = new LinkedList();
+    // self method access
+    // name dot method access
+    /**
+     * 1) Check if has previous expression, get the variable
+     * 2) Get the method decl for the access
+     * 3) Produce constraint by using the method decl
+     */
+    // super dot method access
+    // name dot super dot method access
+
+    return result;
+  }
+
+  /**
+   * equalConstraints: () -> LinkedList<Set<String>>
+   *  A collection attribute that collects must-equal version variables
+   *  based on their package names. The constraints are collected from
+   *  ConstructorDecl parameter list + return type and
+   *  MethodDecl parameter list + return type
+   */
+  coll LinkedList<Set<String>> Program.equalConstraints() root Program;
+
+  BodyDecl contributes each equalConstraints() to Program.equalConstraints();
+  syn Collection<Set<String>> BodyDecl.equalConstraints() = Collections.emptySet();
+
+  eq ConstructorDecl.equalConstraints() {
+    Collection<Set<String>> result = new LinkedList();
+    Map<String,Set<String>> packageNameToVars = packageNameToVars();
+    for (String packageName: packageNameToVars.keySet()) {
+      if (packageNameToVars.get(packageName).size() > 1) {
+        result.add(packageNameToVars.get(packageName));
+      }
+    }
+    return result;
+  }
+
+  eq MethodDecl.equalConstraints() {
+    Collection<Set<String>> result = new LinkedList();
+    Map<String,Set<String>> packageNameToVars = packageNameToVars();
+    for (String packageName: packageNameToVars.keySet()) {
+      if (packageNameToVars.get(packageName).size() > 1) {
+        result.add(packageNameToVars.get(packageName));
+      }
+    }
+    return result;
+  }
+
+  syn Map<String,Set<String>> ConstructorDecl.packageNameToVars() {
+    Map<String,Set<String>> result = new HashMap(getNumParameter());
+    // Add the host class version
+    Set<String> varSet = new HashSet();
+    varSet.add("var" + hostType().name());
+    result.put(hostPackage(), varSet);
+
+    // Add the parameter list
+    for (ParameterDeclaration param: getParameterList()) {
+      if (program().varToType().containsKey(param.getTypeAccess().assignedVariable())) {
+        String packageName = param.type().packageName();
+        if (!result.containsKey(packageName)) {
+          varSet = new HashSet();
+          varSet.add(param.getTypeAccess().assignedVariable());
+          result.put(packageName, varSet);
+        } else {
+          result.get(packageName).add(param.getTypeAccess().assignedVariable());
+        }
+      }
+    }
+    return result;
+  }
+
+  syn Map<String,Set<String>> MethodDecl.packageNameToVars() {
+    Map<String,Set<String>> result = new HashMap(getNumParameter()+1);
+    // Add the receiver package
+    Set<String> varSet = new HashSet();
+    varSet.add("var" + hostType().name());
+    result.put(hostPackage(), varSet);
+
+    // Add the parameter list
+    for (ParameterDeclaration param: getParameterList()) {
+      if (program().varToType().containsKey(param.getTypeAccess().assignedVariable())) {
+        String packageName = param.type().packageName();
+        if (!result.containsKey(packageName)) {
+          varSet = new HashSet();
+          varSet.add(param.getTypeAccess().assignedVariable());
+          result.put(packageName, varSet);
+        } else {
+          result.get(packageName).add(param.getTypeAccess().assignedVariable());
+        }
+      }
+    }
+
+    // Add the return type
+    if (program().varToType().containsKey(getTypeAccess().assignedVariable())) {
+      String packageName = getTypeAccess().type().packageName();
+      if (!result.containsKey(packageName)) {
+        varSet = new HashSet();
+        varSet.add(getTypeAccess().assignedVariable());
+        result.put(packageName, varSet);
+      } else {
+        result.get(packageName).add(getTypeAccess().assignedVariable());
+      }
+    }
+    return result;
+  }
 
 }
