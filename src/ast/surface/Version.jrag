@@ -14,17 +14,17 @@ aspect VersionInference {
    *  Get the version of the class' host package.
    */
 
-  syn lazy SimpleSet<Integer> TypeDecl.availableVersions() = emptySet();
+  syn lazy Set<Integer> TypeDecl.availableVersions() = Collections.emptySet();
 
   eq ClassDecl.availableVersions() {
-    SimpleSet<Integer> result = emptySet();
-    if (hostVersion() != 0) { result = result.add(hostVersion()); }
+    Set<Integer> result = Collections.emptySet();
+    if (hostVersion() != 0) { result.add(hostVersion()); }
     return result;
   }
 
   eq OverviewClassDecl.availableVersions() {
-    SimpleSet<Integer> result = emptySet();
-    for (Version ver: getVersionList()) { result = result.add(Integer.valueOf(ver.getVersionNum())); }
+    Set<Integer> result = Collections.emptySet();
+    for (Version ver: getVersionList()) { result.add(Integer.valueOf(ver.getVersionNum())); }
     return result;
   }
 
@@ -32,7 +32,7 @@ aspect VersionInference {
   eq ClassDecl.isVersioned() = hostVersion() != 0;
   eq OverviewClassDecl.isVersioned() = true;
 
-  syn lazy SimpleSet<Integer> Access.availableVersions() = type().availableVersions();
+  syn lazy Set<Integer> Access.availableVersions() = type().availableVersions();
 
   syn Integer CompilationUnit.packageVersion() = 0;
   eq BatakjavaCompilationUnit.packageVersion() = Integer.valueOf(getVersionNum());

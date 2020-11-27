@@ -11,12 +11,15 @@ import java.nio.file.Paths;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 
+import org.chocosolver.solver.Model;
+
 import org.extendj.ast.Frontend;
 import org.extendj.ast.Program;
 import org.extendj.ast.BatakjavaFrontend;
 
 public class BatakjavaOverviewWriter extends BatakjavaFrontend {
   public static void main(String[] args) {
+    Model model;
     int exitCode = (new BatakjavaOverviewWriter()).run(args);
     if (exitCode != 0) {
       System.exit(exitCode);
