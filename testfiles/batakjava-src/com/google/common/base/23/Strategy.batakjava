@@ -1,6 +1,0 @@
-package com.google.common.base version 23;
-
-public class Strategy {
-  public Strategy() { }
-  public Strategy(int someArgument) {}
-}

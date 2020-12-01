@@ -1,7 +1,0 @@
-package com.google.common.base;
-import java.util.regex.Pattern;
-
-overview class Splitter {
-  public Splitter(Strategy strategy) in version 23;
-  public static Splitter on(Pattern pattern) in version 23;
-}

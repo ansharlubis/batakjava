@@ -1,0 +1,218 @@
+import java.io.File;
+import java.io.FileWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.HashMap;
+
+aspect BatakjavaFrontendMain {
+
+  syn lazy String CompilationUnit.filename() {
+    String[] splitPath = sourceFile().split("/");
+    return splitPath[splitPath.length-1].split("\\.")[0];
+  }
+
+  abstract public class BatakjavaFrontend extends Frontend {
+
+    private Set<Map<String,Integer>> varToVer;
+
+    protected BatakjavaFrontend(String name, String version) { super(name, version); }
+
+    @Override
+    public int run(String[] args, BytecodeReader reader, JavaParser parser) {
+
+      program.resetStatistics();
+      program.initBytecodeReader(reader);
+      program.initJavaParser(parser);
+
+      initOptions();
+      int argResult = processArgs(args);
+      if (argResult != 0) {
+        return argResult;
+      }
+
+      Collection<String> files = program.options().files();
+
+      if (program.options().hasOption("-version")) {
+        printVersion();
+        return EXIT_SUCCESS;
+      }
+
+      if (program.options().hasOption("-help") || files.isEmpty()) {
+        printUsage();
+        return EXIT_SUCCESS;
+      }
+
+      Collection<CompilationUnit> work = new LinkedList<CompilationUnit>();
+
+      try {
+        // Check if the files passed are
+        for (String file: files) {
+          String[] splitFilename = file.split("/");
+          if (splitFilename[splitFilename.length-1].split("\\.")[1].equals("batakjava")) {
+            program.addSourceFile(file);
+          } else {
+            System.err.println("Error: not a valid batakjava file.");
+            return EXIT_UNHANDLED_ERROR;
+          }
+        }
+
+        TypeDecl object = program.lookupType("java.lang", "Object");
+        if (object.isUnknown()) {
+          System.err.println("Error: java.lang.Object is missing."
+            + " The Java standard library was not found.");
+          return EXIT_UNHANDLED_ERROR;
+        }
+
+        int compileResult = EXIT_SUCCESS;
+
+        // Process source compilation units.
+        Iterator<CompilationUnit> iter = program.compilationUnitIterator();
+        while (iter.hasNext()) {
+          CompilationUnit unit = iter.next();
+          work.add(unit);
+          int result = processCompilationUnit(unit);
+          switch (result) {
+            case EXIT_SUCCESS:
+              break;
+            case EXIT_UNHANDLED_ERROR:
+              return result;
+            default:
+              compileResult = result;
+          }
+        }
+
+        // Version inference
+        /*
+        inferVersion();
+         */
+
+        // Overview generator
+        /**
+         * The inference would result in Set<Map<String,Integer>>.
+         * Multiple maps means there are multiple possible solution for the inference
+         * The first sample (../1/Point.batakjava and Displacement.batakjava) solution:
+         * [{var0:1, ..., var10:1}]
+         */
+        varToVer = exampleSolution();
+        for (CompilationUnit source: work) {
+          int result = processOverview(source);
+          switch (result) {
+            case EXIT_SUCCESS:
+              break;
+            case EXIT_UNHANDLED_ERROR:
+              return result;
+            default:
+              compileResult = result;
+          }
+        }
+
+        Iterator<CompilationUnit> libraryIterator = program.libraryCompilationUnitIterator();
+        while (libraryIterator.hasNext()) {
+          CompilationUnit unit = libraryIterator.next();
+          work.add(unit);
+          int result = processCompilationUnit(unit);
+          switch (result) {
+            case EXIT_SUCCESS:
+              break;
+            case EXIT_UNHANDLED_ERROR:
+              return result;
+            default:
+              compileResult = result;
+          }
+        }
+
+        if (compileResult != EXIT_SUCCESS) {
+          return compileResult;
+        }
+
+        for (CompilationUnit unit : work) {
+          if (unit != null && unit.fromSource()) {
+            long start = System.nanoTime();
+            processNoErrors(unit);
+            program.codeGenTime += System.nanoTime() - start;
+          }
+        }
+
+      } catch (AbstractClassfileParser.ClassfileFormatError e) {
+        System.err.println(e.getMessage());
+        return EXIT_UNHANDLED_ERROR;
+      } catch (Throwable t) {
+        System.err.println("Fatal exception:");
+        t.printStackTrace(System.err);
+        return EXIT_UNHANDLED_ERROR;
+      } finally {
+        if (program.options().hasOption("-profile")) {
+          program.printStatistics(System.out);
+        }
+      }
+      return EXIT_SUCCESS;
+    }
+
+    private Set<Map<String,Integer>> exampleSolution() {
+      Set<Map<String,Integer>> example = new HashSet(1);
+      Map<String,Integer> map = new HashMap(11);
+      for (int i = 0; i < 11; i++) {
+        map.put("var"+i, 2);
+      }
+      example.add(map);
+      return example;
+    }
+
+    protected int processOverview(CompilationUnit unit) throws Error, IOException {
+      if (unit != null && unit.fromSource()) {
+        try {
+          Collection<Problem> errors = Collections.emptyList();
+          Collection<Problem> warnings = Collections.emptyList();
+          String destinationPath = unit.destinationPath();
+          if (program.options().hasValueForOption("-d")) {
+            destinationPath = program.options().getValueForOption("-d");
+          }
+          String overviewPath = destinationPath + "/" + unit.filename() + ".overview";
+          File overviewFile = new File(overviewPath);
+          if (!overviewFile.exists()) {
+            Files.write(Paths.get(overviewPath), unit.generateOverview(varToVer).prettyPrint().getBytes(StandardCharsets.UTF_8));
+            return EXIT_SUCCESS;
+          } else {
+            CompilationUnit overviewUnit = program.addSourceFile(overviewPath);
+
+            //SourceFilePath overviewPart = new SourceFilePath(overviewPath);
+            //CompilationUnit overviewUnit = overviewPart.getCompilationUnit(program, overviewPath);
+
+            errors = unit.overviewErrors(overviewUnit);
+            warnings = unit.overviewWarnings(overviewUnit);
+            if (!errors.isEmpty()) {
+              processOverviewErrors(errors, unit);
+              return EXIT_ERROR;
+            } else {
+              if (!warnings.isEmpty() && !program.options().hasOption("-nowarn")) {
+                processOverviewWarnings(warnings, unit);
+              }
+              System.err.println(unit.updateOverview(overviewUnit, varToVer).prettyPrint());
+              //FileWriter overviewUpdater = new FileWriter(overviewPath, false);
+              //overviewUpdater.write(unit.updateOverview(overviewUnit, varToVer).prettyPrint());
+              //overviewUpdater.close();
+            }
+          }
+        } catch (Error e) {
+          System.err.println("Encountered error while processing " + unit.pathName());
+          throw e;
+        }
+      }
+      return EXIT_SUCCESS;
+    }
+
+    protected void inferVersion() {}
+
+    protected void processOverviewErrors(Collection<Problem> errors, CompilationUnit unit) {
+      for (Problem error: errors) { System.err.println(error); }
+    }
+
+    protected void processOverviewWarnings(Collection<Problem> warnings, CompilationUnit unit) {
+      for (Problem warning: warnings) { System.err.println(warning); }
+    }
+
+  }
+
+}

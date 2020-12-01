@@ -1,0 +1,51 @@
+package upstream.collection ver 1;
+            //varPoint
+public class Point {
+  private float x;
+  public Point(float x) {
+   //varPoint
+    this.x = x;
+  }
+  public float getX() { return x; }
+         //var2     //var3
+  public Point move(Displacement d) {
+               //var4  //var3           //var5
+    return new Point(x + d.getValue(new Displacement(1)));
+  }
+                        //var6        //var7
+  public double distance(Point other, Point another) {
+    Displacement e = new Displacement(1);
+    float f = other.x;
+                //var6
+    return x - other.getX();
+  }
+}
+
+/*
+
+What I want to do:
+Generate constraints from method invocations/object instantiations.
+
+There are two possibilities, the receiver is currently still written in BatakJava, or already translated
+and an overview is available.
+
+(1) Overview
+
+If an overview is already available, for example
+  float distance(Point var1) in ver 1,2,3 {
+    float distance(ver1_Point var1) in ver 1 {}
+    float distance(ver2_Point var1) in ver 2 {}
+    float distance(ver3_Point var1) in ver 3 {}
+  }
+Given the variable of the receiver and arguments, we can create a map
+{[recVar:1, argVar:1],[recVar:2, argVar:2],[recVar:3, argVar:3]}
+
+(2) Batakjava
+
+Calling decl() on the method access will return a declaration
+  public Point move(Displacement d) { ... }
+
+Given the variable of the receiver, argument, and return type, we can create
+equality constraints
+{[recVar = methodHostVar, argVar = methodArgVar, methodVar = methodReturnVar]}
+*/
