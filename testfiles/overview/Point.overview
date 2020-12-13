@@ -1,0 +1,14 @@
+package upstream.collection;
+
+overview Point ver 1,2,3 {
+  Point(float var1, float var2) ver 1,2,3 {}
+  float getX() ver 1 {}
+  float getY() ver 1 {}
+  float distance(Point var1) ver 1,2,3 {
+    float distance(ver1_Point var1) ver 1 {}
+    float distance(ver2_Point var1) ver 2 {}
+    float distance(ver3_Point var1) ver 3 {}
+  }
+  float getR() ver 2,3 {}
+  float getAngle() ver 2,3 {}
+}

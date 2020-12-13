@@ -1,0 +1,61 @@
+aspect BatakjavaLookupFullyQualifiedTypes {
+
+  public void Program.reinitializeSourceTypeMap() {
+    for (int i = 0; i < getNumCompilationUnit(); i++) {
+      CompilationUnit unit = getCompilationUnit(i);
+      for (int j = 0; j < unit.getNumTypeDecl(); j++) {
+        TypeDecl type = unit.getTypeDecl(j);
+        if (sourceTypeMap.containsKey(type.fullName())) {
+          sourceTypeMap.replace(type.fullName(), type);
+        } else {
+          sourceTypeMap.put(type.fullName(), type);
+        }
+      }
+    }
+  }
+
+  inh SimpleSet<TypeDecl> Expr.lookupTypeSet(String pockageName, String typeName);
+  inh SimpleSet<TypeDecl> Stmt.lookupTypeSet(String packageName, String typeName);
+  inh SimpleSet<TypeDecl> BodyDecl.lookupTypeSet(String packageName, String typeName);
+  inh SimpleSet<TypeDecl> TypeDecl.lookupTypeSet(String packageName, String typeName);
+  inh SimpleSet<TypeDecl> CompilationUnit.lookupTypeSet(String packageName, String typeName);
+
+  eq Program.getChild().lookupTypeSet(String packageName, String typeName) = lookupTypeSet(packageName, typeName);
+
+  syn lazy SimpleSet<TypeDecl> Program.lookupTypeSet(String packageName, String typeName)
+    = lookupLibraryTypeSet(packageName, typeName);
+
+  private final Map<String, SimpleSet<TypeDecl>> Program.libraryTypeSetMap = new HashMap<String, SimpleSet<TypeDecl>>();
+
+  public synchronized SimpleSet<TypeDecl> Program.lookupLibraryTypeSet(String packageName, String typeName) {
+    String fullName = packageName.isEmpty() ? typeName : packageName + "." + typeName;
+    SimpleSet<TypeDecl> typeSet = emptySet();
+
+    CompilationUnit libraryUnit = getLibCompilationUnit(fullName);
+
+    libraryCompilationUnitSet.add(libraryUnit);
+    if (libraryUnit.isOverviewUnit()) {
+      List<CompilationUnit> units = getLibCompilationUnitList(fullName, Integer.valueOf(libraryUnit.version()));
+      for (CompilationUnit specificUnit: units) {
+        for (TypeDecl type: specificUnit.getTypeDeclList()) {
+          if (!libraryTypeMap.containsKey(type.fullName())) {
+            libraryTypeMap.put(type.fullName(), type);
+          }
+          if (!typeSet.contains(type)) {
+            typeSet = typeSet.add(type);
+          }
+        }
+      }
+    }
+
+    if (!libraryTypeSetMap.containsKey(fullName)) {
+      libraryTypeSetMap.put(fullName, typeSet);
+    }
+
+    return typeSet;
+  }
+
+  syn nta List<CompilationUnit> Program.getLibCompilationUnitList(String typeName, Integer ver)
+    = getCompilationUnitList(typeName, ver);
+
+}

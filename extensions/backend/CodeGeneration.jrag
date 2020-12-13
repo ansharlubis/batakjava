@@ -1,0 +1,353 @@
+import java.util.stream.Collectors;
+
+aspect OverviewGeneration {
+
+  syn nta CompilationUnit CompilationUnit.generateOverview() = this;
+
+  eq BatakjavaCompilationUnit.generateOverview() {
+    List<TypeDecl> typeDecls = new List();
+    for (TypeDecl typeDecl: getTypeDeclList()) {
+      typeDecls.addAll(typeDecl.generateOverview());
+    }
+    return new CompilationUnit(getPackageDecl(), new List(), typeDecls);
+  }
+
+  syn nta List<TypeDecl> TypeDecl.generateOverview() = new List();
+  eq ClassDecl.generateOverview() = !isPrivate() ?
+    new List().add(new ClassDecl(getModifiers(), getID(), new Opt(), new List(), generateOverviewBody())) : new List();
+
+  syn nta List<BodyDecl> ClassDecl.generateOverviewBody() {
+    List<BodyDecl> result = new List();
+    result.add(new FieldDecl(
+      new Modifiers(new List().add(new Modifier("public"))),
+      new PrimitiveTypeAccess("boolean"),
+      new List().add(new FieldDeclarator("BATAKJAVACLASS", new List(), new Opt()))));
+    result.add(new FieldDecl(
+      new Modifiers(new List().add(new Modifier("public"))),
+      new PrimitiveTypeAccess("boolean"),
+      new List().add(new FieldDeclarator("VER_" + hostVersion(), new List(), new Opt()))));
+    return result;
+  }
+}
+
+aspect JavaGeneration {
+
+  syn nta Access Access.attachVersion(Integer version) = treeCopy();
+  eq TypeAccess.attachVersion(Integer version) = new TypeAccess(getPackage(), getID() + "_ver_" + version.toString());
+  eq PrimitiveTypeAccess.attachVersion(Integer version) = treeCopy();
+  eq ArrayTypeAccess.attachVersion(Integer version) = new ArrayTypeAccess(getAccess().attachVersion(version));
+
+  syn nta CompilationUnit CompilationUnit.generateJava(Set<Map<String,Integer>> solutions) = this;
+
+  eq BatakjavaCompilationUnit.generateJava(Set<Map<String,Integer>> solutions) {
+    List<ImportDecl> importDecls = new List();
+    for (ImportDecl importDecl: getImportDeclList()) {
+      importDecls = importDecls.addAll(importDecl.generateJavaImport());
+    }
+    List<TypeDecl> typeDecls = new List();
+    for (TypeDecl typeDecl: getTypeDeclList()) {
+      typeDecls = typeDecls.add(typeDecl.generateJavaType(solutions));
+    }
+    return new CompilationUnit(getPackageDecl(), importDecls, typeDecls);
+  }
+
+  syn nta List<ImportDecl> ImportDecl.generateJavaImport() = new List().add(this);
+
+  eq TypeImportOnDemandDeclWithVersion.generateJavaImport()
+    = new List().add(new TypeImportOnDemandDecl(getAccess()));
+
+  syn nta TypeDecl TypeDecl.generateJavaType(Set<Map<String,Integer>> solutions) = treeCopy();
+
+  eq ClassDecl.generateJavaType(Set<Map<String,Integer>> solutions) {
+    Set<Map<String,Integer>> filtered = solutions;
+
+    Opt<Access> superAccess = getSuperClassOpt();
+    List<BodyDecl> bodyDecls = new List();
+
+    // Add the extends versions if superclass exists, for next example
+    if (hasSuperClass() && getSuperClass().versionVariable().isPresent()) {
+      Integer maxVersion = solutions.stream()
+        .map(solution -> solution.get(getSuperClass().versionVariable().get()))
+        .reduce(0, (a,b) -> a > b ? a : b);
+      filtered = solutions.stream()
+        .filter(solution -> solution.get(getSuperClass().versionVariable().get()) == maxVersion)
+        .collect(Collectors.toCollection(HashSet::new));
+      superAccess = new Opt(getSuperClass().attachVersion(maxVersion));
+    }
+
+    filtered = solutionSet(filtered);
+    Map<String,Integer> selected = filtered.iterator().next();
+
+    for (BodyDecl bodyDecl: getBodyDeclList()) {
+      bodyDecls.addAll(bodyDecl.generateJavaBody(filtered, selected));
+    }
+
+    return new ClassDecl(getModifiers(), getID()+"_ver_"+hostVersion(), superAccess, getImplementsList(), bodyDecls);
+  }
+
+  syn List<BodyDecl> BodyDecl.generateJavaBody(Set<Map<String,Integer>> filtered, Map<String,Integer> selected) = new List();
+
+  eq FieldDecl.generateJavaBody(Set<Map<String,Integer>> filtered, Map<String,Integer> selected) {
+    List<BodyDecl> result = new List();
+    if (versionDependent()) {
+      for (Map<String,Integer> solution: getSolutionSet(filtered)) {
+        for (FieldDeclarator declarator: getDeclaratorList()) {
+          result.add(new FieldDecl(
+            getModifiers(),
+            getTypeAccess().attachVersion(solution.get(getTypeAccess().versionVariable().get())),
+            new List().add(declarator.generateJavaDeclarator(solution))));
+        }
+      }
+    } else {
+      // In case the signature is not version dependent,
+      // how should we choose the solution?
+      for (FieldDeclarator declarator: getDeclaratorList()) {
+        result.add(new FieldDecl(
+          getModifiers(), getTypeAccess(), new List().add(declarator.generateJavaDeclarator(selected))
+        ));
+      }
+    }
+    return result;
+  }
+
+  eq ConstructorDecl.generateJavaBody(Set<Map<String,Integer>> filtered, Map<String,Integer> selected) {
+    List<BodyDecl> result = new List();
+    if (versionDependent()) {
+      for (Map<String,Integer> solution: getSolutionSet(filtered)) {
+        List<ParameterDeclaration> subParameterList = attachVersionToParameter(solution);
+        Opt<Stmt> parsed =
+          hasParsedConstructorInvocation() ? new Opt(getParsedConstructorInvocation().generateJavaStmt(solution)) : new Opt();
+        result.add(new ConstructorDecl(getModifiers(), getID()+"_ver_"+hostVersion(),
+          subParameterList, getExceptionList(), parsed, getBlock().generateJavaBlock(solution)));
+      }
+    } else {
+      // In case the signature is not version dependent,
+      // how should we choose the solution?
+      Opt<Stmt> parsed =
+        hasParsedConstructorInvocation() ? new Opt(getParsedConstructorInvocation().generateJavaStmt(selected)) : new Opt();
+      result.add(new ConstructorDecl(getModifiers(), getID()+"_ver_"+hostVersion(),
+        getParameterList(), getExceptionList(), parsed, getBlock().generateJavaBlock(selected)));
+    }
+    return result;
+  }
+
+  eq MethodDecl.generateJavaBody(Set<Map<String,Integer>> filtered, Map<String,Integer> selected) {
+    List<BodyDecl> result = new List();
+    if (versionDependent()) {
+      for (Map<String,Integer> solution: getSolutionSet(filtered)) {
+        String methodName = getID();
+        Access typeAccess = getTypeAccess();
+        List<ParameterDeclaration> subParameterList = attachVersionToParameter(solution);
+        if (getTypeAccess().versionVariable().isPresent()) {
+          methodName = methodName + "_ver_" + solution.get(getTypeAccess().versionVariable().get()).toString();
+          typeAccess = typeAccess.attachVersion(solution.get(getTypeAccess().versionVariable().get()));
+        }
+        // Build block
+        Opt<Block> block = hasBlock() ? new Opt(getBlock().generateJavaBlock(solution)) : new Opt();
+        result.add(new MethodDecl(getModifiers(), typeAccess, methodName, subParameterList, getExceptionList(), block));
+      }
+    } else {
+      // In case the signature is not version dependent,
+      // how should we choose the solution?
+        // Build block
+        Opt<Block> block = hasBlock() ? new Opt(getBlock().generateJavaBlock(selected)) : new Opt();
+        result.add(new MethodDecl(getModifiers(), getTypeAccess(), getID(), getParameterList(), getExceptionList(), block));
+    }
+    return result;
+  }
+
+  syn nta Block Block.generateJavaBlock(Map<String,Integer> solution) {
+    List<Stmt> stmts = new List();
+    for (Stmt stmt: getStmtList()) {
+      stmts.add(stmt.generateJavaStmt(solution));
+    }
+    return new Block(stmts);
+  }
+
+  /**
+   * Stmt :>
+   * Not done: BasicTWR, TryStmt(Exception), ThrowStmt(Exception), LocalClassDeclStmt(Nope)
+   *           BranchTargetStmt >: EnhancedForStmt(Java5)
+   */
+  syn nta Stmt Stmt.generateJavaStmt(Map<String,Integer> solution) = treeCopy();
+
+  eq Block.generateJavaStmt(Map<String,Integer> solution) = generateJavaBlock(solution);
+
+  eq ReturnStmt.generateJavaStmt(Map<String,Integer> solution)
+    = hasResult() ? new ReturnStmt(new Opt(getResult().generateJavaExpr(solution))) : new ReturnStmt(new Opt());
+
+  eq IfStmt.generateJavaStmt(Map<String,Integer> solution) {
+    Opt<Stmt> elseStmt = hasElse() ? new Opt(getElse().generateJavaStmt(solution)) : new Opt();
+    return new IfStmt(getCondition().generateJavaExpr(solution), getThen().generateJavaStmt(solution), elseStmt);
+  }
+
+  eq VarDeclStmt.generateJavaStmt(Map<String,Integer> solution) {
+    List<VariableDeclarator> declarators = new List();
+    for (VariableDeclarator declarator: getDeclaratorList()) {
+      declarators.add(declarator.generateJavaDeclarator(solution));
+    }
+    return new VarDeclStmt(getModifiers(), getTypeAccess().generateJavaAccess(solution), declarators);
+  }
+
+  eq DoStmt.generateJavaStmt(Map<String,Integer> solution)
+    = new DoStmt(getStmt().generateJavaStmt(solution), getCondition().generateJavaExpr(solution));
+
+  eq ForStmt.generateJavaStmt(Map<String,Integer> solution) {
+    List<Stmt> initStmts = new List();
+    for (Stmt initStmt: getInitStmtList()) {
+      initStmts.add(initStmt.generateJavaStmt(solution));
+    }
+    List<Stmt> updateStmts = new List();
+    for (Stmt updateStmt: getUpdateStmtList()) {
+      updateStmts.add(updateStmt.generateJavaStmt(solution));
+    }
+    return new ForStmt(
+      initStmts, hasCondition() ? new Opt(getCondition().generateJavaExpr(solution)) : new Opt(),
+      updateStmts, getStmt().generateJavaStmt(solution));
+  }
+
+  eq SwitchStmt.generateJavaStmt(Map<String,Integer> solution)
+    = new SwitchStmt(getExpr().generateJavaExpr(solution), getBlock().generateJavaBlock(solution));
+
+  eq ConstCase.generateJavaStmt(Map<String,Integer> solution)
+    = new ConstCase(getValue().generateJavaExpr(solution));
+
+  eq WhileStmt.generateJavaStmt(Map<String,Integer> solution)
+    = new WhileStmt(getCondition().generateJavaExpr(solution), getStmt().generateJavaStmt(solution));
+
+  eq LabeledStmt.generateJavaStmt(Map<String,Integer> solution)
+    = new LabeledStmt(getLabel(), getStmt().generateJavaStmt(solution));
+
+  eq ExprStmt.generateJavaStmt(Map<String,Integer> solution)
+    = new ExprStmt(getExpr().generateJavaExpr(solution));
+
+  eq AssertStmt.generateJavaStmt(Map<String,Integer> solution)
+    = new AssertStmt(
+        getCondition().generateJavaExpr(solution),
+        hasMessage() ? new Opt(getMessage().generateJavaExpr(solution)) : new Opt());
+
+  eq SynchronizedStmt.generateJavaStmt(Map<String,Integer> solution)
+    = new SynchronizedStmt(getExpr().generateJavaExpr(solution), getBlock().generateJavaBlock(solution));
+
+  /**
+   * Expr :>
+   * Not done: CastExpr(Nope), LambdaExpr(Java8), ConstructorReference(Java8), IntersectionCastExpr(Java8), MethodReference(Java8),
+   */
+  syn nta Expr Expr.generateJavaExpr(Map<String,Integer> solution) = treeCopy();
+
+  eq Access.generateJavaExpr(Map<String,Integer> solution) = generateJavaAccess(solution);
+
+  eq AssignExpr.generateJavaExpr(Map<String,Integer> solution) {
+    AssignExpr result = treeCopy();
+    result.setDest(getDest().generateJavaExpr(solution));
+    result.setSource(getSource().generateJavaExpr(solution));
+    return result;
+  }
+
+  eq Binary.generateJavaExpr(Map<String,Integer> solution) {
+    Binary result = treeCopy();
+    result.setLeftOperand(getLeftOperand().generateJavaExpr(solution));
+    result.setRightOperand(getRightOperand().generateJavaExpr(solution));
+    return result;
+  }
+
+  eq Unary.generateJavaExpr(Map<String,Integer> solution) {
+    Unary result = treeCopy();
+    result.setOperand(getOperand().generateJavaExpr(solution));
+    return result;
+  }
+
+  eq ConditionalExpr.generateJavaExpr(Map<String,Integer> solution)
+    = new ConditionalExpr(
+        getCondition().generateJavaExpr(solution),
+        getTrueExpr().generateJavaExpr(solution),
+        getFalseExpr().generateJavaExpr(solution));
+
+  eq ArrayInit.generateJavaExpr(Map<String,Integer> solution) = generateJavaArrayInit(solution);
+
+  eq InstanceOfExpr.generateJavaExpr(Map<String,Integer> solution)
+    = new InstanceOfExpr(getExpr().generateJavaExpr(solution), getTypeAccess().generateJavaAccess(solution));
+
+  eq ArrayCreationExpr.generateJavaExpr(Map<String,Integer> solution)
+    = new ArrayCreationExpr(
+        getTypeAccess().generateJavaAccess(solution),
+        hasArrayInit() ? new Opt(getArrayInit().generateJavaArrayInit(solution)) : new Opt());
+
+  eq ParExpr.generateJavaExpr(Map<String,Integer> solution)
+    = new ParExpr(getExpr().generateJavaExpr(solution));
+
+  /**
+   * Access :>
+   * Not done: AbstractWildcard(Java5), DiamondAccess(Java7), ParTypeAccess(Java5), SyntheticTypeAccess(Java8)
+   * Same as Access: VarAccess, ThisAccess, SuperAccess, ClassAccess, PackageAccess, ParseName
+   */
+  syn nta Access Access.generateJavaAccess(Map<String,Integer> solution) = treeCopy();
+
+  eq VarAccess.generateJavaAccess(Map<String,Integer> solution)
+    = (isFieldAccess() && versionVariable().isPresent()) ?
+      new VarAccess(getID()+"_ver_"+solution.get(versionVariable().get()).toString()) :
+      treeCopy();
+
+  eq TypeAccess.generateJavaAccess(Map<String,Integer> solution)
+    = versionVariable().isPresent() ?
+      attachVersion(solution.get(versionVariable().get())) : treeCopy();
+
+  eq MethodAccess.generateJavaAccess(Map<String,Integer> solution) {
+    String methodName = versionVariable().isPresent() ? getID()+"_ver_"+solution.get(versionVariable().get()).toString() : getID();
+    List<Expr> args = new List();
+    for (Expr arg: getArgList()) {
+      args.add(arg.generateJavaExpr(solution));
+    }
+    return new MethodAccess(methodName, args);
+  }
+
+  eq Dot.generateJavaAccess(Map<String,Integer> solution)
+    = new Dot(getLeft().generateJavaExpr(solution), getRight().generateJavaAccess(solution));
+
+  eq ClassInstanceExpr.generateJavaAccess(Map<String,Integer> solution) {
+    List<Expr> args = new List();
+    for (Expr arg: getArgList()) { args.add(arg.generateJavaExpr(solution)); }
+    Access access = versionVariable().isPresent() ?
+      getAccess().attachVersion(solution.get(versionVariable().get())) : getAccess();
+    return new ClassInstanceExpr(access, args);
+  }
+
+  eq ArrayAccess.generateJavaAccess(Map<String,Integer> solution) = new ArrayAccess(getExpr().generateJavaExpr(solution));
+
+  eq ConstructorAccess.generateJavaAccess(Map<String,Integer> solution) {
+    String accessName = getID();
+    if (!accessName.equals("this") || !accessName.equals("super")) {
+      accessName = versionVariable().isPresent() ? accessName+"_ver_"+solution.get(versionVariable().get()) : accessName;
+    }
+    List<Expr> args = new List();
+    for (Expr arg: getArgList()) {
+      args.add(arg.generateJavaExpr(solution));
+    }
+    return new ConstructorAccess(accessName, args);
+  }
+
+  /**
+   * Variable
+   */
+  syn nta VariableDeclarator VariableDeclarator.generateJavaDeclarator(Map<String,Integer> solution)
+    = new VariableDeclarator(getID(), getDimsList(), hasInit() ? new Opt(getInit().generateJavaExpr(solution)) : new Opt());
+
+  syn nta FieldDeclarator FieldDeclarator.generateJavaDeclarator(Map<String,Integer> solution)
+    = getTypeAccess().versionVariable().isPresent() ?
+      new FieldDeclarator(
+        getID()+"_ver_"+solution.get(getTypeAccess().versionVariable().get()).toString(),
+        getDimsList(), hasInit() ? new Opt(getInit().generateJavaExpr(solution)) : new Opt()) :
+      new FieldDeclarator(
+        getID(), getDimsList(), hasInit() ? new Opt(getInit().generateJavaExpr(solution)) : new Opt());
+
+  /**
+   * ArrayInit
+   */
+  syn nta ArrayInit ArrayInit.generateJavaArrayInit(Map<String,Integer> solution) {
+    List<Expr> inits = new List();
+    for (Expr init: getInitList()) {
+      inits.add(init.generateJavaExpr(solution));
+    }
+    return new ArrayInit(inits);
+  }
+}

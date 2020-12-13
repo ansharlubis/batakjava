@@ -1,5 +1,15 @@
+/**
+ * Additions:
+ * 1) The package declaration has version
+ * 2) The import declaration has version priority
+ * Limitations:
+ * 1) No interfaces
+ * 2) No exceptions
+ * 3) Class declarations made in BatakJava only have FieldDecl, MethodDecl, ConstructorDecl
+ * 4) Only SingleTypeImportDecl
+ */
 CompilationUnit compilation_unit =
-    package_and_version_with_comment.pv import_declarations.i? type_declarations.t? doc_comment_list?
+    package_and_version_with_comment.pv batakjava_import_declarations.i? batakjava_class_declarations.t? doc_comment_list?
     {: return new BatakjavaCompilationUnit(pv.getIDX(), pv.getIDY(), i, t); :}
   ;
 PairIdUse package_and_version_with_comment =
@@ -9,30 +19,61 @@ PairIdUse package_and_version_declaration =
     PACKAGE name_decl.n VER version_number.v SEMICOLON
     {: return new PairIdUse(n.getID(), v); :}
   ;
+List batakjava_import_declarations =
+    batakjava_import_with_comment.i                                   {: return new List().add(i); :}
+  | batakjava_import_declarations.l batakjava_import_with_comment.i   {: return l.add(i); :}
+  ;
+ImportDecl batakjava_import_with_comment =
+    doc_comment_list? batakjava_import_declaration
+  ;
+ImportDecl batakjava_import_declaration =
+    type_import_on_demand_declaration
+  | type_import_on_demand_declaration_with_version
+  ;
+ImportDecl type_import_on_demand_declaration_with_version =
+    IMPORT name DOT MULT PRIORITIZES VER version_number.v SEMICOLON
+    {: return new TypeImportOnDemandDeclWithVersion(name, new Version(v)); :}
+  ;
+List batakjava_class_declarations =
+    batakjava_class_with_comment.t                                  {: return new List().add(t); :}
+  | batakjava_class_declarations.l batakjava_class_with_comment.t   {: return l.add(t); :}
+  ;
+TypeDecl batakjava_class_with_comment =
+    batakjava_class_declaration
+  | doc_comment_list.dc batakjava_class_declaration.d
+    {:
+      d.docComment = dc;
+      return d;
+    :}
+  ;
+TypeDecl batakjava_class_declaration =
+    modifiers.m? CLASS IDENTIFIER super.s? batakjava_class_body.b
+    {: return new ClassDecl(new Modifiers(m), IDENTIFIER, s, new List(), b); :}
+  ;
+List batakjava_class_body =
+    LBRACE batakjava_body_declarations.c? doc_comment_list? RBRACE    {: return c; :}
+  ;
+List batakjava_body_declarations =
+    batakjava_body_decl_with_comment.c                                  {: return new List().add(c); :}
+  | batakjava_body_declarations.l batakjava_body_decl_with_comment.c    {: return l.add(c); :}
+  ;
+BodyDecl batakjava_body_decl_with_comment =
+    batakjava_body_declaration
+  | doc_comment_list.dc batakjava_body_declaration.d
+    {:
+      d.docComment = dc;
+      return d;
+    :}
+  ;
+BodyDecl batakjava_body_declaration =
+    constructor_declaration
+  | batakjava_field_declaration
+  | method_declaration
+  | SEMICOLON                     {: return new InstanceInitializer(new Block()); :}
+  ;
+BodyDecl batakjava_field_declaration =
+    modifiers.m? type.t field_declarator_id.v SEMICOLON   {: return new FieldDecl(new Modifiers(m), t, new List().add(v)); :}
+  ;
 String version_number =
     NUMERIC_LITERAL
   ;
-
-
-/*
-List version_list =
-    version_number.v                                          {: return new List().add(new Version(v)); :}
-  | version_list.vl COMMA version_number.v                    {: return vl.add(new Version(v)); :}
-  ;
-Access class_or_interface_type =
-    name.n SHARP version_number.v
-    {: return new TypeAccessWithVersion(n, v); :}
-  ;
-ImportDecl import_declaration =
-    single_type_import_declaration_with_version
-  | type_import_on_demand_declaration_with_version
-  ;
-ImportDecl single_type_import_declaration_with_version =
-    IMPORT name REQUIRES VERSION version_list.vl SEMICOLON
-    {: return new SingleTypeImportDeclWithVersion(name, vl); :}
-  ;
-ImportDecl type_import_on_demand_declaration_with_version =
-    IMPORT name DOT MULT REQUIRES VERSION version_list.vl SEMICOLON
-    {: return new TypeImportOnDemandDeclWithVersion(name, vl); :}
-  ;
- */

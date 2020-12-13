@@ -1,43 +1,0 @@
-package additional version 1;
-import upstream.collection.Point;
-/**
- *  upstream.collection.Point is imported when the overview looks as follow:
- *  overview of class Point {
- *    Point(float, float) in version 1,2,3;
- *    float getX() in version 1;
- *    float getY() in version 1;
- *    float distance(Point) in version 1,2,3;
- *    float getR() in version 2,3;
- *    float getAngle() in version 2,3;
- *    boolean returnTrue() in version 3;
- *  }
- */
-import mid.empty.Empty;
-/**
- *  mid.empty.Empty is imported when the overview looks as follow:
- *  overview of class Empty {
- *    Empty() in version 1,2;
- *  }
- */
-import downstream.application.Main;
-/**
- *  downstream.application.Main is imported when the overview looks as follow:
- *  overview of class Main {
- *    version 1 requires upstream.collection.Point version 1;
- *    version 1 requires mid.utility.* version 1;
- *    version 1 requires mid.empty.Empty version 1,2;
- *    static Point createPoint(Point, Empty) in version 1,2;
- *    static Empty createEmpty(Point) in version 1,2;
- *    static void main(String[]) in version 1,2;
- *    version 2 requires upstream.collection.Point version 1,2;
- *    version 2 requires mid.utility.* version 1;
- *    version 2 requires mid.empty.Empty version 1,2;
- *  }
- */
-
-public class Test {
-  public static void main(String[] args) {
-    Point p = Main.createPoint(new Point(0f,0f), new Empty());
-    Empty e = Main.createEmpty(new Point(0f,0f));
-  }
-}

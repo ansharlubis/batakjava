@@ -1,0 +1,138 @@
+aspect JavaGeneration {
+
+  private Set<Map<String,Integer>> FieldDecl.getSolutionSet(Set<Map<String,Integer>> filtered) {
+    Set<Map<String,Integer>> result = new HashSet();
+    Set<Integer> added = new HashSet();
+    for (Map<String,Integer> solution: filtered) {
+      Integer current = solution.get(getTypeAccess().versionVariable().get());
+      if (!added.contains(current)) {
+        result.add(solution);
+        added.add(current);
+      }
+    }
+    return result;
+  }
+
+  private Set<Map<String,Integer>> ConstructorDecl.getSolutionSet(Set<Map<String,Integer>> filtered) {
+    Set<Map<String,Integer>> result = new HashSet();
+    Set<Map<String,Integer>> added = new HashSet();
+    for (Map<String,Integer> solution: filtered) {
+      Map<String,Integer> map = new HashMap(getNumParameter());
+      for (ParameterDeclaration param: getParameterList()) {
+        if (param.versionVariable().isPresent()) {
+          map.put(param.versionVariable().get(), solution.get(param.versionVariable().get()));
+        }
+      }
+      if (!added.contains(map)) {
+        result.add(solution);
+        added.add(map);
+      }
+    }
+    return result;
+  }
+
+  private List<ParameterDeclaration> ConstructorDecl.attachVersionToParameter(Map<String,Integer> solution) {
+    List<ParameterDeclaration> parameterList = new List();
+    for (ParameterDeclaration param: getParameterList()) {
+      if (param.versionVariable().isPresent()) {
+        parameterList.add(new ParameterDeclaration(
+          param.getModifiers(),
+          param.getTypeAccess().attachVersion(solution.get(param.versionVariable().get())),
+          param.getID()
+        ));
+      } else {
+        parameterList.add(param.treeCopy());
+      }
+    }
+    return parameterList;
+  }
+
+  private Set<Map<String,Integer>> MethodDecl.getSolutionSet(Set<Map<String,Integer>> filtered) {
+    Set<Map<String,Integer>> result = new HashSet();
+    Set<Map<String,Integer>> added = new HashSet();
+    for (Map<String,Integer> solution: filtered) {
+      Map<String,Integer> map = new HashMap(getNumParameter()+1);
+      for (ParameterDeclaration param: getParameterList()) {
+        if (param.versionVariable().isPresent()) {
+          map.put(param.versionVariable().get(), solution.get(param.versionVariable().get()));
+        }
+      }
+      if (getTypeAccess().versionVariable().isPresent()) {
+        map.put(getTypeAccess().versionVariable().get(), solution.get(getTypeAccess().versionVariable().get()));
+      }
+      if (!added.contains(map)) {
+        result.add(solution);
+        added.add(map);
+      }
+    }
+    return result;
+  }
+
+  protected List<ParameterDeclaration> MethodDecl.attachVersionToParameter(Map<String,Integer> solution) {
+    List<ParameterDeclaration> parameterList = new List();
+    for (ParameterDeclaration param: getParameterList()) {
+      if (param.versionVariable().isPresent()) {
+        parameterList.add(new ParameterDeclaration(
+          param.getModifiers(),
+          param.getTypeAccess().attachVersion(solution.get(param.versionVariable().get())),
+          param.getID()
+        ));
+      } else {
+        parameterList.add(param.treeCopy());
+      }
+    }
+    return parameterList;
+  }
+
+  public Set<Map<String,Integer>> ASTNode.solutionSet(Set<Map<String,Integer>> filtered) {
+    Set<Map<String,Integer>> solutions = new HashSet(filtered.size());
+    for (Map<String,Integer> candidate: filtered) {
+      if (solutions.isEmpty()) {
+        solutions.add(candidate);
+      } else {
+        for (Map<String,Integer> solution: solutions) {
+          Optional<Boolean> compare = lessMap(solution, candidate);
+          if (compare.isPresent()) {
+            if (!compare.get().booleanValue()) {
+              solutions.remove(solution);
+              solutions.add(candidate);
+            }
+          } else {
+            solutions.add(candidate);
+          }
+        }
+      }
+    }
+    return solutions;
+  }
+
+  public Optional<Boolean> ASTNode.lessMap(Map<String,Integer> mapA, Map<String,Integer> mapB) {
+    boolean ongoing = false;
+    boolean less = false;
+    for (String varA: mapA.keySet()) {
+      if (!mapB.containsKey(varA)) {
+        return Optional.empty();
+      }
+      Integer valA = mapA.get(varA);
+      Integer valB = mapB.get(varA);
+      if (valA > valB) {
+        if (ongoing && less) {
+          return Optional.empty();
+        }
+        if (!ongoing) {
+          ongoing = true;
+        }
+      } else if (valA < valB) {
+        if (ongoing && !less) {
+          return Optional.empty();
+        }
+        if (!ongoing) {
+          ongoing = true;
+          less = true;
+        }
+      }
+    }
+    return less ? Optional.of(Boolean.valueOf(true)) : Optional.of(Boolean.valueOf(false));
+  }
+
+}

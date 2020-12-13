@@ -1,73 +1,73 @@
-aspect VersionInference {
-  /**
-   * Attributes for version:
-   * TypeDecl
-   *  .availableVersions: () -> Set<Integer>
-   *  Get the set of versions the class is available in.
-   *  .isVersioned: () -> boolean
-   *  Check if the class has version or not
-   * Access
-   *  .availableVersions: () -> Set<Integer>
-   *  Refers to TypeDecl for version information
-   * ASTNode
-   *  .hostVersion: () -> Integer
-   *  Get the version of the class' host package.
-   * ASTNode
-   *  .hostVersionNum: () -> String
-   */
+aspect BatakjavaVersion {
 
-  syn lazy Set<Integer> TypeDecl.availableVersions() = Collections.emptySet();
+  syn lazy boolean CompilationUnit.isOverviewUnit() {
+    if (getNumTypeDecl() == 1 && getTypeDecl(0).isOverview()) { return true; }
+    return false;
+  }
 
-  eq ClassDecl.availableVersions() {
+  syn boolean TypeDecl.isOverview() = false;
+  eq ClassDecl.isOverview() {
+    for (BodyDecl bodyDecl: getBodyDeclList()) {
+      if (bodyDecl instanceof FieldDecl) {
+        FieldDecl fieldDecl = (FieldDecl) getBodyDecl(0);
+        if (fieldDecl.getNumDeclarator() == 1 && fieldDecl.getDeclarator(0).getID().equals("BATAKJAVACLASS")) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  syn String CompilationUnit.version() {
+    if (getNumTypeDecl() == 1 && (getTypeDecl(0) instanceof ClassDecl)) {
+      ClassDecl classDecl = (ClassDecl) getTypeDecl(0);
+      for (BodyDecl bodyDecl: classDecl.getBodyDeclList()) {
+        if (bodyDecl instanceof FieldDecl) {
+          FieldDecl fieldDecl = (FieldDecl) bodyDecl;
+          if (fieldDecl.getDeclarator(0).getID().split("_").length > 1) {
+            return fieldDecl.getDeclarator(0).getID().split("_")[1];
+          }
+        }
+      }
+    }
+    return "0";
+  }
+  eq BatakjavaCompilationUnit.version() = getVersionNum();
+
+  eq CompilationUnit.getChild().hostVersion() = version();
+  inh String TypeDecl.hostVersion();
+  inh String BodyDecl.hostVersion();
+  inh String Expr.hostVersion();
+  inh String Variable.hostVersion();
+
+  syn lazy Set<Integer> TypeDecl.versions() = Collections.emptySet();
+  eq ClassDecl.versions() {
     Set<Integer> result = new HashSet(1);
-    if (hostVersion() != 0) { result.add(hostVersion()); }
+    Integer hostVersion = Integer.valueOf(hostVersion());
+    if (hostVersion != 0) {
+      result.add(hostVersion);
+    }
     return result;
   }
+  syn Set<Integer> Expr.versions() = type().versions();
+  syn Set<Integer> Variable.versions() = type().versions();
 
-  eq OverviewClassDecl.availableVersions() {
-    Set<Integer> result = new HashSet(getNumVersion());
-    for (Version ver: getVersionList()) { result.add(Integer.valueOf(ver.getVersionNum())); }
-    return result;
-  }
+  syn boolean TypeDecl.isVersioned() = false;
+  eq ClassDecl.isVersioned() = !hostVersion().equals("0");
 
-  syn lazy Set<Integer> Access.availableVersions() = type().availableVersions();
-
-  syn lazy boolean TypeDecl.isVersioned() = false;
-  eq ClassDecl.isVersioned() = hostVersion() != 0;
-  eq OverviewClassDecl.isVersioned() = true;
-
-  syn boolean BodyDecl.isVersioned() = false;
-  eq FieldDecl.isVersioned() = type().isVersioned();
-  eq ConstructorDecl.isVersioned() {
+  syn boolean BodyDecl.versionDependent() = false;
+  eq FieldDecl.versionDependent() = type().isVersioned();
+  eq ConstructorDecl.versionDependent() {
     for (ParameterDeclaration param: getParameterList()) {
       if (param.type().isVersioned()) { return true; }
     }
     return false;
   }
-  eq MethodDecl.isVersioned() {
+  eq MethodDecl.versionDependent() {
     for (ParameterDeclaration param: getParameterList()) {
       if (param.type().isVersioned()) { return true; }
     }
     if (type().isVersioned()) { return true; }
     return false;
   }
-
-  syn Integer CompilationUnit.packageVersion() = 0;
-  eq BatakjavaCompilationUnit.packageVersion() = Integer.valueOf(getVersionNum());
-
-  eq CompilationUnit.getChild().hostVersion() = packageVersion();
-  inh Integer TypeDecl.hostVersion();
-  inh Integer BodyDecl.hostVersion();
-  inh Integer Expr.hostVersion();
-  inh Integer Variable.hostVersion();
-
-  syn String CompilationUnit.packageVersionNum() = "0";
-  eq BatakjavaCompilationUnit.packageVersionNum() = getVersionNum();
-
-  eq CompilationUnit.getChild().hostVersionNum() = packageVersionNum();
-  inh String TypeDecl.hostVersionNum();
-  inh String BodyDecl.hostVersionNum();
-  inh String Expr.hostVersionNum();
-  inh String Variable.hostVersionNum();
-
 }

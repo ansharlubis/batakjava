@@ -1,28 +1,22 @@
-package mid.utility ver 1;
+package mid.utility;
+import upstream.collection.*;
 
-import upstream.collection.Point;
-/**
- *  upstream/collection/Point.overview
- *
- *  package upstream.collection ver 1;
- *  class Point extends Object;
- *  Point(float, float) in ver 1;
- *  float getX() in ver 1;
- *  float getY() in ver 1;
- *  float distance(Point) in ver 1;
- */
-                                    //n1
+public class ExtendedPoint {
+  public static void main(String[] args) {
+    Point_ver_1 p = new Point_ver_1(0,0);
+  }
+}
+
+/*
 public class ExtendedPoint extends Point {
   public ExtendedPoint(float x, float y) {
     super(x,y);
   }
   public float distanceFromZero() {
-                //n2                //this
     return new Point(0f,0f).distance(this);
   }
-         //n3
   public Point parent() {
-               //n4  //this  //this
     return new Point(getX(), getY());
   }
 }
+ */

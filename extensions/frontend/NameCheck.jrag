@@ -1,0 +1,38 @@
+aspect BatakjavaNameCheck {
+
+  refine NameCheck eq TypeDecl.nameProblems() {
+    Collection<Problem> problems = new LinkedList<Problem>();
+    if (isTopLevelType() && lookupType(packageName(), name()) != this && !isOverview()) {
+      problems.add(errorf("duplicate type %s in package %s", name(), packageName()));
+    }
+
+    if (!isTopLevelType() && !isAnonymous() && !isLocalClass()
+        && extractSingleType(enclosingType().memberTypes(name())) != this) {
+      problems.add(errorf("duplicate member type %s in type %s",
+          name(), enclosingType().typeName()));
+    }
+
+    // 14.3
+    if (isLocalClass()) {
+      TypeDecl typeDecl = extractSingleType(lookupType(name()));
+      if (typeDecl != null && typeDecl != this && typeDecl.isLocalClass()
+          && enclosingMemberDecl() == typeDecl.enclosingMemberDecl()) {
+        problems.add(errorf(
+            "local class named %s may not be redeclared as a local class in the same block",
+            name()));
+      }
+    }
+
+    if (!packageName().equals("") && hasPackage(fullName())) {
+      problems.add(errorf("type name conflicts with a package using the same name: %s", name()));
+    }
+
+    // 8.1 & 9.1
+    if (hasEnclosingTypeDecl(name())) {
+      problems.add(error(
+          "type may not have the same simple name as an enclosing type declaration"));
+    }
+    return problems;
+  }
+
+}

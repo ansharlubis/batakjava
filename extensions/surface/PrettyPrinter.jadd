@@ -1,0 +1,81 @@
+aspect BatakJavaPrettyPrint {
+
+  public void BatakjavaCompilationUnit.prettyPrint(PrettyPrinter out) {
+    if (hasPackageDecl()) {
+      out.print("package ");
+      out.print(getPackageDecl());
+      out.print(" ver ");
+      out.print(getVersionNum());
+      out.print(";");
+      out.println();
+    }
+    if (!out.isNewLine()) {
+      out.println();
+    }
+    out.print(getImportDeclList());
+    if (!out.isNewLine()) {
+      out.println();
+    }
+    out.println();
+    out.join(getTypeDecls(), new PrettyPrinter.Joiner() {
+      @Override
+      public void printSeparator(PrettyPrinter out) {
+        out.println();
+        out.println();
+      }
+    });
+    out.println();
+  }
+
+  public void TypeImportOnDemandDeclWithVersion.prettyPrint(PrettyPrinter out) {
+    out.print("import ");
+    out.print(getAccess());
+    out.print(".* ");
+    out.print(" prioritizes ver ");
+    out.print(getVersion());
+    out.print(";");
+    out.println();
+  }
+
+  refine Java4PrettyPrint
+  public void ClassDecl.prettyPrint(PrettyPrinter out) {
+    if (hasDocComment()) {
+      out.print(docComment());
+    }
+    if (!out.isNewLine()) {
+      out.println();
+    }
+    out.print(getModifiers());
+    out.print("class ");
+    out.print(getID());
+    if (hasSuperClass()) {
+      out.print(" extends ");
+      out.print(getSuperClass());
+    }
+    if (hasImplements()) {
+      out.print(" implements ");
+      out.join(getImplementss(), new PrettyPrinter.Joiner() {
+        @Override
+        public void printSeparator(PrettyPrinter out) {
+          out.print(", ");
+        }
+      });
+    }
+    out.print(" {");
+    out.println();
+    out.indent(1);
+    out.join(getBodyDecls(), new PrettyPrinter.Joiner() {
+      @Override
+      public void printSeparator(PrettyPrinter out) {
+        out.println();
+        out.println();
+      }
+    });
+    if (!out.isNewLine()) {
+      out.println();
+    }
+    out.print("}");
+    out.println();
+  }
+
+}

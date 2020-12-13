@@ -1,9 +1,11 @@
-BatakjavaCompilationUnit : CompilationUnit
-  ::= <PackageDecl:String> <VersionNum:String> ImportDecl* TypeDecl*
-;
-PairIdUse
-  ::= <IDX:String> <IDY:String>
-;
-Version
-  ::= <VersionNum:String>
-;
+// Compilation unit
+BatakjavaCompilationUnit : CompilationUnit ::= <PackageDecl:String> <VersionNum:String> ImportDecl* TypeDecl* ;
+
+// Import declarations
+TypeImportOnDemandDeclWithVersion : TypeImportOnDemandDecl ::= Version ;
+
+// Version number
+Version ::= <VersionNum:String> ;
+
+// Utility data structure
+PairIdUse ::= <IDX:String> <IDY:String> ;
