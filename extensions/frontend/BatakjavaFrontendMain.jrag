@@ -58,6 +58,8 @@ aspect BatakjavaFrontendMain {
           work.add(unit);
         }
 
+        LinkedList<Constraint> constraints = program.constraints();
+
         for (CompilationUnit unit: work) {
           if (unit != null && unit.fromSource()) {
             long start = System.nanoTime();
@@ -133,6 +135,7 @@ aspect BatakjavaFrontendMain {
          */
         Set<Map<String,Integer>> solutions = exampleSolution();
 
+        /*
         Iterator<CompilationUnit> iter = program.compilationUnitIterator();
         LinkedList<CompilationUnit> generated = new LinkedList<CompilationUnit>();
         while (iter.hasNext()) {
@@ -157,6 +160,7 @@ aspect BatakjavaFrontendMain {
         }
 
         program.reinitializeSourceTypeMap();
+        */
 
         // Process source compilation units.
         Iterator<CompilationUnit> generatedIter = program.compilationUnitIterator();

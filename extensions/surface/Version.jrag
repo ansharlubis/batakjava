@@ -1,9 +1,10 @@
 aspect BatakjavaVersion {
 
-  syn lazy boolean CompilationUnit.isOverviewUnit() {
-    if (getNumTypeDecl() == 1 && getTypeDecl(0).isOverview()) { return true; }
-    return false;
-  }
+  // Used to deal with .batakjava and overview files
+  syn boolean TypeDecl.versioned() = false;
+  eq ClassDecl.versioned() = isOverview() || !hostVersion().equals("0");
+
+  syn lazy boolean CompilationUnit.isOverviewUnit() = getNumTypeDecl() == 1 && getTypeDecl(0).isOverview();
 
   syn boolean TypeDecl.isOverview() = false;
   eq ClassDecl.isOverview() {
@@ -40,6 +41,37 @@ aspect BatakjavaVersion {
   inh String Expr.hostVersion();
   inh String Variable.hostVersion();
 
+  // Used to deal with generated CLASSNAME_ver_VERSIONNUM
+  syn boolean TypeDecl.generated() = false;
+  eq ClassDecl.generated() {
+    String[] splitName = name().split("_");
+    return splitName.length > 2 && splitName[splitName.length-2].equals("ver");
+  }
+
+  syn String TypeDecl.initialVersion() = "0";
+  eq ClassDecl.initialVersion() {
+    if (!hostVersion().equals("0")) {
+      return hostVersion();
+    }
+    String[] splitName = name().split("_");
+    return generated() ? splitName[splitName.length-1] : "0";
+  }
+
+  syn String TypeDecl.initialName() = name();
+  eq ClassDecl.initialName() {
+    String[] splitName = name().split("_");
+    if (generated()) {
+      StringBuilder result = new StringBuilder();
+      for (int i = 0; i < splitName.length-2; i++) {
+        if (i != 0) result.append("_");
+        result.append(splitName[i]);
+      }
+      return result.toString();
+    }
+    return name();
+  }
+
+  /*
   syn lazy Set<Integer> TypeDecl.versions() = Collections.emptySet();
   eq ClassDecl.versions() {
     Set<Integer> result = new HashSet(1);
@@ -52,22 +84,21 @@ aspect BatakjavaVersion {
   syn Set<Integer> Expr.versions() = type().versions();
   syn Set<Integer> Variable.versions() = type().versions();
 
-  syn boolean TypeDecl.isVersioned() = false;
-  eq ClassDecl.isVersioned() = !hostVersion().equals("0");
-
   syn boolean BodyDecl.versionDependent() = false;
-  eq FieldDecl.versionDependent() = type().isVersioned();
+  eq FieldDecl.versionDependent() = type().versioned();
   eq ConstructorDecl.versionDependent() {
     for (ParameterDeclaration param: getParameterList()) {
-      if (param.type().isVersioned()) { return true; }
+      if (param.type().versioned()) { return true; }
     }
     return false;
   }
   eq MethodDecl.versionDependent() {
     for (ParameterDeclaration param: getParameterList()) {
-      if (param.type().isVersioned()) { return true; }
+      if (param.type().versioned()) { return true; }
     }
-    if (type().isVersioned()) { return true; }
+    if (type().versioned()) { return true; }
     return false;
   }
+  */
+
 }

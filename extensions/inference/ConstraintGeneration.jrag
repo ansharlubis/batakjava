@@ -1,0 +1,149 @@
+import java.util.Optional;
+
+aspect ConstraintGeneration {
+
+  private Integer Program.variableCount = 0;
+
+  private void Program.initializeVariable() { variableCount = 0; }
+
+  public Integer Program.freshVariable() {
+    Integer count = variableCount;
+    variableCount++;
+    return count;
+  }
+
+  syn lazy Integer Expr.versionNum() = program().freshVariable();
+  syn String Expr.versionVariable() = "v" + versionNum().toString();
+  syn String Expr.typeVariable() = "t" + versionNum().toString();
+
+  eq VarAccess.versionVariable() = decl().versionVariable();
+  eq VarAccess.typeVariable() = decl().versionVariable();
+
+  eq Dot.versionVariable() = lastAccess().versionVariable();
+  eq Dot.typeVariable() = lastAccess().typeVariable();
+
+  eq ClassInstanceExpr.versionVariable() = getAccess().versionVariable();
+  eq ClassInstanceExpr.typeVariable() = getAccess().typeVariable();
+
+  syn String Variable.versionVariable();
+  syn String Variable.typeVariable();
+
+  eq ParameterDeclaration.versionVariable() = getTypeAccess().versionVariable();
+  eq ParameterDeclaration.typeVariable() = getTypeAccess().typeVariable();
+
+  eq Declarator.versionVariable() = declarationType().versionVariable();
+  eq Declarator.typeVariable() = declarationType().typeVariable();
+
+  // Ignore for now
+  eq EnumConstant.versionVariable() = null;
+  eq EnumConstant.typeVariable() = null;
+  eq CatchParameterDeclaration.versionVariable() = null;
+  eq CatchParameterDeclaration.typeVariable() = null;
+  eq InferredParameterDeclaration.versionVariable() = null;
+  eq InferredParameterDeclaration.typeVariable() = null;
+
+  syn Map<String,TypeDecl> Program.variableToType() {
+    Map<String,TypeDecl> result = new HashMap();
+    for (Map<String,TypeDecl> variableToType: getVariableToType()) {
+      for (String var: variableToType.keySet()) {
+        if (!result.containsKey(var)) {
+          result.put(var, variableToType.get(var));
+        }
+      }
+    }
+    return result;
+  }
+
+  coll LinkedList<Map<String,TypeDecl>> Program.getVariableToType() root Program;
+
+  Access contributes each getVariableToType() to Program.getVariableToType();
+  syn Collection<Map<String,TypeDecl>> Access.getVariableToType() {
+    Map<String,TypeDecl> result = new HashMap(1);
+    result.put(versionVariable(), type());
+    return Collections.singleton(result);
+  }
+
+  // TODO: Constraints produced only work with type equality and not subtype
+  coll LinkedList<Constraint> Program.constraints() root Program;
+
+  Access contributes each constraints() to Program.constraints();
+  syn Collection<Constraint> Access.constraints() = Collections.emptySet();
+
+  eq ClassInstanceExpr.constraints() {
+    Collection<Constraint> constraints = new LinkedList();
+    // The class of the object that needs to be instantiated
+    TypeDecl type = type();
+    // Multiple versions and multiple possible constructors mean OrConstraint
+    OrConstraint or = new OrConstraint();
+    // First case: instantiated class has multiple versions possible
+    if (type.isOverview()) {
+      // Get the set of versioned types CLASSNAME_ver_VERSIONNUM
+      SimpleSet<TypeDecl> types = lookupTypeSet(type.packageName(), type.name());
+      Iterator<TypeDecl> iter = types.iterator();
+      // Iterate through the each available version of the class
+      while (iter.hasNext()) { generateConstructorConstraints(iter.next(), or); }
+      // Add to result
+      constraints.add(or);
+    } else {
+      generateConstructorConstraints(type, or);
+      constraints.add(or);
+    }
+    return constraints;
+  }
+
+  eq MethodAccess.constraints() {
+    Collection<Constraint> constraints = new LinkedList();
+    // The class of the object invoking the method
+    TypeDecl type = qualifierType();
+    OrConstraint or = new OrConstraint();
+    if (type.isOverview()) {
+      // Get the set of versioned types CLASSNAME_ver_VERSIONNUM
+      SimpleSet<TypeDecl> types = lookupTypeSet(type.packageName(), type.name());
+      Iterator<TypeDecl> iter = types.iterator();
+      // Iterate through the each available version of the class
+      while (iter.hasNext()) { generateMethodConstraints(iter.next(), or); }
+      constraints.add(or);
+    } else {
+      generateMethodConstraints(type, or);
+      constraints.add(or);
+    }
+
+    return constraints;
+  }
+
+  private void ClassInstanceExpr.generateConstructorConstraints(TypeDecl type, OrConstraint or) {
+    for (ConstructorDecl constructor: type.constructors()) {
+      if (getNumArg() == constructor.getNumParameter()) {
+        // Build AndConstraint for this specific constructor
+        AndConstraint and = new AndConstraint();
+        // Object created constraint
+        and.addConstraints(this, type);
+        // Parameter constraints
+        for (int i = 0; i < getNumArg(); i++) { and.addConstraints(getArg(i), constructor.getParameter(i).type()); }
+        or.addConstraint(and);
+      }
+    }
+  }
+
+  private void MethodAccess.generateMethodConstraints(TypeDecl type, OrConstraint or) {
+    Map<String,Collection<MethodDecl>> methodMap = type.methodsNameMap();
+    if (methodMap.containsKey(name())) {
+      for (MethodDecl method: methodMap.get(name())) {
+        if (getNumArg() == method.getNumParameter()) {
+          AndConstraint and = new AndConstraint();
+          // Receiver object constraint
+          if (hasPrevExpr()) {
+            Expr prev = prevExpr();
+            and.addConstraints(prev, type);
+          }
+          // Parameter constraints
+          for (int i = 0; i < getNumArg(); i++) { and.addConstraints(getArg(i), method.getParameter(i).type()); }
+          // Return object constraint
+          and.addConstraints(this, method.type());
+          or.addConstraint(and);
+        }
+      }
+    }
+  }
+
+}

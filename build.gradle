@@ -1,7 +1,6 @@
 plugins {
   id 'java'
   id 'org.jastadd' version '1.13.3'
-  id 'antlr'
 }
 
 defaultTasks 'jar'
@@ -20,20 +19,26 @@ jastadd {
       imports "java8 backend"
 
       jastadd {
-        include "src/ast/grammar/*.ast"
-        include "src/ast/jastadd/*.jrag"
-        include "src/ast/jastadd/*.jadd"
+        basedir "extensions"
+        include "**/surface/*.ast"
+        include "**/surface/*.jrag"
+        include "**/surface/*.jadd"
+        include "**/frontend/*.jrag"
+        include "**/inference/*.jrag"
+        include "**/lookup/*.jrag"
+        //include "**/backend/*.jrag"
       }
 
       scanner {
-        basedir "src/ast/scanner"
-        include "**/*.flex"
+        basedir "extensions"
+        include "**/surface/*.flex"
       }
 
       parser {
-        basedir "src/ast/parser"
-        include "**/*.parser"
+        basedir "extensions"
+        include "**/surface/*.parser"
       }
+
     }
   }
 
@@ -50,22 +55,31 @@ sourceSets.main {
     srcDir 'extendj/src/frontend-main'
     srcDir 'extendj/src/backend-main'
     srcDir 'src/frontend-main'
+    srcDir 'src/backend-main'
   }
   resources {
     srcDir 'extendj/src/res'
     srcDir jastadd.buildInfoDir
   }
 }
-sourceSets {
-  generated {
-    java.srcDir 'generated-src/antlr/main'
+
+repositories.mavenCentral()
+dependencies {
+  compile 'org.choco-solver:choco-solver:4.10.5'
+}
+
+jar {
+  from {
+    configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
   }
 }
 
 // Use JavaCompiler if you need bytecode generation.
 //jar.manifest.attributes 'Main-Class': 'org.extendj.JavaPrettyPrinter'
-jar.manifest.attributes 'Main-Class': 'org.extendj.BatakjavaOverviewWriter'
-//jar.manifest.attributes 'Main-Class': 'org.extendj.JavaCompiler'
+//jar.manifest.attributes 'Main-Class': 'org.extendj.BatakjavaPrettyPrinter'
+//jar.manifest.attributes 'Main-Class': 'org.extendj.BatakjavaCompiler'
+jar.manifest.attributes 'Main-Class': 'org.extendj.ConstraintGenerator'
+
 jar.destinationDir = projectDir
 
 // Java -source and -target version.

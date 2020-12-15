@@ -1,0 +1,13 @@
+package upstream.collection ver 2;
+
+public class Displacement {
+  private float value;
+  public Displacement(float value) {
+    this.value = value;
+  }
+  public float getValue(Displacement d) {
+    int p = 2;
+    p = 3;
+    return value;
+  }
+}

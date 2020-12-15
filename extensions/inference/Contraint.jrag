@@ -1,0 +1,76 @@
+aspect Constraint {
+
+  public abstract class Constraint { }
+
+  public class AndConstraint extends Constraint implements Iterable<Constraint> {
+    private Collection<Constraint> andConstraint = new LinkedList();
+
+    public AndConstraint(Constraint... constraints) {
+      for (Constraint constraint: constraints) {
+        andConstraint.add(constraint);
+      }
+    }
+
+    public Iterator<Constraint> iterator() { return andConstraint.iterator(); }
+
+    public void addConstraint(Constraint constraint) { andConstraint.add(constraint); }
+
+    public void addConstraints(Expr expr, TypeDecl type) {
+      String name = !type.packageName().isEmpty() ? type.packageName() + "." + type.initialName() : type.name();
+      addConstraint(new VersionConstraint(expr.versionVariable(), Integer.valueOf(type.initialVersion())));
+      addConstraint(new TypeConstraint(expr.typeVariable(), name));
+    }
+
+    public Collection<Constraint> getConstraint() { return andConstraint; }
+
+    public String toString() { return andConstraint.toString(); }
+
+  }
+
+  public class OrConstraint extends Constraint implements Iterable<Constraint> {
+    private Collection<Constraint> orConstraint = new LinkedList();
+
+    public OrConstraint(Constraint... constraints) {
+      for (Constraint constraint: constraints) {
+        orConstraint.add(constraint);
+      }
+    }
+
+    public Iterator<Constraint> iterator() { return orConstraint.iterator(); }
+
+    public void addConstraint(Constraint constraint) { orConstraint.add(constraint); }
+
+    public Collection<Constraint> getConstraint() { return orConstraint; }
+
+    public String toString() { return orConstraint.toString(); }
+
+  }
+
+  public class VersionConstraint extends Constraint {
+
+    private final String variable;
+    private final Integer version;
+
+    public VersionConstraint(String variable, Integer version) {
+      this.variable = variable;
+      this.version = version;
+    }
+
+    public String toString() { return variable + " = " + version.toString(); }
+
+  }
+
+  public class TypeConstraint extends Constraint {
+
+    private final String variable;
+    private final String typeName;
+
+    public TypeConstraint(String variable, String typeName) {
+      this.variable = variable;
+      this.typeName = typeName;
+    }
+
+    public String toString() { return variable + " = " + typeName; }
+  }
+
+}

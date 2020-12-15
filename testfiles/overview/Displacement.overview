@@ -1,0 +1,9 @@
+package upstream.collection;
+
+overview of public class Displacement in ver 1 {
+  private float value in ver 1 {}
+  public Displacement(float value) in ver 1 {}
+  public float getValue(Displacement d) in ver 1 {
+    public float getValue(Displacement_ver1 d) in ver 1 {}
+  }
+}

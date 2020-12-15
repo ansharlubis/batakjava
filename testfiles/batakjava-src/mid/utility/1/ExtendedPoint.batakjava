@@ -1,13 +1,6 @@
-package mid.utility;
+package mid.utility ver 1;
 import upstream.collection.*;
 
-public class ExtendedPoint {
-  public static void main(String[] args) {
-    Point_ver_1 p = new Point_ver_1(0,0);
-  }
-}
-
-/*
 public class ExtendedPoint extends Point {
   public ExtendedPoint(float x, float y) {
     super(x,y);
@@ -19,4 +12,3 @@ public class ExtendedPoint extends Point {
     return new Point(getX(), getY());
   }
 }
- */

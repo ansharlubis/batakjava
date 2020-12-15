@@ -1,23 +1,21 @@
 package upstream.collection ver 1;
-            //varPoint
-public class Point {
+public class Point extends Object {
   private float x;
-  public Point(float x) {
-   //varPoint
+  private float y;
+  public Point(float x, float y) {
     this.x = x;
+    this.y = y;
   }
   public float getX() { return x; }
-         //var2     //var3
+  public float getY() { return y; }
   public Point move(Displacement d) {
-               //var4  //var3           //var5
-    return new Point(x + d.getValue(new Displacement(1)));
+    return new Point(x + d.getValue(new Displacement(1)), 0);
   }
-                        //var6        //var7
   public double distance(Point other, Point another) {
-    Displacement e = new Displacement(1);
-    float f = other.x;
-                //var6
-    return x - other.getX();
+    return java.lang.Math.sqrt(
+      (x - another.getX()) * (x - another.getX()) +
+      (y - another.getY()) * (y - another.getY())
+    );
   }
 }
 

@@ -1,5 +1,21 @@
 aspect BatakjavaLookupFullyQualifiedTypes {
 
+  // Get the qualifier type without checking the decl
+  syn TypeDecl MethodAccess.qualifierType() {
+    if (hasPrevExpr()) {
+      return prevExpr().type();
+    }
+    TypeDecl typeDecl = hostType();
+    while (typeDecl != null) {
+      if (typeDecl.hasMethod(decl())) {
+        return typeDecl;
+      } else {
+        typeDecl = typeDecl.enclosingType();
+      }
+    }
+    return decl().hostType();
+  }
+
   public void Program.reinitializeSourceTypeMap() {
     for (int i = 0; i < getNumCompilationUnit(); i++) {
       CompilationUnit unit = getCompilationUnit(i);
