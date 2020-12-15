@@ -71,19 +71,6 @@ aspect BatakjavaVersion {
     return name();
   }
 
-  /*
-  syn lazy Set<Integer> TypeDecl.versions() = Collections.emptySet();
-  eq ClassDecl.versions() {
-    Set<Integer> result = new HashSet(1);
-    Integer hostVersion = Integer.valueOf(hostVersion());
-    if (hostVersion != 0) {
-      result.add(hostVersion);
-    }
-    return result;
-  }
-  syn Set<Integer> Expr.versions() = type().versions();
-  syn Set<Integer> Variable.versions() = type().versions();
-
   syn boolean BodyDecl.versionDependent() = false;
   eq FieldDecl.versionDependent() = type().versioned();
   eq ConstructorDecl.versionDependent() {
@@ -99,6 +86,5 @@ aspect BatakjavaVersion {
     if (type().versioned()) { return true; }
     return false;
   }
-  */
 
 }
