@@ -65,18 +65,6 @@ aspect JavaGeneration {
     List<BodyDecl> bodyDecls = new List();
 
     // Add the extends versions if superclass exists, for next example
-    /*
-    if (hasSuperClass() && getSuperClass().versionVariable().isPresent()) {
-      Integer maxVersion = solutions.stream()
-        .map(solution -> solution.get(getSuperClass().versionVariable().get()))
-        .reduce(0, (a,b) -> a > b ? a : b);
-      filtered = solutions.stream()
-        .filter(solution -> solution.get(getSuperClass().versionVariable().get()) == maxVersion)
-        .collect(Collectors.toCollection(HashSet::new));
-      superAccess = new Opt(getSuperClass().attachVersion(maxVersion));
-    }
-    */
-
     if (hasSuperClass() && superclass().isOverview()) {
       Integer maxVersion = solutions.stream()
         .map(solution -> solution.get(getSuperClass().versionVariable()))
@@ -150,12 +138,6 @@ aspect JavaGeneration {
         String methodName = getID();
         Access typeAccess = getTypeAccess();
         List<ParameterDeclaration> subParameterList = attachVersionToParameter(solution);
-        /*
-        if (getTypeAccess().versionVariable().isPresent()) {
-          methodName = methodName + "_ver_" + solution.get(getTypeAccess().versionVariable().get()).toString();
-          typeAccess = typeAccess.attachVersion(solution.get(getTypeAccess().versionVariable().get()));
-        }
-        */
         if (getTypeAccess().type().versioned()) {
           methodName = methodName + "_ver_" + solution.get(getTypeAccess().versionVariable()).toString();
           typeAccess = typeAccess.attachVersion(solution.get(getTypeAccess().versionVariable()));
@@ -165,11 +147,10 @@ aspect JavaGeneration {
         result.add(new MethodDecl(getModifiers(), typeAccess, methodName, subParameterList, getExceptionList(), block));
       }
     } else {
-      // In case the signature is not version dependent,
-      // how should we choose the solution?
-        // Build block
-        Opt<Block> block = hasBlock() ? new Opt(getBlock().generateJavaBlock(selected)) : new Opt();
-        result.add(new MethodDecl(getModifiers(), getTypeAccess(), getID(), getParameterList(), getExceptionList(), block));
+      // In case the signature is not version dependent, how should we choose the solution?
+      // Build block
+      Opt<Block> block = hasBlock() ? new Opt(getBlock().generateJavaBlock(selected)) : new Opt();
+      result.add(new MethodDecl(getModifiers(), getTypeAccess(), getID(), getParameterList(), getExceptionList(), block));
     }
     return result;
   }
@@ -301,26 +282,6 @@ aspect JavaGeneration {
    */
   syn nta Access Access.generateJavaAccess(Map<String,Integer> solution) = treeCopy();
 
-  /*
-  eq VarAccess.generateJavaAccess(Map<String,Integer> solution)
-    = (isFieldAccess() && versionVariable().isPresent()) ?
-      new VarAccess(getID()+"_ver_"+solution.get(versionVariable().get()).toString()) :
-      treeCopy();
-
-  eq TypeAccess.generateJavaAccess(Map<String,Integer> solution)
-    = versionVariable().isPresent() ?
-      attachVersion(solution.get(versionVariable().get())) : treeCopy();
-
-  eq MethodAccess.generateJavaAccess(Map<String,Integer> solution) {
-    String methodName = versionVariable().isPresent() ? getID()+"_ver_"+solution.get(versionVariable().get()).toString() : getID();
-    List<Expr> args = new List();
-    for (Expr arg: getArgList()) {
-      args.add(arg.generateJavaExpr(solution));
-    }
-    return new MethodAccess(methodName, args);
-  }
-  */
-
   eq VarAccess.generateJavaAccess(Map<String,Integer> solution)
     = (isFieldAccess() && type().versioned()) ?
       new VarAccess(getID() + "_ver_" + solution.get(versionVariable()).toString()) :
@@ -346,10 +307,6 @@ aspect JavaGeneration {
   eq ClassInstanceExpr.generateJavaAccess(Map<String,Integer> solution) {
     List<Expr> args = new List();
     for (Expr arg: getArgList()) { args.add(arg.generateJavaExpr(solution)); }
-    /*
-    Access access = versionVariable().isPresent() ?
-      getAccess().attachVersion(solution.get(versionVariable().get())) : getAccess();
-    */
     Access access = solution.get(versionVariable()) != null && solution.get(versionVariable()) != 0 ?
       getAccess().attachVersion(solution.get(versionVariable())) : getAccess();
     return new ClassInstanceExpr(access, args);
@@ -359,11 +316,6 @@ aspect JavaGeneration {
 
   eq ConstructorAccess.generateJavaAccess(Map<String,Integer> solution) {
     String accessName = getID();
-    /*
-    if (!accessName.equals("this") || !accessName.equals("super")) {
-      accessName = versionVariable().isPresent() ? accessName+"_ver_"+solution.get(versionVariable().get()) : accessName;
-    }
-    */
     if (!accessName.equals("this") || !accessName.equals("super")) {
       accessName = solution.get(versionVariable()) != null && solution.get(versionVariable()) != 0 ?
         accessName + "_ver_" + solution.get(versionVariable()) : accessName;
@@ -380,16 +332,6 @@ aspect JavaGeneration {
    */
   syn nta VariableDeclarator VariableDeclarator.generateJavaDeclarator(Map<String,Integer> solution)
     = new VariableDeclarator(getID(), getDimsList(), hasInit() ? new Opt(getInit().generateJavaExpr(solution)) : new Opt());
-
-  /*
-  syn nta FieldDeclarator FieldDeclarator.generateJavaDeclarator(Map<String,Integer> solution)
-    = getTypeAccess().versionVariable().isPresent() ?
-      new FieldDeclarator(
-        getID()+"_ver_"+solution.get(getTypeAccess().versionVariable().get()).toString(),
-        getDimsList(), hasInit() ? new Opt(getInit().generateJavaExpr(solution)) : new Opt()) :
-      new FieldDeclarator(
-        getID(), getDimsList(), hasInit() ? new Opt(getInit().generateJavaExpr(solution)) : new Opt());
-  */
 
   syn nta FieldDeclarator FieldDeclarator.generateJavaDeclarator(Map<String,Integer> solution)
     = getTypeAccess().type().versioned() ?

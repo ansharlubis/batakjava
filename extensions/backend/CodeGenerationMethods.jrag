@@ -20,11 +20,6 @@ aspect JavaGeneration {
     for (Map<String,Integer> solution: filtered) {
       Map<String,Integer> map = new HashMap(getNumParameter());
       for (ParameterDeclaration param: getParameterList()) {
-        /*
-        if (param.versionVariable().isPresent()) {
-          map.put(param.versionVariable().get(), solution.get(param.versionVariable().get()));
-        }
-        */
         if (param.type().versioned()) {
           map.put(param.versionVariable(), solution.get(param.versionVariable()));
         }
@@ -40,17 +35,6 @@ aspect JavaGeneration {
   private List<ParameterDeclaration> ConstructorDecl.attachVersionToParameter(Map<String,Integer> solution) {
     List<ParameterDeclaration> parameterList = new List();
     for (ParameterDeclaration param: getParameterList()) {
-      /*
-      if (param.versionVariable().isPresent()) {
-        parameterList.add(new ParameterDeclaration(
-          param.getModifiers(),
-          param.getTypeAccess().attachVersion(solution.get(param.versionVariable().get())),
-          param.getID()
-        ));
-      } else {
-        parameterList.add(param.treeCopy());
-      }
-      */
       if (param.type().versioned()) {
         parameterList.add(new ParameterDeclaration(
           param.getModifiers(),
@@ -70,20 +54,10 @@ aspect JavaGeneration {
     for (Map<String,Integer> solution: filtered) {
       Map<String,Integer> map = new HashMap(getNumParameter()+1);
       for (ParameterDeclaration param: getParameterList()) {
-        /*
-        if (param.versionVariable().isPresent()) {
-          map.put(param.versionVariable().get(), solution.get(param.versionVariable().get()));
-        }
-        */
         if (param.type().versioned()) {
           map.put(param.versionVariable(), solution.get(param.versionVariable()));
         }
       }
-      /*
-      if (getTypeAccess().versionVariable().isPresent()) {
-        map.put(getTypeAccess().versionVariable().get(), solution.get(getTypeAccess().versionVariable().get()));
-      }
-      */
       if (getTypeAccess().type().versioned()) {
         map.put(getTypeAccess().versionVariable(), solution.get(getTypeAccess().versionVariable()));
       }
@@ -98,17 +72,6 @@ aspect JavaGeneration {
   protected List<ParameterDeclaration> MethodDecl.attachVersionToParameter(Map<String,Integer> solution) {
     List<ParameterDeclaration> parameterList = new List();
     for (ParameterDeclaration param: getParameterList()) {
-      /*
-      if (param.versionVariable().isPresent()) {
-        parameterList.add(new ParameterDeclaration(
-          param.getModifiers(),
-          param.getTypeAccess().attachVersion(solution.get(param.versionVariable().get())),
-          param.getID()
-        ));
-      } else {
-        parameterList.add(param.treeCopy());
-      }
-      */
       if (param.type().versioned()) {
         parameterList.add(new ParameterDeclaration(
           param.getModifiers(),

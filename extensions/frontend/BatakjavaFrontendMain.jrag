@@ -128,14 +128,13 @@ aspect BatakjavaFrontendMain {
 
         int compileResult = EXIT_SUCCESS;
 
-        //Map<String,TypeDecl> variableToType = program.variableToType();
+        Map<String,TypeDecl> variableToType = program.variableToType();
 
         /**
          * Inference
          */
         Set<Map<String,Integer>> solutions = exampleSolution();
 
-        /*
         Iterator<CompilationUnit> iter = program.compilationUnitIterator();
         LinkedList<CompilationUnit> generated = new LinkedList<CompilationUnit>();
         while (iter.hasNext()) {
@@ -160,7 +159,6 @@ aspect BatakjavaFrontendMain {
         }
 
         program.reinitializeSourceTypeMap();
-        */
 
         // Process source compilation units.
         Iterator<CompilationUnit> generatedIter = program.compilationUnitIterator();
@@ -202,10 +200,31 @@ aspect BatakjavaFrontendMain {
 
     private Set<Map<String,Integer>> exampleSolution() {
       Set<Map<String,Integer>> example = new HashSet(1);
-      Map<String,Integer> map = new HashMap(11);
-      for (int i = 0; i < 11; i++) {
-        map.put("var"+i, 2);
-      }
+      Map<String,Integer> map = new HashMap(24);
+      map.put("v0", 0);
+      map.put("v1", 0);
+      map.put("v2", 2);
+      map.put("v3", 0);
+      map.put("v4", 2);
+      map.put("v5", 0);
+      map.put("v6", 0);
+      map.put("v7", 0);
+      map.put("v8", 0);
+      map.put("v9", 0);
+      map.put("v10", 2);
+      map.put("v11", 2);
+      map.put("v12", 0);
+      map.put("v13", 0);
+      map.put("v14", 0);
+      map.put("v15", 2);
+      map.put("v16", 0);
+      map.put("v17", 0);
+      map.put("v18", 0);
+      map.put("v19", 0);
+      map.put("v20", 0);
+      map.put("v21", 0);
+      map.put("v22", 0);
+      map.put("v23", 0);
       example.add(map);
       return example;
     }
