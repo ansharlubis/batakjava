@@ -72,7 +72,7 @@ BodyDecl batakjava_body_declaration =
   | SEMICOLON                     {: return new InstanceInitializer(new Block()); :}
   ;
 BodyDecl batakjava_field_declaration =
-    modifiers.m? type.t field_declarator_id.v SEMICOLON   {: return new FieldDecl(new Modifiers(m), t, new List().add(v)); :}
+    modifiers.m? type.t field_declarator.f SEMICOLON   {: return new FieldDecl(new Modifiers(m), t, new List().add(f)); :}
   ;
 String version_number =
     NUMERIC_LITERAL

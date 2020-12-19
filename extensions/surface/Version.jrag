@@ -1,17 +1,24 @@
 aspect BatakjavaVersion {
 
-  // Used to deal with .batakjava and overview files
-  syn boolean TypeDecl.versioned() = false;
-  eq ClassDecl.versioned() = isOverview() || !hostVersion().equals("0");
+  /**
+   * Check if the CompilationUnit is an overview unit by checking
+   * that there is only one TypeDecl that is an Overview
+   */
+  syn boolean CompilationUnit.isOverviewUnit()
+    = getNumTypeDecl() == 1 && getTypeDecl(0).isOverview();
 
-  syn lazy boolean CompilationUnit.isOverviewUnit() = getNumTypeDecl() == 1 && getTypeDecl(0).isOverview();
-
+  /**
+   * Check if the ClassDecl is a generated overview
+   * which contains FieldDeclarator BATAKJAVACLASS
+   */
   syn boolean TypeDecl.isOverview() = false;
+
   eq ClassDecl.isOverview() {
     for (BodyDecl bodyDecl: getBodyDeclList()) {
       if (bodyDecl instanceof FieldDecl) {
-        FieldDecl fieldDecl = (FieldDecl) getBodyDecl(0);
-        if (fieldDecl.getNumDeclarator() == 1 && fieldDecl.getDeclarator(0).getID().equals("BATAKJAVACLASS")) {
+        FieldDecl decl = (FieldDecl) bodyDecl;
+        if (decl.getNumDeclarator() == 1 &&
+            decl.getDeclarator(0).getID().equals("BATAKJAVACLASS")) {
           return true;
         }
       }
@@ -19,48 +26,63 @@ aspect BatakjavaVersion {
     return false;
   }
 
+  /**
+   * Get version from the CompilationUnit
+   */
   syn String CompilationUnit.version() {
-    if (getNumTypeDecl() == 1 && (getTypeDecl(0) instanceof ClassDecl)) {
+    // Generated overview's version depends on FieldDeclaarator VER_?
+    if (isOverviewUnit()) {
       ClassDecl classDecl = (ClassDecl) getTypeDecl(0);
       for (BodyDecl bodyDecl: classDecl.getBodyDeclList()) {
         if (bodyDecl instanceof FieldDecl) {
-          FieldDecl fieldDecl = (FieldDecl) bodyDecl;
-          if (fieldDecl.getDeclarator(0).getID().split("_").length > 1) {
-            return fieldDecl.getDeclarator(0).getID().split("_")[1];
+          FieldDecl decl = (FieldDecl) bodyDecl;
+          if (decl.getDeclarator(0).getID().split("_")[0].equals("VER")) {
+            return decl.getDeclarator(0).getID().split("_")[1];
           }
         }
       }
     }
-    return "0";
+    return "0";       // Unversioned CompilationUnit is 0
   }
+
   eq BatakjavaCompilationUnit.version() = getVersionNum();
 
-  eq CompilationUnit.getChild().hostVersion() = version();
   inh String TypeDecl.hostVersion();
   inh String BodyDecl.hostVersion();
   inh String Expr.hostVersion();
   inh String Variable.hostVersion();
 
-  // Used to deal with generated CLASSNAME_ver_VERSIONNUM
-  syn boolean TypeDecl.generated() = false;
-  eq ClassDecl.generated() {
+  eq CompilationUnit.getChild().hostVersion() = version();
+
+  /**
+   * Checks if the ClassDecl is a generated Java class
+   */
+  syn boolean TypeDecl.isGeneratedClass() = false;
+
+  eq ClassDecl.isGeneratedClass() {
     String[] splitName = name().split("_");
     return splitName.length > 2 && splitName[splitName.length-2].equals("ver");
   }
 
+  /**
+   * Checks the initial version and name of the
+   * ClassDecl before generated as Java classes.
+   */
   syn String TypeDecl.initialVersion() = "0";
+
   eq ClassDecl.initialVersion() {
     if (!hostVersion().equals("0")) {
       return hostVersion();
     }
     String[] splitName = name().split("_");
-    return generated() ? splitName[splitName.length-1] : "0";
+    return isGeneratedClass() ? splitName[splitName.length-1] : "0";
   }
 
   syn String TypeDecl.initialName() = name();
+
   eq ClassDecl.initialName() {
     String[] splitName = name().split("_");
-    if (generated()) {
+    if (isGeneratedClass()) {
       StringBuilder result = new StringBuilder();
       for (int i = 0; i < splitName.length-2; i++) {
         if (i != 0) result.append("_");
@@ -70,6 +92,14 @@ aspect BatakjavaVersion {
     }
     return name();
   }
+}
+
+/*
+aspect BatakjavaVersion {
+
+  // Used to deal with FILENAME.batakjava and Overview files
+  syn boolean TypeDecl.versioned() = false;
+  eq ClassDecl.versioned() = isOverview() || !hostVersion().equals("0");
 
   syn boolean BodyDecl.versionDependent() = false;
   eq FieldDecl.versionDependent() = type().versioned();
@@ -88,3 +118,4 @@ aspect BatakjavaVersion {
   }
 
 }
+*/
