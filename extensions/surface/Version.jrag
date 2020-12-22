@@ -1,5 +1,25 @@
 aspect BatakjavaVersion {
 
+  // Used to deal with FILENAME.batakjava and Overview files
+  syn boolean TypeDecl.versioned() = false;
+  eq ClassDecl.versioned() = isOverview() || !hostVersion().equals("0");
+
+  syn boolean BodyDecl.versionDependent() = false;
+  eq FieldDecl.versionDependent() = type().versioned();
+  eq ConstructorDecl.versionDependent() {
+    for (ParameterDeclaration param: getParameterList()) {
+      if (param.type().versioned()) { return true; }
+    }
+    return false;
+  }
+  eq MethodDecl.versionDependent() {
+    for (ParameterDeclaration param: getParameterList()) {
+      if (param.type().versioned()) { return true; }
+    }
+    if (type().versioned()) { return true; }
+    return false;
+  }
+
   /**
    * Check if the CompilationUnit is an overview unit by checking
    * that there is only one TypeDecl that is an Overview
@@ -93,29 +113,3 @@ aspect BatakjavaVersion {
     return name();
   }
 }
-
-/*
-aspect BatakjavaVersion {
-
-  // Used to deal with FILENAME.batakjava and Overview files
-  syn boolean TypeDecl.versioned() = false;
-  eq ClassDecl.versioned() = isOverview() || !hostVersion().equals("0");
-
-  syn boolean BodyDecl.versionDependent() = false;
-  eq FieldDecl.versionDependent() = type().versioned();
-  eq ConstructorDecl.versionDependent() {
-    for (ParameterDeclaration param: getParameterList()) {
-      if (param.type().versioned()) { return true; }
-    }
-    return false;
-  }
-  eq MethodDecl.versionDependent() {
-    for (ParameterDeclaration param: getParameterList()) {
-      if (param.type().versioned()) { return true; }
-    }
-    if (type().versioned()) { return true; }
-    return false;
-  }
-
-}
-*/

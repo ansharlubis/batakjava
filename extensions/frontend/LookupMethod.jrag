@@ -1,0 +1,42 @@
+aspect BatakjavaMemberMethods {
+
+  syn lazy Map<String, Collection<MethodDecl>> TypeDecl.versionedMethodsNameMap() = methodsNameMap();
+
+  eq ClassDecl.versionedMethodsNameMap() {
+    if (isGeneratedClass()) {
+      Map<String, Collection<MethodDecl>> map = new HashMap();
+      for (MethodDecl m: methods()) {
+        Collection<MethodDecl> methods = map.get(m.initialName());
+        if (methods == null) {
+          methods = new ArrayList<MethodDecl>();
+          map.put(m.initialName(), methods);
+        }
+        methods.add(m);
+      }
+      return map;
+    }
+    return methodsNameMap();
+  }
+
+}
+
+aspect BatakjavaMethodDecl {
+
+  syn String MethodDecl.initialName() {
+    if (hostType().isGeneratedClass()) {
+      String[] splitName = name().split("_");
+      if (splitName.length > 2 && splitName[splitName.length-2].equals("ver")) {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < splitName.length-2; i++) {
+          if (i != 0) result.append("_");
+          result.append(splitName[i]);
+        }
+        return result.toString();
+      }
+    }
+    return name();
+  }
+
+
+
+}

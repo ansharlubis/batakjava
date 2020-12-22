@@ -1,53 +1,44 @@
-aspect Constraint {
+import org.chocosolver.solver.constraints.Constraint;
 
-  public abstract class Constraint { }
+aspect InferenceConstraint {
 
-  public class AndConstraint extends Constraint implements Iterable<Constraint> {
-    private Collection<Constraint> andConstraint = new LinkedList();
+  /**
+   * Convert type names into integer to allow working in solver
+   */
+  private Integer Program.typeCount = 0;
 
-    public AndConstraint(Constraint... constraints) {
-      for (Constraint constraint: constraints) {
-        andConstraint.add(constraint);
-      }
-    }
+  private void Program.initializeTypeCount() { typeCount = 0; }
 
-    public Iterator<Constraint> iterator() { return andConstraint.iterator(); }
-
-    public void addConstraint(Constraint constraint) { andConstraint.add(constraint); }
-
-    public void addConstraints(Expr expr, TypeDecl type) {
-      String name = !type.packageName().isEmpty() ? type.packageName() + "." + type.initialName() : type.name();
-      addConstraint(new VersionConstraint(expr.versionVariable(), Integer.valueOf(type.initialVersion())));
-      addConstraint(new TypeConstraint(expr.typeVariable(), name));
-    }
-
-    public Collection<Constraint> getConstraint() { return andConstraint; }
-
-    public String toString() { return andConstraint.toString(); }
-
+  public Integer Program.freshTypeCount() {
+    Integer count = typeCount;
+    typeCount++;
+    return count;
   }
 
-  public class OrConstraint extends Constraint implements Iterable<Constraint> {
-    private Collection<Constraint> orConstraint = new LinkedList();
+  public final Map<String, Integer> Program.typeNameToIntMap = new HashMap();
 
-    public OrConstraint(Constraint... constraints) {
-      for (Constraint constraint: constraints) {
-        orConstraint.add(constraint);
+  /**
+   * Domain for each version variable, where
+   * integer is added as constraints are built
+   */
+  public final Map<String, Set<Integer>> Program.variableToDomainMap = new HashMap();
+
+  public String ASTNode.intToTypeName(Integer typeInt) {
+    for (String typeName: program().typeNameToIntMap.keySet()) {
+      if (program().typeNameToIntMap.get(typeName) == typeInt) {
+        return typeName;
       }
     }
-
-    public Iterator<Constraint> iterator() { return orConstraint.iterator(); }
-
-    public void addConstraint(Constraint constraint) { orConstraint.add(constraint); }
-
-    public Collection<Constraint> getConstraint() { return orConstraint; }
-
-    public String toString() { return orConstraint.toString(); }
-
+    return "";
   }
 
-  public class VersionConstraint extends Constraint {
+  public abstract class InferenceConstraint {
+    public abstract Optional<Integer> getVersion(String arg);
+    public abstract Optional<Integer> getTypeInt(String arg);
+    public abstract Constraint post(Model model, IntVar[] versions, IntVar[] types);
+  }
 
+  public class VersionConstraint extends InferenceConstraint {
     private final String variable;
     private final Integer version;
 
@@ -56,21 +47,231 @@ aspect Constraint {
       this.version = version;
     }
 
-    public String toString() { return variable + " = " + version.toString(); }
-
-  }
-
-  public class TypeConstraint extends Constraint {
-
-    private final String variable;
-    private final String typeName;
-
-    public TypeConstraint(String variable, String typeName) {
-      this.variable = variable;
-      this.typeName = typeName;
+    public Optional<Integer> getVersion(String arg) {
+      return variable.equals(arg) ? Optional.of(version) : Optional.empty();
     }
 
-    public String toString() { return variable + " = " + typeName; }
+    public Optional<Integer> getTypeInt(String arg) {
+      return Optional.empty();
+    }
+
+    public String toString() {
+      return variable + ": " + version.toString();
+    }
+
+    public Constraint post(Model model, IntVar[] versions, IntVar[] types) {
+      Integer num = Integer.valueOf(variable.substring(1));
+      return model.arithm(versions[num], "=", version);
+    }
+  }
+
+  public class TypeConstraint extends InferenceConstraint {
+    private final String variable;
+    private final Integer typeInt;
+
+    public TypeConstraint(String variable, Integer typeInt) {
+      this.variable = variable;
+      this.typeInt = typeInt;
+    }
+
+    public Optional<Integer> getVersion(String arg) {
+      return Optional.empty();
+    }
+
+    public Optional<Integer> getTypeInt(String arg) {
+      return variable.equals(arg) ? Optional.of(typeInt) : Optional.empty();
+    }
+
+    public String toString() {
+      return variable + ": " + typeInt.toString();
+    }
+
+    public Constraint post(Model model, IntVar[] versions, IntVar[] types) {
+      Integer num = Integer.valueOf(variable.substring(1));
+      return model.arithm(types[num], "=", typeInt);
+    }
+  }
+
+  public class EqualConstraint extends InferenceConstraint {
+    private final String var1;
+    private final String var2;
+    private final boolean type;
+
+    public EqualConstraint(String var1, String var2, boolean type) {
+      this.var1 = var1;
+      this.var2 = var2;
+      this.type = type;
+    }
+
+    public Optional<Integer> getVersion(String arg) {
+      return Optional.empty();
+    }
+
+    public Optional<Integer> getTypeInt(String arg) {
+      return Optional.empty();
+    }
+
+    public String toString() {
+      return var1 + " = " + var2;
+    }
+
+    public Constraint post(Model model, IntVar[] versions, IntVar[] types) {
+      Integer numA = Integer.valueOf(var1.substring(1));
+      Integer numB = Integer.valueOf(var2.substring(1));
+      if (!type) {
+        return model.arithm(versions[numA], "=", versions[numB]);
+      } else {
+        return model.arithm(types[numA], "=", types[numB]);
+      }
+    }
+  }
+
+  public class AndConstraint extends InferenceConstraint implements Iterable<InferenceConstraint> {
+    private java.util.List<InferenceConstraint> constraints = new LinkedList();
+
+    public AndConstraint() {}
+
+    public void add(InferenceConstraint arg) {
+      if (arg instanceof AndConstraint) {
+        AndConstraint andArg = (AndConstraint) arg;
+        for (InferenceConstraint constraint: andArg) {
+          constraints.add(constraint);
+        }
+      } else {
+        constraints.add(arg);
+      }
+    }
+
+    public void add(Expr expr, TypeDecl type) {
+      String name = !type.packageName().isEmpty() ? type.packageName() + "." + type.initialName() : type.name();
+      Program program = type.program();
+
+      if (program.variableToDomainMap.containsKey(expr.versionVariable())) {
+        program.variableToDomainMap.get(expr.versionVariable()).add(Integer.valueOf(type.initialVersion()));
+      } else {
+        Set<Integer> domain = new HashSet();
+        domain.add(Integer.valueOf(type.initialVersion()));
+        program.variableToDomainMap.put(expr.versionVariable(), domain);
+      }
+      constraints.add(new VersionConstraint(expr.versionVariable(), Integer.valueOf(type.initialVersion())));
+
+      if (program.typeNameToIntMap.containsKey(name)) {
+        constraints.add(new TypeConstraint(expr.typeVariable(), program.typeNameToIntMap.get(name)));
+      } else {
+        Integer typeInt = program.freshTypeCount();
+        program.typeNameToIntMap.put(name, typeInt);
+        constraints.add(new TypeConstraint(expr.typeVariable(), typeInt));
+      }
+    }
+
+    public int size() {
+      return this.constraints.size();
+    }
+
+    public boolean isEmpty() {
+      return this.constraints.isEmpty();
+    }
+
+    public Optional<Integer> getVersion(String arg) {
+      for (InferenceConstraint constraint: constraints) {
+        if (constraint.getVersion(arg).isPresent()) {
+          return constraint.getVersion(arg);
+        }
+      }
+      return Optional.empty();
+    }
+
+    public Optional<Integer> getTypeInt(String arg) {
+      for (InferenceConstraint constraint: constraints) {
+        if (constraint.getTypeInt(arg).isPresent()) {
+          return constraint.getTypeInt(arg);
+        }
+      }
+      return Optional.empty();
+    }
+
+    public Iterator<InferenceConstraint> iterator() {
+      return constraints.iterator();
+    }
+
+    public String toString() {
+      StringBuilder result = new StringBuilder();
+      result.append("[");
+      int i = 0;
+      for (InferenceConstraint constraint: constraints) {
+        if (i != 0) result.append(" && ");
+        result.append(constraint.toString());
+        i++;
+      }
+      result.append("]");
+      return result.toString();
+    }
+
+    public Constraint post(Model model, IntVar[] versions, IntVar[] types) {
+      Constraint[] toPost = new Constraint[size()];
+      for (int i = 0; i < size(); i++) {
+        toPost[i] = constraints.get(i).post(model, versions, types);
+      }
+      return model.and(toPost);
+    }
+  }
+
+  public class OrConstraint extends InferenceConstraint implements Iterable<InferenceConstraint> {
+    private java.util.List<InferenceConstraint> constraints = new LinkedList();
+
+    public OrConstraint() {}
+
+    public void add(InferenceConstraint arg) {
+      if (arg instanceof OrConstraint) {
+        OrConstraint orArg = (OrConstraint) arg;
+        for (InferenceConstraint constraint: orArg) {
+          constraints.add(constraint);
+        }
+      } else {
+        constraints.add(arg);
+      }
+    }
+
+    public int size() {
+      return this.constraints.size();
+    }
+
+    public boolean isEmpty() {
+      return this.constraints.isEmpty();
+    }
+
+    public Optional<Integer> getVersion(String arg) {
+      return Optional.empty();
+    }
+
+    public Optional<Integer> getTypeInt(String arg) {
+      return Optional.empty();
+    }
+
+    public Iterator<InferenceConstraint> iterator() {
+      return constraints.iterator();
+    }
+
+    public String toString() {
+      StringBuilder result = new StringBuilder();
+      result.append("[");
+      int i = 0;
+      for (InferenceConstraint constraint: constraints) {
+        if (i != 0) result.append(" || ");
+        result.append(constraint.toString());
+        i++;
+      }
+      result.append("]");
+      return result.toString();
+    }
+
+    public Constraint post(Model model, IntVar[] versions, IntVar[] types) {
+      Constraint[] toPost = new Constraint[size()];
+      for (int i = 0; i < size(); i++) {
+        toPost[i] = constraints.get(i).post(model, versions, types);
+      }
+      return model.or(toPost);
+    }
   }
 
 }

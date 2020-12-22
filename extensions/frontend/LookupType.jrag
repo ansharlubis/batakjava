@@ -30,11 +30,14 @@ aspect BatakjavaLookupFullyQualifiedTypes {
     }
   }
 
+  inh TypeDecl Variable.lookupType(String packageName, String typeName);
+
   inh SimpleSet<TypeDecl> Expr.lookupTypeSet(String pockageName, String typeName);
   inh SimpleSet<TypeDecl> Stmt.lookupTypeSet(String packageName, String typeName);
   inh SimpleSet<TypeDecl> BodyDecl.lookupTypeSet(String packageName, String typeName);
   inh SimpleSet<TypeDecl> TypeDecl.lookupTypeSet(String packageName, String typeName);
   inh SimpleSet<TypeDecl> CompilationUnit.lookupTypeSet(String packageName, String typeName);
+  inh SimpleSet<TypeDecl> Variable.lookupTypeSet(String packageName, String typeName);
 
   eq Program.getChild().lookupTypeSet(String packageName, String typeName) = lookupTypeSet(packageName, typeName);
 
@@ -73,5 +76,32 @@ aspect BatakjavaLookupFullyQualifiedTypes {
 
   syn nta List<CompilationUnit> Program.getLibCompilationUnitList(String typeName, Integer ver)
     = getCompilationUnitList(typeName, ver);
+
+  /**
+   * Get the TypeDecl from a SimpleSet<TypeDecl> based on the version
+   */
+  inh TypeDecl Expr.lookupTypeVersion(String packageName, String typeName, String version);
+  inh TypeDecl Stmt.lookupTypeVersion(String packageName, String typeName, String version);
+  inh TypeDecl BodyDecl.lookupTypeVersion(String packageName, String typeName, String version);
+  inh TypeDecl TypeDecl.lookupTypeVersion(String packageName, String typeName, String version);
+  inh TypeDecl CompilationUnit.lookupTypeVersion(String packageName, String typeName, String version);
+  inh TypeDecl Variable.lookupTypeVersion(String packageName, String typeName, String version);
+
+  eq Program.getChild().lookupTypeVersion(String packageName, String typeName, String version) {
+    SimpleSet<TypeDecl> types = lookupTypeSet(packageName, typeName);
+    Iterator<TypeDecl> iter = types.iterator();
+    while (iter.hasNext()) {
+      TypeDecl next = iter.next();
+      if (next.initialVersion().equals(version)) {
+        return next;
+      }
+    }
+    return unknownType();
+  }
+
+  inh Access ReturnStmt.returnTypeAccess();
+  eq TypeDecl.getBodyDecl().returnTypeAccess() = null;
+  eq MethodDecl.getBlock().returnTypeAccess() = getTypeAccess();
+  eq Program.getChild().returnTypeAccess() = null;
 
 }

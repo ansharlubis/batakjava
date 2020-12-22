@@ -58,7 +58,7 @@ aspect BatakjavaFrontendMain {
           work.add(unit);
         }
 
-        LinkedList<Constraint> constraints = program.constraints();
+        Set<Map<String,Integer>> solutions = program.solve();
 
         for (CompilationUnit unit: work) {
           if (unit != null && unit.fromSource()) {
@@ -128,12 +128,10 @@ aspect BatakjavaFrontendMain {
 
         int compileResult = EXIT_SUCCESS;
 
-        Map<String,TypeDecl> variableToType = program.variableToType();
-
         /**
          * Inference
          */
-        Set<Map<String,Integer>> solutions = exampleSolution();
+        Set<Map<String,Integer>> solutions = program.solve();
 
         Iterator<CompilationUnit> iter = program.compilationUnitIterator();
         LinkedList<CompilationUnit> generated = new LinkedList<CompilationUnit>();
