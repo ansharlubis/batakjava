@@ -4,7 +4,6 @@ aspect JavaGeneration {
     Set<Map<String,Integer>> result = new HashSet();
     Set<Integer> added = new HashSet();
     for (Map<String,Integer> solution: filtered) {
-      //Integer current = solution.get(getTypeAccess().versionVariable().get());
       Integer current = solution.get(getTypeAccess().versionVariable());
       if (!added.contains(current)) {
         result.add(solution);
@@ -39,8 +38,7 @@ aspect JavaGeneration {
         parameterList.add(new ParameterDeclaration(
           param.getModifiers(),
           param.getTypeAccess().attachVersion(solution.get(param.versionVariable())),
-          param.getID()
-        ));
+          param.getID()));
       } else {
         parameterList.add(param.treeCopy());
       }
@@ -85,6 +83,9 @@ aspect JavaGeneration {
     return parameterList;
   }
 
+  /**
+   * This could be removed, but let's keep it for the moment
+   */
   public Set<Map<String,Integer>> ASTNode.solutionSet(Set<Map<String,Integer>> filtered) {
     Set<Map<String,Integer>> solutions = new HashSet(filtered.size());
     for (Map<String,Integer> candidate: filtered) {

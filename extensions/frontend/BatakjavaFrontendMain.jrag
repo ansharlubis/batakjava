@@ -51,14 +51,24 @@ aspect BatakjavaFrontendMain {
 
         int compileResult = EXIT_SUCCESS;
 
+        /*
         // Process source compilation units.
         Iterator<CompilationUnit> iter = program.compilationUnitIterator();
         while (iter.hasNext()) {
           CompilationUnit unit = iter.next();
           work.add(unit);
         }
+        */
 
         Set<Map<String,Integer>> solutions = program.solve();
+        System.err.println(solutions);
+
+        Iterator<CompilationUnit> iter = program.compilationUnitIterator();
+        LinkedList<CompilationUnit> generated = new LinkedList<CompilationUnit>();
+        while (iter.hasNext()) {
+          CompilationUnit unit = iter.next();
+          System.err.println(unit.generateJava(solutions).prettyPrint());
+        }
 
         for (CompilationUnit unit: work) {
           if (unit != null && unit.fromSource()) {
@@ -133,6 +143,7 @@ aspect BatakjavaFrontendMain {
          */
         Set<Map<String,Integer>> solutions = program.solve();
 
+        /*
         Iterator<CompilationUnit> iter = program.compilationUnitIterator();
         LinkedList<CompilationUnit> generated = new LinkedList<CompilationUnit>();
         while (iter.hasNext()) {
@@ -157,7 +168,7 @@ aspect BatakjavaFrontendMain {
         }
 
         program.reinitializeSourceTypeMap();
-
+        */
         // Process source compilation units.
         Iterator<CompilationUnit> generatedIter = program.compilationUnitIterator();
         while (generatedIter.hasNext()) {
