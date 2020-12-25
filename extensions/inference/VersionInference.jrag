@@ -5,7 +5,9 @@ import com.google.common.primitives.Ints;
 
 aspect VersionInference {
 
-  public Set<Map<String,Integer>> Program.solve() {
+  public final Set<Map<String,Integer>> Program.solutions = new HashSet();
+
+  public int Program.solve() {
     LinkedList<InferenceConstraint> constraints = getConstraints();
 
     Model model = new Model("Version inference");
@@ -29,8 +31,6 @@ aspect VersionInference {
 
     java.util.List<Solution> solverSolutions = model.getSolver().findAllSolutions();
 
-    Set<Map<String,Integer>> solutions = new HashSet();
-
     for (Solution solverSolution: solverSolutions) {
       Map<String,Integer> solution = new HashMap();
       for (int i = 0; i < variableCount; i++) {
@@ -39,7 +39,11 @@ aspect VersionInference {
       solutions.add(solution);
     }
 
-    return solutions;
+    //System.err.println(variableToDomainMap);
+    //System.err.println(typeNameToIntMap);
+    //System.err.println(solutions);
+
+    return 0;
   }
 
 }

@@ -164,6 +164,19 @@ aspect InferenceConstraint {
       }
     }
 
+    public void addType(Expr expr, TypeDecl type) {
+      String name = !type.packageName().isEmpty() ? type.packageName() + "." + type.initialName() : type.name();
+      Program program = type.program();
+
+      if (program.typeNameToIntMap.containsKey(name)) {
+        constraints.add(new TypeConstraint(expr.typeVariable(), program.typeNameToIntMap.get(name)));
+      } else {
+        Integer typeInt = program.freshTypeCount();
+        program.typeNameToIntMap.put(name, typeInt);
+        constraints.add(new TypeConstraint(expr.typeVariable(), typeInt));
+      }
+    }
+
     public int size() {
       return this.constraints.size();
     }

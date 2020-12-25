@@ -1,10 +1,10 @@
 aspect BatakjavaMemberMethods {
 
-  syn lazy Map<String, Collection<MethodDecl>> TypeDecl.versionedMethodsNameMap() = methodsNameMap();
+  syn lazy Map<String,Collection<MethodDecl>> TypeDecl.versionedMethodsNameMap() = methodsNameMap();
 
   eq ClassDecl.versionedMethodsNameMap() {
     if (isGeneratedClass()) {
-      Map<String, Collection<MethodDecl>> map = new HashMap();
+      Map<String,Collection<MethodDecl>> map = new HashMap();
       for (MethodDecl m: methods()) {
         Collection<MethodDecl> methods = map.get(m.initialName());
         if (methods == null) {

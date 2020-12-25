@@ -51,23 +51,19 @@ aspect BatakjavaFrontendMain {
 
         int compileResult = EXIT_SUCCESS;
 
-        /*
-        // Process source compilation units.
-        Iterator<CompilationUnit> iter = program.compilationUnitIterator();
-        while (iter.hasNext()) {
-          CompilationUnit unit = iter.next();
-          work.add(unit);
-        }
-        */
+        compileResult = program.solve();
 
-        Set<Map<String,Integer>> solutions = program.solve();
-        System.err.println(solutions);
+        System.err.println(program.solutions);
+
+        if (compileResult == EXIT_UNHANDLED_ERROR) {
+          return compileResult;
+        }
 
         Iterator<CompilationUnit> iter = program.compilationUnitIterator();
         LinkedList<CompilationUnit> generated = new LinkedList<CompilationUnit>();
         while (iter.hasNext()) {
           CompilationUnit unit = iter.next();
-          System.err.println(unit.generateJava(solutions).prettyPrint());
+          //System.err.println(unit.generateJava(program.solutions).prettyPrint());
         }
 
         for (CompilationUnit unit: work) {
@@ -141,7 +137,7 @@ aspect BatakjavaFrontendMain {
         /**
          * Inference
          */
-        Set<Map<String,Integer>> solutions = program.solve();
+        compileResult = program.solve();
 
         /*
         Iterator<CompilationUnit> iter = program.compilationUnitIterator();

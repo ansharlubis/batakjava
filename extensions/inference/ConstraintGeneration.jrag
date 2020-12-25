@@ -32,7 +32,41 @@ aspect InferenceVariable {
   eq ArrayAccess.versionVariable() = getExpr().versionVariable();
   eq ArrayAccess.typeVariable() = getExpr().typeVariable();
 
-  // TODO: SuperAccess and ThisAccess?
+  // TODO: Add checks for super class existence
+  // TODO: Careful about the null value
+  eq SuperAccess.versionVariable() {
+    if (hostType() instanceof ClassDecl) {
+      ClassDecl host = (ClassDecl) hostType();
+      if (host.hasSuperClass()) { return host.getSuperClass().versionVariable(); }
+    }
+    return null;
+  }
+
+  eq SuperAccess.typeVariable() {
+    if (hostType() instanceof ClassDecl) {
+      ClassDecl host = (ClassDecl) hostType();
+      if (host.hasSuperClass()) { return host.getSuperClass().typeVariable(); }
+    }
+    return null;
+  }
+
+  eq SuperConstructorAccess.versionVariable() {
+    if (hostType() instanceof ClassDecl) {
+      ClassDecl host = (ClassDecl) hostType();
+      if (host.hasSuperClass()) { return host.getSuperClass().versionVariable(); }
+    }
+    return null;
+  }
+
+  eq SuperConstructorAccess.typeVariable() {
+    if (hostType() instanceof ClassDecl) {
+      ClassDecl host = (ClassDecl) hostType();
+      if (host.hasSuperClass()) { return host.getSuperClass().typeVariable(); }
+    }
+    return null;
+  }
+
+  // TODO: ThisAccess
 
   syn lazy Integer Variable.versionNum() = program().freshVariable();
 
@@ -195,6 +229,15 @@ aspect ConstraintGeneration {
   eq ParExpr.constraints() = getExpr().constraints();
 
   /**
+   * Literals
+   */
+  eq Literal.constraints() {
+    AndConstraint and = new AndConstraint();
+    and.addType(this, type());
+    return and;
+  }
+
+  /**
    * Access and its subclasses.
    */
   eq Access.constraints() = new OrConstraint();
@@ -202,6 +245,15 @@ aspect ConstraintGeneration {
   eq TypeAccess.constraints() {
     OrConstraint or = new OrConstraint();
     generateVarConstraints(type(), or);
+    return or;
+  }
+
+  // Needs an example with inherited fields
+  eq VarAccess.constraints() {
+    OrConstraint or = new OrConstraint();
+    if (!hasParentDot()) {
+
+    }
     return or;
   }
 
@@ -240,6 +292,26 @@ aspect ConstraintGeneration {
     = !hasParentDot()
       ? getRight().incrementConstraints(getLeft().initializeConstraints())
       : new OrConstraint();
+
+  eq SuperConstructorAccess.constraints() {
+    OrConstraint or = new OrConstraint();
+    if (hostType() instanceof ClassDecl) {
+      ClassDecl host = (ClassDecl) hostType();
+      if (host.hasSuperClass()) {
+        TypeDecl type = host.getSuperClass().type();
+        if (type.isOverview()) {
+          SimpleSet<TypeDecl> types = lookupTypeSet(type.packageName(), type.name());
+          Iterator<TypeDecl> iter = types.iterator();
+          while (iter.hasNext()) {
+            generateConstructorConstraints(iter.next(), or);
+          }
+        } else {
+          generateConstructorConstraints(type, or);
+        }
+      }
+    }
+    return or;
+  }
 
   syn InferenceConstraint Declarator.constraints() {
     AndConstraint and = new AndConstraint();
@@ -296,26 +368,68 @@ aspect ConstraintGeneration {
     }
   }
 
+  private void SuperConstructorAccess.generateConstructorConstraints(TypeDecl type, OrConstraint or) {
+    for (ConstructorDecl constructor: type.constructors()) {
+      if (getNumArg() == constructor.getNumParameter()) {
+        AndConstraint and = new AndConstraint();
+
+        and.add(this, type);
+
+        for (int i = 0; i < getNumArg(); i++) {
+          and.add(getArg(i), constructor.getParameter(i).type());
+        }
+
+        or.add(and);
+      }
+    }
+  }
+
   private void MethodAccess.generateMethodConstraints(TypeDecl type, OrConstraint or) {
     Map<String,Collection<MethodDecl>> methodMap = type.versionedMethodsNameMap();
     if (methodMap.containsKey(name())) {
       for (MethodDecl method: methodMap.get(name())) {
         if (getNumArg() == method.getNumParameter()) {
           AndConstraint and = new AndConstraint();
-
-          // Parameter constraints
-          for (int i = 0; i < getNumArg(); i++) {
+          for (int i = 0; i< getNumArg(); i++) {
             and.add(getArg(i), method.getParameter(i).type());
           }
-
-          // Return object constraint
           and.add(this, method.type());
-
           or.add(and);
         }
       }
     }
+    if (type instanceof ClassDecl) {
+      ClassDecl host = (ClassDecl) type;
+      if (host.hasSuperClass()) {
+        Access superAccess = host.getSuperClass();
+        TypeDecl superClass = superAccess.type();
+        if (superClass.isOverview()) {
+          SimpleSet<TypeDecl> superTypes = lookupTypeSet(superClass.packageName(), superClass.name());
+          Iterator<TypeDecl> iter = superTypes.iterator();
+          while (iter.hasNext()) {
+            // This part may cause problems, because of overridden methods
+            TypeDecl superType = iter.next();
+            Map<String,Collection<MethodDecl>> superMethodMap = superType.versionedMethodsNameMap();
+            if (superMethodMap.containsKey(name())) {
+              for (MethodDecl method: superMethodMap.get(name())) {
+                if (getNumArg() == method.getNumParameter()) {
+                  AndConstraint and = new AndConstraint();
+                  for (int i = 0; i < getNumArg(); i++) {
+                    and.add(getArg(i), method.getParameter(i).type());
+                  }
+                  and.add(this, method.type());
+                  and.add(superAccess, superType);
+                  or.add(and);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
+
+
 
   private void MethodAccess.generateMethodConstraints(TypeDecl type, OrConstraint or, InferenceConstraint with) {
     Map<String,Collection<MethodDecl>> methodMap = type.versionedMethodsNameMap();
@@ -323,16 +437,42 @@ aspect ConstraintGeneration {
       for (MethodDecl method: methodMap.get(name())) {
         if (getNumArg() == method.getNumParameter()) {
           AndConstraint and = new AndConstraint();
-
           and.add(with);
-
-          for (int i = 0; i < getNumArg(); i++) {
+          for (int i = 0; i< getNumArg(); i++) {
             and.add(getArg(i), method.getParameter(i).type());
           }
-
           and.add(this, method.type());
-
           or.add(and);
+        }
+      }
+    }
+    if (type instanceof ClassDecl) {
+      ClassDecl host = (ClassDecl) type;
+      if (host.hasSuperClass()) {
+        Access superAccess = host.getSuperClass();
+        TypeDecl superClass = superAccess.type();
+        if (superClass.isOverview()) {
+          SimpleSet<TypeDecl> superTypes = lookupTypeSet(superClass.packageName(), superClass.name());
+          Iterator<TypeDecl> iter = superTypes.iterator();
+          while (iter.hasNext()) {
+            // This part may cause problems, because of overridden methods
+            TypeDecl superType = iter.next();
+            Map<String,Collection<MethodDecl>> superMethodMap = superType.versionedMethodsNameMap();
+            if (superMethodMap.containsKey(name())) {
+              for (MethodDecl method: superMethodMap.get(name())) {
+                if (getNumArg() == method.getNumParameter()) {
+                  AndConstraint and = new AndConstraint();
+                  and.add(with);
+                  for (int i = 0; i < getNumArg(); i++) {
+                    and.add(getArg(i), method.getParameter(i).type());
+                  }
+                  and.add(this, method.type());
+                  and.add(superAccess, superType);
+                  or.add(and);
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -389,6 +529,26 @@ aspect ConstraintGeneration {
 
   protected InferenceConstraint ThisAccess.initializeConstraints() {
     return new OrConstraint();
+  }
+
+  // Assumption: SuperAccess is only used for super.METHODNAME(ARGS) pattern
+  protected InferenceConstraint SuperAccess.initializeConstraints() {
+    TypeDecl type = type();
+    OrConstraint or = new OrConstraint();
+    if (type.isOverview()) {
+      SimpleSet<TypeDecl> types = lookupTypeSet(type.packageName(), type.name());
+      Iterator<TypeDecl> iter = types.iterator();
+      while (iter.hasNext()) {
+        AndConstraint and = new AndConstraint();
+        and.add(this, iter.next());
+        or.add(and);
+      }
+    } else {
+      AndConstraint and = new AndConstraint();
+      and.add(this, type);
+      or.add(and);
+    }
+    return or;
   }
 
   protected InferenceConstraint Access.incrementConstraints(InferenceConstraint args) {
@@ -487,10 +647,8 @@ aspect ConstraintGeneration {
 
     if (args instanceof AndConstraint) {
       TypeDecl type = prevExpr().type();
-
       OrConstraint or = new OrConstraint();
       AndConstraint andArgs = (AndConstraint) args;
-
       // In case of AndConstraint, it shouldn't be a versioned class
       if (!type.isUnknown() && !type.isOverview()) {
         for (InferenceConstraint constraint: andArgs) {
@@ -500,10 +658,8 @@ aspect ConstraintGeneration {
           or.add(and);
         }
       }
-
       return or;
     }
-
     return args;
   }
 
