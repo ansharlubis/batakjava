@@ -39,11 +39,11 @@ aspect VersionInference {
       solutions.add(solution);
     }
 
-    //System.err.println(variableToDomainMap);
-    //System.err.println(typeNameToIntMap);
-    //System.err.println(solutions);
-
-    return 0;
+    if (solutions.size() > 0) {
+      return 0;
+    } else {
+      return 4;
+    }
   }
 
 }

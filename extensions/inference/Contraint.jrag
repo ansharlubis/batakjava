@@ -155,6 +155,27 @@ aspect InferenceConstraint {
       }
       constraints.add(new VersionConstraint(expr.versionVariable(), Integer.valueOf(type.initialVersion())));
 
+      if (type.isShort() || type.isInt() || type.isLong() || type.isFloat() || type.isDouble()) {
+        OrConstraint or = new OrConstraint();
+        or.addType(expr, program.typeByte());
+        or.addType(expr, program.typeShort());
+        if (type.isInt() || type.isLong() || type.isFloat() || type.isDouble()) {
+          or.addType(expr, program.typeChar());
+          or.addType(expr, program.typeInt());
+          if (type.isLong() || type.isFloat() || type.isDouble()) {
+            or.addType(expr, program.typeLong());
+            if (type.isFloat() || type.isDouble()) {
+              or.addType(expr, program.typeFloat());
+              if (type.isDouble()) {
+                or.addType(expr, program.typeDouble());
+              }
+            }
+          }
+        }
+        constraints.add(or);
+        return;
+      }
+
       if (program.typeNameToIntMap.containsKey(name)) {
         constraints.add(new TypeConstraint(expr.typeVariable(), program.typeNameToIntMap.get(name)));
       } else {
@@ -242,6 +263,19 @@ aspect InferenceConstraint {
         }
       } else {
         constraints.add(arg);
+      }
+    }
+
+    public void addType(Expr expr, TypeDecl type) {
+      String name = !type.packageName().isEmpty() ? type.packageName() + "." + type.initialName() : type.name();
+      Program program = type.program();
+
+      if (program.typeNameToIntMap.containsKey(name)) {
+        constraints.add(new TypeConstraint(expr.typeVariable(), program.typeNameToIntMap.get(name)));
+      } else {
+        Integer typeInt = program.freshTypeCount();
+        program.typeNameToIntMap.put(name, typeInt);
+        constraints.add(new TypeConstraint(expr.typeVariable(), typeInt));
       }
     }
 

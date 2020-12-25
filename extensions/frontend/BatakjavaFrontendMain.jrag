@@ -53,17 +53,9 @@ aspect BatakjavaFrontendMain {
 
         compileResult = program.solve();
 
-        System.err.println(program.solutions);
-
         if (compileResult == EXIT_UNHANDLED_ERROR) {
+          System.err.println("No solution found for the program.");
           return compileResult;
-        }
-
-        Iterator<CompilationUnit> iter = program.compilationUnitIterator();
-        LinkedList<CompilationUnit> generated = new LinkedList<CompilationUnit>();
-        while (iter.hasNext()) {
-          CompilationUnit unit = iter.next();
-          //System.err.println(unit.generateJava(program.solutions).prettyPrint());
         }
 
         for (CompilationUnit unit: work) {
@@ -139,13 +131,17 @@ aspect BatakjavaFrontendMain {
          */
         compileResult = program.solve();
 
-        /*
+        if (compileResult == EXIT_UNHANDLED_ERROR) {
+          System.err.println("No solution found for the program.");
+          return compileResult;
+        }
+
         Iterator<CompilationUnit> iter = program.compilationUnitIterator();
         LinkedList<CompilationUnit> generated = new LinkedList<CompilationUnit>();
         while (iter.hasNext()) {
           CompilationUnit unit = iter.next();
           if (unit instanceof BatakjavaCompilationUnit) {
-            CompilationUnit generatedJava = unit.generateJava(solutions);
+            CompilationUnit generatedJava = unit.generateJava(program.solutions);
             CompilationUnit generatedOverview = unit.generateOverview();
             generatedJava.setFromSource(true);
             generatedJava.setClassSource(unit.getClassSource());
@@ -164,7 +160,7 @@ aspect BatakjavaFrontendMain {
         }
 
         program.reinitializeSourceTypeMap();
-        */
+
         // Process source compilation units.
         Iterator<CompilationUnit> generatedIter = program.compilationUnitIterator();
         while (generatedIter.hasNext()) {
@@ -203,35 +199,5 @@ aspect BatakjavaFrontendMain {
       return EXIT_SUCCESS;
     }
 
-    private Set<Map<String,Integer>> exampleSolution() {
-      Set<Map<String,Integer>> example = new HashSet(1);
-      Map<String,Integer> map = new HashMap(24);
-      map.put("v0", 0);
-      map.put("v1", 0);
-      map.put("v2", 2);
-      map.put("v3", 0);
-      map.put("v4", 2);
-      map.put("v5", 0);
-      map.put("v6", 0);
-      map.put("v7", 0);
-      map.put("v8", 0);
-      map.put("v9", 0);
-      map.put("v10", 2);
-      map.put("v11", 2);
-      map.put("v12", 0);
-      map.put("v13", 0);
-      map.put("v14", 0);
-      map.put("v15", 2);
-      map.put("v16", 0);
-      map.put("v17", 0);
-      map.put("v18", 0);
-      map.put("v19", 0);
-      map.put("v20", 0);
-      map.put("v21", 0);
-      map.put("v22", 0);
-      map.put("v23", 0);
-      example.add(map);
-      return example;
-    }
   }
 }

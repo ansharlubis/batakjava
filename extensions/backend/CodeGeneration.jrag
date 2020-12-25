@@ -119,6 +119,11 @@ aspect JavaGeneration {
         result.add(new ConstructorDecl(getModifiers(), getID() + "_ver_" + hostVersion(),
           subParameterList, getExceptionList(), parsed, getBlock().generateJavaBlock(solution)));
       }
+    } else {
+      Opt<Stmt> parsed
+        = hasParsedConstructorInvocation() ? new Opt(getParsedConstructorInvocation().generateJavaStmt(selected)) : new Opt();
+      result.add(new ConstructorDecl(getModifiers(), getID() + "_ver_" + hostVersion(),
+        getParameterList(), getExceptionList(), parsed, getBlock().generateJavaBlock(selected)));
     }
     return result;
   }

@@ -182,7 +182,6 @@ aspect ConstraintGeneration {
 
   syn InferenceConstraint Expr.constraints() = new AndConstraint();
 
-  // TODO: Instead of equality, they should handle subtyping!
   eq AssignExpr.constraints() {
     AndConstraint and = new AndConstraint();
     and.add(new EqualConstraint(getDest().versionVariable(), getSource().versionVariable(), false));
@@ -561,6 +560,8 @@ aspect ConstraintGeneration {
       // is only invoked in a Dot
       Expr prev = prevExpr();
 
+      if (prev instanceof ThisAccess) { return initializeConstraints(); }
+
       // OrConstraint for this Access
       OrConstraint or = new OrConstraint();
       OrConstraint orArgs = (OrConstraint) args;
@@ -613,6 +614,8 @@ aspect ConstraintGeneration {
     if (args instanceof OrConstraint) {
       Expr prev = prevExpr();
 
+      if (prev instanceof ThisAccess) { return initializeConstraints(); }
+
       OrConstraint or = new OrConstraint();
       OrConstraint orArgs = (OrConstraint) args;
 
@@ -647,23 +650,36 @@ aspect ConstraintGeneration {
 
     if (args instanceof AndConstraint) {
       TypeDecl type = prevExpr().type();
-      OrConstraint or = new OrConstraint();
+      AndConstraint and = new AndConstraint();
       AndConstraint andArgs = (AndConstraint) args;
       // In case of AndConstraint, it shouldn't be a versioned class
       if (!type.isUnknown() && !type.isOverview()) {
-        for (InferenceConstraint constraint: andArgs) {
-          AndConstraint and = new AndConstraint();
-          and.add(constraint);
-          and.add(this, type);
-          or.add(and);
-        }
+        and.add(andArgs);
+        and.add(this, type);
+        return and;
       }
-      return or;
     }
     return args;
   }
 
   protected InferenceConstraint Dot.incrementConstraints(InferenceConstraint args) {
-    return getRight().incrementConstraints(((Access) getLeft()).incrementConstraints(args));
+    if (args instanceof OrConstraint) {
+      Expr prev = prevExpr();
+      if (prev instanceof ThisAccess) { return constraints(); }
+      return getRight().incrementConstraints(((Access) getLeft()).incrementConstraints(args));
+    }
+
+    if (args instanceof AndConstraint) {
+      TypeDecl type = prevExpr().type();
+      AndConstraint and = new AndConstraint();
+      AndConstraint andArgs = (AndConstraint) args;
+      if (!type.isUnknown() && !type.isOverview()) {
+        and.add(andArgs);
+        and.add(constraints());
+        return and;
+      }
+    }
+
+    return args;
   }
 }
