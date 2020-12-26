@@ -250,8 +250,29 @@ aspect ConstraintGeneration {
   // Needs an example with inherited fields
   eq VarAccess.constraints() {
     OrConstraint or = new OrConstraint();
-    if (!hasParentDot()) {
 
+    // This can be turned into a method
+    if (!hasParentDot() && decls().isEmpty()) {
+      if (hostType() instanceof ClassDecl) {
+        ClassDecl host = (ClassDecl) hostType();
+        if (host.hasSuperClass()) {
+          Access superAccess = host.getSuperClass();
+          TypeDecl superClass = superAccess.type();
+          if (superClass.isOverview()) {
+            SimpleSet<TypeDecl> types = lookupTypeSet(superClass.packageName(), superClass.name());
+            Iterator<TypeDecl> iter = types.iterator();
+            while (iter.hasNext()) {
+              TypeDecl superType = iter.next();
+              Map<String,SimpleSet<Variable>> superFieldMap = superType.versionedMemberFieldsMap();
+              if (superFieldMap.containsKey(name())) {
+                for (Variable superField: superFieldMap.get(name())) {
+                  or.add(host.getSuperClass(), superType);
+                }
+              }
+            }
+          }
+        }
+      }
     }
     return or;
   }
@@ -428,8 +449,6 @@ aspect ConstraintGeneration {
     }
   }
 
-
-
   private void MethodAccess.generateMethodConstraints(TypeDecl type, OrConstraint or, InferenceConstraint with) {
     Map<String,Collection<MethodDecl>> methodMap = type.versionedMethodsNameMap();
     if (methodMap.containsKey(name())) {
@@ -501,20 +520,42 @@ aspect ConstraintGeneration {
   }
 
   protected InferenceConstraint VarAccess.initializeConstraints() {
-    TypeDecl type = type();
     OrConstraint or = new OrConstraint();
-    if (type.isOverview()) {
-      SimpleSet<TypeDecl> types = lookupTypeSet(type.packageName(), type.name());
-      Iterator<TypeDecl> iter = types.iterator();
-      while (iter.hasNext()) {
-        AndConstraint and = new AndConstraint();
-        and.add(this, iter.next());
-        or.add(and);
+    if (!decls().isEmpty()) {
+      TypeDecl type = type();
+      if (type.isOverview()) {
+        SimpleSet<TypeDecl> types = lookupTypeSet(type.packageName(), type.name());
+        Iterator<TypeDecl> iter = types.iterator();
+        while (iter.hasNext()) {
+          or.add(this, iter.next());
+        }
+      } else {
+        or.add(this, type);
       }
     } else {
-      AndConstraint and = new AndConstraint();
-      and.add(this, type);
-      or.add(and);
+      if (hostType() instanceof ClassDecl) {
+        ClassDecl host = (ClassDecl) hostType();
+        if (host.hasSuperClass()) {
+          Access superAccess = host.getSuperClass();
+          TypeDecl superClass = superAccess.type();
+          if (superClass.isOverview()) {
+            SimpleSet<TypeDecl> types = lookupTypeSet(superClass.packageName(), superClass.name());
+            Iterator<TypeDecl> iter = types.iterator();
+            while (iter.hasNext()) {
+              TypeDecl superType = iter.next();
+              Map<String,SimpleSet<Variable>> superFieldMap = superType.versionedMemberFieldsMap();
+              if (superFieldMap.containsKey(name())) {
+                for (Variable superField: superFieldMap.get(name())) {
+                  AndConstraint and = new AndConstraint();
+                  and.add(host.getSuperClass(), superType);
+                  and.add(this, superField.type());
+                  or.add(and);
+                }
+              }
+            }
+          }
+        }
+      }
     }
     return or;
   }
@@ -538,14 +579,10 @@ aspect ConstraintGeneration {
       SimpleSet<TypeDecl> types = lookupTypeSet(type.packageName(), type.name());
       Iterator<TypeDecl> iter = types.iterator();
       while (iter.hasNext()) {
-        AndConstraint and = new AndConstraint();
-        and.add(this, iter.next());
-        or.add(and);
+        or.add(this, iter.next());
       }
     } else {
-      AndConstraint and = new AndConstraint();
-      and.add(this, type);
-      or.add(and);
+      or.add(this, type);
     }
     return or;
   }
@@ -628,18 +665,28 @@ aspect ConstraintGeneration {
               ? lookupTypeVersion(type.packageName(), type.name(), constraint.getVersion(prev.versionVariable()).get().toString())
               : unknownType();
             if (!specific.isUnknown()) {
-              AndConstraint and = new AndConstraint();
-              and.add(constraint);
-              and.add(this, specific);
-              or.add(and);
+              Map<String,SimpleSet<Variable>> fieldMap = specific.versionedMemberFieldsMap();
+              if (fieldMap.containsKey(name())) {
+                for (Variable field: fieldMap.get(name())) {
+                  AndConstraint and = new AndConstraint();
+                  and.add(constraint);
+                  and.add(this, field.type());
+                  or.add(and);
+                }
+              }
             } else {
               or.add(constraint);
             }
           } else {
-            AndConstraint and = new AndConstraint();
-            and.add(constraint);
-            and.add(this, type);
-            or.add(and);
+            Map<String,SimpleSet<Variable>> fieldMap = type.versionedMemberFieldsMap();
+            if (fieldMap.containsKey(name())) {
+              for (Variable field: fieldMap.get(name())) {
+                AndConstraint and = new AndConstraint();
+                and.add(constraint);
+                and.add(this, field.type());
+                or.add(and);
+              }
+            }
           }
         } else {
           or.add(constraint);
@@ -652,10 +699,17 @@ aspect ConstraintGeneration {
       TypeDecl type = prevExpr().type();
       AndConstraint and = new AndConstraint();
       AndConstraint andArgs = (AndConstraint) args;
+      OrConstraint or = new OrConstraint();
       // In case of AndConstraint, it shouldn't be a versioned class
       if (!type.isUnknown() && !type.isOverview()) {
+        Map<String,SimpleSet<Variable>> fieldMap = type.versionedMemberFieldsMap();
+        if (fieldMap.containsKey(name())) {
+          for (Variable field: fieldMap.get(name())) {
+            or.add(this, field.type());
+          }
+        }
         and.add(andArgs);
-        and.add(this, type);
+        and.add(or);
         return and;
       }
     }

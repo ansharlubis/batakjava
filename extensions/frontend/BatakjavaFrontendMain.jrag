@@ -53,10 +53,12 @@ aspect BatakjavaFrontendMain {
 
         compileResult = program.solve();
 
+        /*
         if (compileResult == EXIT_UNHANDLED_ERROR) {
           System.err.println("No solution found for the program.");
           return compileResult;
         }
+        */
 
         for (CompilationUnit unit: work) {
           if (unit != null && unit.fromSource()) {
@@ -143,6 +145,7 @@ aspect BatakjavaFrontendMain {
           if (unit instanceof BatakjavaCompilationUnit) {
             CompilationUnit generatedJava = unit.generateJava(program.solutions);
             CompilationUnit generatedOverview = unit.generateOverview();
+            System.err.println(generatedJava.prettyPrint());
             generatedJava.setFromSource(true);
             generatedJava.setClassSource(unit.getClassSource());
             generatedOverview.setFromSource(true);

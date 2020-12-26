@@ -316,7 +316,7 @@ aspect JavaGeneration {
 
   eq ConstructorAccess.generateJavaAccess(Map<String,Integer> solution) {
     String accessName = getID();
-    if (!accessName.equals("this") || !accessName.equals("super")) {
+    if (!accessName.equals("this")) {
       accessName = solution.get(versionVariable()) != null && solution.get(versionVariable()) != 0 ?
         accessName + "_ver_" + solution.get(versionVariable()) : accessName;
     }
@@ -325,6 +325,14 @@ aspect JavaGeneration {
       args.add(arg.generateJavaExpr(solution));
     }
     return new ConstructorAccess(accessName, args);
+  }
+
+  eq SuperConstructorAccess.generateJavaAccess(Map<String,Integer> solution) {
+    List<Expr> args = new List();
+    for (Expr arg: getArgList()) {
+      args.add(arg.generateJavaExpr(solution));
+    }
+    return new SuperConstructorAccess(name(), args);
   }
 
   /**

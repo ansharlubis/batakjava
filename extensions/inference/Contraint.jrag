@@ -133,13 +133,18 @@ aspect InferenceConstraint {
 
     public void add(InferenceConstraint arg) {
       if (arg instanceof AndConstraint) {
-        AndConstraint andArg = (AndConstraint) arg;
-        for (InferenceConstraint constraint: andArg) {
+        for (InferenceConstraint constraint: ((AndConstraint) arg)) {
           constraints.add(constraint);
         }
-      } else {
-        constraints.add(arg);
+        return;
+      } else if (arg instanceof OrConstraint) {
+        OrConstraint orArg = (OrConstraint) arg;
+        if (orArg.size() == 1) {
+          constraints.add(orArg.iterator().next());
+          return;
+        }
       }
+      constraints.add(arg);
     }
 
     public void add(Expr expr, TypeDecl type) {
@@ -155,22 +160,12 @@ aspect InferenceConstraint {
       }
       constraints.add(new VersionConstraint(expr.versionVariable(), Integer.valueOf(type.initialVersion())));
 
-      if (type.isShort() || type.isInt() || type.isLong() || type.isFloat() || type.isDouble()) {
+      if (type.isFloat() || type.isDouble()) {
         OrConstraint or = new OrConstraint();
-        or.addType(expr, program.typeByte());
-        or.addType(expr, program.typeShort());
-        if (type.isInt() || type.isLong() || type.isFloat() || type.isDouble()) {
-          or.addType(expr, program.typeChar());
-          or.addType(expr, program.typeInt());
-          if (type.isLong() || type.isFloat() || type.isDouble()) {
-            or.addType(expr, program.typeLong());
-            if (type.isFloat() || type.isDouble()) {
-              or.addType(expr, program.typeFloat());
-              if (type.isDouble()) {
-                or.addType(expr, program.typeDouble());
-              }
-            }
-          }
+        or.addType(expr, program.typeInt());
+        or.addType(expr, program.typeFloat());
+        if (type.isDouble()) {
+          or.addType(expr, program.typeDouble());
         }
         constraints.add(or);
         return;
@@ -261,8 +256,47 @@ aspect InferenceConstraint {
         for (InferenceConstraint constraint: orArg) {
           constraints.add(constraint);
         }
+        return;
+      } else if (arg instanceof AndConstraint) {
+        AndConstraint andArg = (AndConstraint) arg;
+        if (andArg.size() == 1) {
+          constraints.add(andArg.iterator().next());
+          return;
+        }
+      }
+      constraints.add(arg);
+    }
+
+    public void add(Expr expr, TypeDecl type) {
+      String name = !type.packageName().isEmpty() ? type.packageName() + "." + type.initialName() : type.name();
+      Program program = type.program();
+
+      if (program.variableToDomainMap.containsKey(expr.versionVariable())) {
+        program.variableToDomainMap.get(expr.versionVariable()).add(Integer.valueOf(type.initialVersion()));
       } else {
-        constraints.add(arg);
+        Set<Integer> domain = new HashSet();
+        domain.add(Integer.valueOf(type.initialVersion()));
+        program.variableToDomainMap.put(expr.versionVariable(), domain);
+      }
+      constraints.add(new VersionConstraint(expr.versionVariable(), Integer.valueOf(type.initialVersion())));
+
+      if (type.isFloat() || type.isDouble()) {
+        OrConstraint or = new OrConstraint();
+        or.addType(expr, program.typeInt());
+        or.addType(expr, program.typeFloat());
+        if (type.isDouble()) {
+          or.addType(expr, program.typeDouble());
+        }
+        constraints.add(or);
+        return;
+      }
+
+      if (program.typeNameToIntMap.containsKey(name)) {
+        constraints.add(new TypeConstraint(expr.typeVariable(), program.typeNameToIntMap.get(name)));
+      } else {
+        Integer typeInt = program.freshTypeCount();
+        program.typeNameToIntMap.put(name, typeInt);
+        constraints.add(new TypeConstraint(expr.typeVariable(), typeInt));
       }
     }
 

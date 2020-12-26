@@ -25,8 +25,7 @@ jastadd {
         include "**/surface/*.jadd"
         include "**/frontend/*.jrag"
         include "**/inference/*.jrag"
-        include "**/lookup/*.jrag"
-        //include "**/backend/*.jrag"
+        include "**/backend/*.jrag"
       }
 
       scanner {
@@ -66,6 +65,7 @@ sourceSets.main {
 repositories.mavenCentral()
 dependencies {
   compile 'org.choco-solver:choco-solver:4.10.5'
+  compile 'com.google.guava:guava:30.1-jre'
 }
 
 jar {
@@ -77,8 +77,8 @@ jar {
 // Use JavaCompiler if you need bytecode generation.
 //jar.manifest.attributes 'Main-Class': 'org.extendj.JavaPrettyPrinter'
 //jar.manifest.attributes 'Main-Class': 'org.extendj.BatakjavaPrettyPrinter'
-//jar.manifest.attributes 'Main-Class': 'org.extendj.BatakjavaCompiler'
-jar.manifest.attributes 'Main-Class': 'org.extendj.ConstraintGenerator'
+jar.manifest.attributes 'Main-Class': 'org.extendj.BatakjavaCompiler'
+//jar.manifest.attributes 'Main-Class': 'org.extendj.ConstraintGenerator'
 
 jar.destinationDir = projectDir
 
