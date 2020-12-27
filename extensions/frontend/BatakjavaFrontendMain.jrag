@@ -1,5 +1,17 @@
 aspect BatakjavaFrontendMain {
 
+  public long Program.batakjavaErrorCheckTime;
+
+  refine FrontendMain public void Program.resetStatistics() {
+    javaParseTime = 0;
+    bytecodeParseTime = 0;
+    codeGenTime = 0;
+    errorCheckTime = 0;
+    batakjavaErrorCheckTime = 0;
+    numJavaFiles = 0;
+    numClassFiles = 0;
+  }
+
   abstract public class ConstraintFrontend extends Frontend {
 
     protected ConstraintFrontend(String name, String version) { super(name, version); }
@@ -51,14 +63,39 @@ aspect BatakjavaFrontendMain {
 
         int compileResult = EXIT_SUCCESS;
 
+        // Pre-checking
+        Iterator<CompilationUnit> checkIter = program.compilationUnitIterator();
+        while (checkIter.hasNext()) {
+          CompilationUnit unit = checkIter.next();
+          int result = processBatakjavaCompilationUnit(unit);
+          switch (result) {
+            case EXIT_SUCCESS:
+              break;
+            case EXIT_UNHANDLED_ERROR:
+              return result;
+            default:
+              compileResult = result;
+          }
+        }
+
+        if (compileResult != EXIT_SUCCESS) {
+          return compileResult;
+        }
+
+        // Inference
         compileResult = program.solve();
 
-        /*
-        if (compileResult == EXIT_UNHANDLED_ERROR) {
+        if (compileResult != EXIT_SUCCESS) {
           System.err.println("No solution found for the program.");
           return compileResult;
         }
-        */
+
+        Iterator<CompilationUnit> generateIter = program.compilationUnitIterator();
+        LinkedList<CompilationUnit> generated = new LinkedList<CompilationUnit>();
+        while (generateIter.hasNext()) {
+          CompilationUnit unit = generateIter.next();
+          System.err.println(unit.generateJava(program.solutions).prettyPrint());
+        }
 
         for (CompilationUnit unit: work) {
           if (unit != null && unit.fromSource()) {
@@ -78,6 +115,28 @@ aspect BatakjavaFrontendMain {
       }
       return EXIT_SUCCESS;
 
+    }
+
+    protected int processBatakjavaCompilationUnit(CompilationUnit unit) {
+      if (unit != null && unit.fromSource()) {
+        Collection<Problem> errors = unit.parseErrors();
+        Collection<Problem> warnings = Collections.emptyList();
+        if (errors.isEmpty() || program.options().hasOption("-recover")) {
+          long start = System.nanoTime();
+          errors = unit.batakjavaErrors();
+          warnings = unit.batakjavaWarnings();
+          program.batakjavaErrorCheckTime += System.nanoTime() - start;
+        }
+        if (!errors.isEmpty()) {
+          processErrors(errors, unit);
+          return EXIT_ERROR;
+        } else {
+          if (!warnings.isEmpty() && !program.options().hasOption("-nowarn")) {
+            processWarnings(warnings, unit);
+          }
+        }
+      }
+      return EXIT_SUCCESS;
     }
 
   }
@@ -145,7 +204,6 @@ aspect BatakjavaFrontendMain {
           if (unit instanceof BatakjavaCompilationUnit) {
             CompilationUnit generatedJava = unit.generateJava(program.solutions);
             CompilationUnit generatedOverview = unit.generateOverview();
-            System.err.println(generatedJava.prettyPrint());
             generatedJava.setFromSource(true);
             generatedJava.setClassSource(unit.getClassSource());
             generatedOverview.setFromSource(true);
@@ -201,6 +259,5 @@ aspect BatakjavaFrontendMain {
       }
       return EXIT_SUCCESS;
     }
-
   }
 }

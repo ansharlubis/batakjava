@@ -1,0 +1,38 @@
+aspect BatakjavaErrorCheck {
+
+  coll LinkedList<Problem> CompilationUnit.batakjavaProblems() root CompilationUnit;
+
+  syn Collection<Problem> CompilationUnit.batakjavaErrors() {
+    Collection<Problem> errors = new LinkedList();
+    for (Problem problem: batakjavaProblems()) {
+      if (problem.severity() == Problem.Severity.ERROR) {
+        errors.add(problem);
+      }
+    }
+    return errors;
+  }
+
+  syn Collection<Problem> CompilationUnit.batakjavaWarnings() {
+    Collection<Problem> warnings = new LinkedList();
+    for (Problem problem : problems()) {
+      if (problem.severity() == Problem.Severity.WARNING) {
+        warnings.add(problem);
+      }
+    }
+    return warnings;
+  }
+
+  CompilationUnit contributes each pathProblems() to CompilationUnit.batakjavaProblems();
+
+  syn Collection<Problem> CompilationUnit.pathProblems() {
+    String[] splitPath = pathName().split("/");
+    String[] splitFile = splitPath[splitPath.length-1].split("\\.");
+    if (splitFile[splitFile.length-1].equals("batakjava")) {
+      return Collections.singletonList(error("The file does not specify package's version."));
+    }
+    return Collections.emptyList();
+  }
+
+  eq BatakjavaCompilationUnit.pathProblems() = Collections.emptyList();
+
+}

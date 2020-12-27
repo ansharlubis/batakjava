@@ -89,13 +89,36 @@ aspect JavaGeneration {
   public Set<Map<String,Integer>> ASTNode.solutionSet(Set<Map<String,Integer>> filtered) {
     Set<Map<String,Integer>> solutions = new HashSet(filtered.size());
     for (Map<String,Integer> candidate: filtered) {
+      Optional<Map<String,Integer>> compare = Optional.empty();
+      for (Map<String,Integer> solution: solutions) {
+        compare = lessMap(solution, candidate);
+        if (compare.isPresent()) {
+          break;
+        }
+      }
+      if (compare.isPresent()) {
+        if (compare.get() != candidate) {
+          solutions.remove(compare.get());
+          solutions.add(candidate);
+        }
+      } else {
+        solutions.add(candidate);
+      }
+    }
+    return solutions;
+  }
+
+  /*
+  public Set<Map<String,Integer>> ASTNode.solutionSet(Set<Map<String,Integer>> filtered) {
+    Set<Map<String,Integer>> solutions = new HashSet(filtered.size());
+    for (Map<String,Integer> candidate: filtered) {
       if (solutions.isEmpty()) {
         solutions.add(candidate);
       } else {
         for (Map<String,Integer> solution: solutions) {
           Optional<Boolean> compare = lessMap(solution, candidate);
           if (compare.isPresent()) {
-            if (!compare.get().booleanValue()) {
+            if (compare.get().booleanValue()) {
               solutions.remove(solution);
               solutions.add(candidate);
             }
@@ -107,8 +130,9 @@ aspect JavaGeneration {
     }
     return solutions;
   }
+  */
 
-  public Optional<Boolean> ASTNode.lessMap(Map<String,Integer> mapA, Map<String,Integer> mapB) {
+  public Optional<Map<String,Integer>> ASTNode.lessMap(Map<String,Integer> mapA, Map<String,Integer> mapB) {
     boolean ongoing = false;
     boolean less = false;
     for (String varA: mapA.keySet()) {
@@ -134,7 +158,7 @@ aspect JavaGeneration {
         }
       }
     }
-    return less ? Optional.of(Boolean.valueOf(true)) : Optional.of(Boolean.valueOf(false));
+    return less ? Optional.of(mapA) : Optional.of(mapB);
   }
 
 }

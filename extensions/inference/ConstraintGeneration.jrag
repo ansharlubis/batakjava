@@ -266,7 +266,9 @@ aspect ConstraintGeneration {
               Map<String,SimpleSet<Variable>> superFieldMap = superType.versionedMemberFieldsMap();
               if (superFieldMap.containsKey(name())) {
                 for (Variable superField: superFieldMap.get(name())) {
-                  or.add(host.getSuperClass(), superType);
+                  AndConstraint and = new AndConstraint();
+                  and.add(host.getSuperClass(), superType);
+                  or.add(and);
                 }
               }
             }
@@ -496,6 +498,17 @@ aspect ConstraintGeneration {
     }
   }
 
+  private void VarAccess.generateFieldConstraints(TypeDecl type, OrConstraint or, InferenceConstraint with) {
+    Map<String,SimpleSet<Variable>> fieldMap = type.versionedMemberFieldsMap();
+    if (fieldMap.containsKey(name())) {
+      for (Variable field: fieldMap.get(name())) {
+        AndConstraint and = new AndConstraint();
+        and.add(with);
+        and.add(this, field.type());
+      }
+    }
+  }
+
   /**
    * initializeConstraints() and incrementConstraints(OrConstraint)
    * are still limited to OrConstraint
@@ -527,10 +540,14 @@ aspect ConstraintGeneration {
         SimpleSet<TypeDecl> types = lookupTypeSet(type.packageName(), type.name());
         Iterator<TypeDecl> iter = types.iterator();
         while (iter.hasNext()) {
-          or.add(this, iter.next());
+          AndConstraint and = new AndConstraint();
+          and.add(this, iter.next());
+          or.add(and);
         }
       } else {
-        or.add(this, type);
+        AndConstraint and = new AndConstraint();
+        and.add(this, type);
+        or.add(and);
       }
     } else {
       if (hostType() instanceof ClassDecl) {
@@ -575,15 +592,7 @@ aspect ConstraintGeneration {
   protected InferenceConstraint SuperAccess.initializeConstraints() {
     TypeDecl type = type();
     OrConstraint or = new OrConstraint();
-    if (type.isOverview()) {
-      SimpleSet<TypeDecl> types = lookupTypeSet(type.packageName(), type.name());
-      Iterator<TypeDecl> iter = types.iterator();
-      while (iter.hasNext()) {
-        or.add(this, iter.next());
-      }
-    } else {
-      or.add(this, type);
-    }
+    generateVarConstraints(type, or);
     return or;
   }
 
@@ -665,28 +674,12 @@ aspect ConstraintGeneration {
               ? lookupTypeVersion(type.packageName(), type.name(), constraint.getVersion(prev.versionVariable()).get().toString())
               : unknownType();
             if (!specific.isUnknown()) {
-              Map<String,SimpleSet<Variable>> fieldMap = specific.versionedMemberFieldsMap();
-              if (fieldMap.containsKey(name())) {
-                for (Variable field: fieldMap.get(name())) {
-                  AndConstraint and = new AndConstraint();
-                  and.add(constraint);
-                  and.add(this, field.type());
-                  or.add(and);
-                }
-              }
+              generateFieldConstraints(specific, or, constraint);
             } else {
               or.add(constraint);
             }
           } else {
-            Map<String,SimpleSet<Variable>> fieldMap = type.versionedMemberFieldsMap();
-            if (fieldMap.containsKey(name())) {
-              for (Variable field: fieldMap.get(name())) {
-                AndConstraint and = new AndConstraint();
-                and.add(constraint);
-                and.add(this, field.type());
-                or.add(and);
-              }
-            }
+            generateFieldConstraints(type, or, constraint);
           }
         } else {
           or.add(constraint);
@@ -705,7 +698,9 @@ aspect ConstraintGeneration {
         Map<String,SimpleSet<Variable>> fieldMap = type.versionedMemberFieldsMap();
         if (fieldMap.containsKey(name())) {
           for (Variable field: fieldMap.get(name())) {
-            or.add(this, field.type());
+            AndConstraint sub = new AndConstraint();
+            sub.add(this, field.type());
+            or.add(sub);
           }
         }
         and.add(andArgs);

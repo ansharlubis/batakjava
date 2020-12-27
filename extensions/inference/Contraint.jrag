@@ -43,6 +43,15 @@ aspect InferenceConstraint {
     private final Integer version;
 
     public VersionConstraint(String variable, Integer version) {
+      /*
+      if (program.variableToDomainMap().containsKey(version)) {
+        program.variableToDomainMap.get(variable).add(version);
+      } else {
+        Set<Integer> domain = new HashSet();
+        domain.add(version);
+        program.variableToDomainMap.put(variable, domain);
+      }
+      */
       this.variable = variable;
       this.version = version;
     }
@@ -160,12 +169,12 @@ aspect InferenceConstraint {
       }
       constraints.add(new VersionConstraint(expr.versionVariable(), Integer.valueOf(type.initialVersion())));
 
-      if (type.isFloat() || type.isDouble()) {
+      if (type.isFloat() || type.isInt()) {
         OrConstraint or = new OrConstraint();
-        or.addType(expr, program.typeInt());
+        or.addType(expr, program.typeDouble());
         or.addType(expr, program.typeFloat());
-        if (type.isDouble()) {
-          or.addType(expr, program.typeDouble());
+        if (type.isInt()) {
+          or.addType(expr, program.typeInt());
         }
         constraints.add(or);
         return;

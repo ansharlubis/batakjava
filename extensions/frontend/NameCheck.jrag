@@ -35,4 +35,26 @@ aspect BatakjavaNameCheck {
     return problems;
   }
 
+  TypeAccess contributes each batakjavaNameProblems() to CompilationUnit.batakjavaProblems();
+
+  syn Collection<Problem> TypeAccess.batakjavaNameProblems() {
+    SimpleSet<TypeDecl> decls = decls();
+    if (decls.isSingleton()) {
+      if (decls.singletonValue().isUnknown()) {
+        return Collections.singletonList(errorf("no visible type named %s", typeName()));
+      } else {
+        return Collections.emptyList();
+      }
+    } else if (decls.isEmpty()) {
+      return Collections.singletonList(errorf("no visible type named %s", typeName()));
+    } else {
+      StringBuilder sb = new StringBuilder();
+      sb.append("multiple types named " + name() + " are visible:");
+      for (TypeDecl type : decls) {
+        sb.append(" " + type.typeName());
+      }
+      return Collections.singletonList(error(sb.toString()));
+    }
+  }
+
 }

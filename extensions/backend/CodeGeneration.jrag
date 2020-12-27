@@ -58,7 +58,6 @@ aspect JavaGeneration {
 
   eq ClassDecl.generateJavaType(Set<Map<String,Integer>> solutions) {
     Set<Map<String,Integer>> filtered = solutions;
-
     Opt<Access> superAccess = getSuperClassOpt();
     List<BodyDecl> bodyDecls = new List();
 
@@ -73,7 +72,7 @@ aspect JavaGeneration {
       superAccess = new Opt(getSuperClass().attachVersion(maxVersion));
     }
 
-    filtered = solutionSet(filtered);
+    //filtered = solutionSet(filtered);
 
     // A random choice from the filtered as the default solution
     Map<String,Integer> selected = filtered.iterator().next();
