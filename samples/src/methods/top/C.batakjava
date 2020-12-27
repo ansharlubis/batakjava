@@ -1,0 +1,42 @@
+/*
+package methods.top ver 1;
+
+public class C {
+
+  private float primitiveField;
+  public D classField;
+
+  public C(float primitiveField) {
+    this.primitiveField = primitiveField;
+    this.classField = new D(0f);
+  }
+
+  public float getPrimitiveField() {
+    return primitiveField;
+  }
+
+  public void setClassField(D newClassField) {
+    this.classField = newClassField;
+  }
+
+}
+*/
+
+package methods.top ver 2;
+
+public class C {
+
+  private float primitiveField;
+  public D classField;
+
+  public C(float primitiveField) {
+    this.primitiveField = primitiveField;
+    this.classField = new D(0f);
+  }
+
+  public D setClassField(D newClassField) {
+    this.classField = newClassField;
+    return newClassField;
+  }
+
+}

@@ -1,0 +1,16 @@
+package methods.bottom ver 1;
+import methods.mid.*;
+import methods.top.*;
+
+public class F {
+
+  public static void main(String[] args) {
+    C c1 = new C(0f);
+    float f = c1.getPrimitiveField();
+  }
+
+  public C returnC(C arg) {
+    return new C(0f);
+  }
+
+}

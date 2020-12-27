@@ -1,0 +1,13 @@
+package constructors.mid ver 1;
+import constructors.top.*;
+
+public class E extends C {
+
+  private boolean additionalField;
+
+  public E(float primitiveField, D classField) {
+    super(primitiveField, classField);
+    this.additionalField = true;
+  }
+
+}

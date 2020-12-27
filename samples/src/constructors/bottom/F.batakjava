@@ -1,0 +1,12 @@
+package constructors.bottom ver 1;
+import constructors.mid.*;
+import constructors.top.*;
+
+public class F {
+
+  public static void main(String[] args) {
+    E e = new E(0f, new D(0f));
+    C c1 = new C(0f, new D(0f));
+    C c2 = new C(0f);
+  }
+}

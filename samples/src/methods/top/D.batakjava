@@ -1,0 +1,20 @@
+/*
+package methods.top ver 1;
+
+public class D {
+
+  private float value;
+
+  public D(float value) { this.value = value; }
+
+}
+*/
+
+package methods.top ver 2;
+
+public class D {
+
+  private float value;
+
+  public D(float value) { this.value = value; }
+}

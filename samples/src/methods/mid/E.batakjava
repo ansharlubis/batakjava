@@ -1,0 +1,13 @@
+package methods.mid ver 1;
+import methods.top.*;
+
+public class E extends C {
+
+  public boolean additionalField;
+
+  public E(float primitiveField) {
+    super(primitiveField);
+    this.additionalField = true;
+  }
+
+}
