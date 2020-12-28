@@ -38,6 +38,21 @@ aspect InferenceConstraint {
     public abstract Constraint post(Model model, IntVar[] versions, IntVar[] types);
   }
 
+  public class EmptyConstraint extends InferenceConstraint {
+    public EmptyConstraint() {}
+
+    public Optional<Integer> getVersion(String arg) { return Optional.empty(); }
+
+    public Optional<Integer> getTypeInt(String arg) { return Optional.empty(); }
+
+    /**
+     * EmptyConstraint posts a null value, the check must make sure that the InferenceConstraint
+     * the solver will work with does not contain any EmptyConstraint.
+     */
+    public Constraint post(Model model, IntVar[] versions, IntVar[] types) { return null; }
+
+  }
+
   public class VersionConstraint extends InferenceConstraint {
     private final String variable;
     private final Integer version;
@@ -156,8 +171,7 @@ aspect InferenceConstraint {
       constraints.add(arg);
     }
 
-    public void add(Expr expr, TypeDecl type) {
-      String name = !type.packageName().isEmpty() ? type.packageName() + "." + type.initialName() : type.name();
+    public void addExact(Expr expr, TypeDecl type) {
       Program program = type.program();
 
       if (program.variableToDomainMap.containsKey(expr.versionVariable())) {
@@ -167,7 +181,23 @@ aspect InferenceConstraint {
         domain.add(Integer.valueOf(type.initialVersion()));
         program.variableToDomainMap.put(expr.versionVariable(), domain);
       }
-      constraints.add(new VersionConstraint(expr.versionVariable(), Integer.valueOf(type.initialVersion())));
+      constraints.add(new VersionConstraint(
+        expr.versionVariable(),
+        Integer.valueOf(type.initialVersion())));
+
+      if (program.typeNameToIntMap.containsKey(type.fullInitialName())) {
+        constraints.add(new TypeConstraint(
+          expr.typeVariable(),
+          program.typeNameToIntMap.get(type.fullInitialName())));
+      } else {
+        Integer typeInt = program.freshTypeCount();
+        program.typeNameToIntMap.put(type.fullInitialName(), typeInt);
+        constraints.add(new TypeConstraint(expr.typeVariable(), typeInt));
+      }
+    }
+
+    public void add(Expr expr, TypeDecl type) {
+      Program program = type.program();
 
       if (type.isFloat() || type.isInt()) {
         OrConstraint or = new OrConstraint();
@@ -177,28 +207,35 @@ aspect InferenceConstraint {
           or.addType(expr, program.typeInt());
         }
         constraints.add(or);
-        return;
+      } else {
+        addType(expr, type);
       }
 
-      if (program.typeNameToIntMap.containsKey(name)) {
-        constraints.add(new TypeConstraint(expr.typeVariable(), program.typeNameToIntMap.get(name)));
+      if (program.variableToDomainMap.containsKey(expr.versionVariable())) {
+        program.variableToDomainMap.get(expr.versionVariable()).add(Integer.valueOf(type.initialVersion()));
       } else {
-        Integer typeInt = program.freshTypeCount();
-        program.typeNameToIntMap.put(name, typeInt);
-        constraints.add(new TypeConstraint(expr.typeVariable(), typeInt));
+        Set<Integer> domain = new HashSet();
+        domain.add(Integer.valueOf(type.initialVersion()));
+        program.variableToDomainMap.put(expr.versionVariable(), domain);
       }
+      constraints.add(new VersionConstraint(
+        expr.versionVariable(),
+        Integer.valueOf(type.initialVersion())));
+
     }
 
     public void addType(Expr expr, TypeDecl type) {
-      String name = !type.packageName().isEmpty() ? type.packageName() + "." + type.initialName() : type.name();
       Program program = type.program();
-
-      if (program.typeNameToIntMap.containsKey(name)) {
-        constraints.add(new TypeConstraint(expr.typeVariable(), program.typeNameToIntMap.get(name)));
+      if (program.typeNameToIntMap.containsKey(type.fullInitialName())) {
+        constraints.add(
+          new TypeConstraint(expr.typeVariable(),
+          program.typeNameToIntMap.get(type.fullInitialName())));
       } else {
         Integer typeInt = program.freshTypeCount();
-        program.typeNameToIntMap.put(name, typeInt);
-        constraints.add(new TypeConstraint(expr.typeVariable(), typeInt));
+        program.typeNameToIntMap.put(type.fullInitialName(), typeInt);
+        constraints.add(
+          new TypeConstraint(expr.typeVariable(),
+          typeInt));
       }
     }
 
@@ -276,48 +313,13 @@ aspect InferenceConstraint {
       constraints.add(arg);
     }
 
-    public void add(Expr expr, TypeDecl type) {
-      String name = !type.packageName().isEmpty() ? type.packageName() + "." + type.initialName() : type.name();
-      Program program = type.program();
-
-      if (program.variableToDomainMap.containsKey(expr.versionVariable())) {
-        program.variableToDomainMap.get(expr.versionVariable()).add(Integer.valueOf(type.initialVersion()));
-      } else {
-        Set<Integer> domain = new HashSet();
-        domain.add(Integer.valueOf(type.initialVersion()));
-        program.variableToDomainMap.put(expr.versionVariable(), domain);
-      }
-      constraints.add(new VersionConstraint(expr.versionVariable(), Integer.valueOf(type.initialVersion())));
-
-      if (type.isFloat() || type.isDouble()) {
-        OrConstraint or = new OrConstraint();
-        or.addType(expr, program.typeInt());
-        or.addType(expr, program.typeFloat());
-        if (type.isDouble()) {
-          or.addType(expr, program.typeDouble());
-        }
-        constraints.add(or);
-        return;
-      }
-
-      if (program.typeNameToIntMap.containsKey(name)) {
-        constraints.add(new TypeConstraint(expr.typeVariable(), program.typeNameToIntMap.get(name)));
-      } else {
-        Integer typeInt = program.freshTypeCount();
-        program.typeNameToIntMap.put(name, typeInt);
-        constraints.add(new TypeConstraint(expr.typeVariable(), typeInt));
-      }
-    }
-
     public void addType(Expr expr, TypeDecl type) {
-      String name = !type.packageName().isEmpty() ? type.packageName() + "." + type.initialName() : type.name();
       Program program = type.program();
-
-      if (program.typeNameToIntMap.containsKey(name)) {
-        constraints.add(new TypeConstraint(expr.typeVariable(), program.typeNameToIntMap.get(name)));
+      if (program.typeNameToIntMap.containsKey(type.fullInitialName())) {
+        constraints.add(new TypeConstraint(expr.typeVariable(), program.typeNameToIntMap.get(type.fullInitialName())));
       } else {
         Integer typeInt = program.freshTypeCount();
-        program.typeNameToIntMap.put(name, typeInt);
+        program.typeNameToIntMap.put(type.fullInitialName(), typeInt);
         constraints.add(new TypeConstraint(expr.typeVariable(), typeInt));
       }
     }

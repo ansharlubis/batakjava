@@ -35,6 +35,9 @@ aspect BatakjavaNameCheck {
     return problems;
   }
 
+  /**
+   * A copy of the name check from Java's name check
+   */
   TypeAccess contributes each batakjavaNameProblems() to CompilationUnit.batakjavaProblems();
 
   syn Collection<Problem> TypeAccess.batakjavaNameProblems() {
@@ -55,6 +58,26 @@ aspect BatakjavaNameCheck {
       }
       return Collections.singletonList(error(sb.toString()));
     }
+  }
+
+  /**
+   * Overlapping import declaration with version is warned
+   */
+  TypeImportOnDemandDeclWithVersion contributes each batakjavaNameProblems() to CompilationUnit.batakjavaProblems();
+
+  syn Collection<Problem> TypeImportOnDemandDeclWithVersion.batakjavaNameProblems() {
+    if (getAccess() instanceof PackageAccess) {
+      String packageName = ((PackageAccess) getAccess()).name();
+      if (compilationUnit().priorityVersionMap.containsKey(packageName)) {
+        if (compilationUnit().priorityVersionMap.get(packageName) != Integer.valueOf(version())) {
+          compilationUnit().priorityVersionMap.replace(packageName, Integer.valueOf(version()));
+        }
+        return Collections.singletonList(warning("Import declaration " + packageName + ".* is multiply declared"));
+      } else {
+        compilationUnit().priorityVersionMap.put(packageName, Integer.valueOf(version()));
+      }
+    }
+    return Collections.emptyList();
   }
 
 }

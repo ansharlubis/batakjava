@@ -34,16 +34,12 @@ aspect VersionInference {
       Map<String,Integer> solution = new HashMap();
       for (int i = 0; i < variableCount; i++) {
         solution.put("v"+i, solverSolution.getIntVal(versions[i]));
+        solution.put("t"+i, solverSolution.getIntVal(types[i]));
       }
       solutions.add(solution);
     }
 
-    if (solutions.size() > 0) {
-      return 0;
-    } else {
-      return 4;
-    }
-
+    return solutions.size() > 0 ? 0 : 4;
   }
 
 }

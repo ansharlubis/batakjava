@@ -94,6 +94,7 @@ aspect BatakjavaFrontendMain {
         LinkedList<CompilationUnit> generated = new LinkedList<CompilationUnit>();
         while (generateIter.hasNext()) {
           CompilationUnit unit = generateIter.next();
+          // TODO: Don't forget to remove this line
           System.err.println(unit.generateJava(program.solutions).prettyPrint());
         }
 
@@ -187,6 +188,25 @@ aspect BatakjavaFrontendMain {
 
         int compileResult = EXIT_SUCCESS;
 
+        // Pre-checking
+        Iterator<CompilationUnit> checkIter = program.compilationUnitIterator();
+        while (checkIter.hasNext()) {
+          CompilationUnit unit = checkIter.next();
+          int result = processBatakjavaCompilationUnit(unit);
+          switch (result) {
+            case EXIT_SUCCESS:
+              break;
+            case EXIT_UNHANDLED_ERROR:
+              return result;
+            default:
+              compileResult = result;
+          }
+        }
+
+        if (compileResult != EXIT_SUCCESS) {
+          return compileResult;
+        }
+
         /**
          * Inference
          */
@@ -259,5 +279,28 @@ aspect BatakjavaFrontendMain {
       }
       return EXIT_SUCCESS;
     }
+
+    protected int processBatakjavaCompilationUnit(CompilationUnit unit) {
+      if (unit != null && unit.fromSource()) {
+        Collection<Problem> errors = unit.parseErrors();
+        Collection<Problem> warnings = Collections.emptyList();
+        if (errors.isEmpty() || program.options().hasOption("-recover")) {
+          long start = System.nanoTime();
+          errors = unit.batakjavaErrors();
+          warnings = unit.batakjavaWarnings();
+          program.batakjavaErrorCheckTime += System.nanoTime() - start;
+        }
+        if (!errors.isEmpty()) {
+          processErrors(errors, unit);
+          return EXIT_ERROR;
+        } else {
+          if (!warnings.isEmpty() && !program.options().hasOption("-nowarn")) {
+            processWarnings(warnings, unit);
+          }
+        }
+      }
+      return EXIT_SUCCESS;
+    }
+
   }
 }

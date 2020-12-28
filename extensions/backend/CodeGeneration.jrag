@@ -57,25 +57,42 @@ aspect JavaGeneration {
   syn nta TypeDecl TypeDecl.generateJavaType(Set<Map<String,Integer>> solutions) = treeCopy();
 
   eq ClassDecl.generateJavaType(Set<Map<String,Integer>> solutions) {
+    Optional<Map<String,Integer>> priority = prioritySet(solutions);
+
+    Map<String,Integer> selected;
     Set<Map<String,Integer>> filtered = solutions;
+
     Opt<Access> superAccess = getSuperClassOpt();
     List<BodyDecl> bodyDecls = new List();
 
-    // Add the extends versions if superclass exists
-    if (hasSuperClass() && superclass().isOverview()) {
-      Integer maxVersion = solutions.stream()
-        .map(solution -> solution.get(getSuperClass().versionVariable()))
-        .reduce(0, (a,b) -> a > b ? a : b);
-      filtered = solutions.stream()
-        .filter(solution -> solution.get(getSuperClass().versionVariable()) == maxVersion)
-        .collect(Collectors.toCollection(HashSet::new));
-      superAccess = new Opt(getSuperClass().attachVersion(maxVersion));
+    if (priority.isPresent()) {
+      selected = priority.get();
+      // Add the extends versions if superclass exists
+      if (hasSuperClass() && superclass().isOverview()) {
+        Integer maxVersion = selected.get(getSuperClass().versionVariable());
+        filtered = solutions.stream()
+          .filter(solution -> solution.get(getSuperClass().versionVariable()) == maxVersion)
+          .collect(Collectors.toCollection(HashSet::new));
+        superAccess = new Opt(getSuperClass().attachVersion(maxVersion));
+      }
+
+      filtered = solutionSet(filtered);
+    } else {
+      // Add the extends versions if superclass exists
+      if (hasSuperClass() && superclass().isOverview()) {
+        Integer maxVersion = solutions.stream()
+          .map(solution -> solution.get(getSuperClass().versionVariable()))
+          .reduce(0, (a,b) -> a > b ? a : b);
+        filtered = solutions.stream()
+          .filter(solution -> solution.get(getSuperClass().versionVariable()) == maxVersion)
+          .collect(Collectors.toCollection(HashSet::new));
+        superAccess = new Opt(getSuperClass().attachVersion(maxVersion));
+      }
+
+      filtered = solutionSet(filtered);
+      // A random choice from the filtered as the default solution
+      selected = filtered.iterator().next();
     }
-
-    //filtered = solutionSet(filtered);
-
-    // A random choice from the filtered as the default solution
-    Map<String,Integer> selected = filtered.iterator().next();
 
     for (BodyDecl bodyDecl: getBodyDeclList()) {
       bodyDecls.addAll(bodyDecl.generateJavaBody(filtered, selected));

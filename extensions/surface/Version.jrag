@@ -62,10 +62,13 @@ aspect BatakjavaVersion {
         }
       }
     }
-    return "0";       // Unversioned CompilationUnit is 0
+    // Unversioned CompilationUnit is 0
+    return "0";
   }
 
   eq BatakjavaCompilationUnit.version() = getVersionNum();
+
+  syn String TypeImportOnDemandDeclWithVersion.version() = getVersion().getVersionNum();
 
   inh String TypeDecl.hostVersion();
   inh String BodyDecl.hostVersion();
@@ -112,4 +115,26 @@ aspect BatakjavaVersion {
     }
     return name();
   }
+
+  /**
+   * Get the full initial name = package name + type initial name
+   */
+  syn lazy String TypeDecl.fullInitialName() = fullName();
+
+  eq ClassDecl.fullInitialName()
+    = !packageName().isEmpty() ? packageName() + "." + initialName() : name();
+
+  /**
+   * Grab name from a fully qualified type name
+   */
+  public String ASTNode.packageNameFromQualifiedName(String fullyQualifiedName) {
+    StringBuilder result = new StringBuilder();
+    String[] splitName = fullyQualifiedName.split("\\.");
+    for (int i = 0; i < splitName.length-1; i++) {
+      if (i != 0) result.append(".");
+      result.append(splitName[i]);
+    }
+    return result.toString();
+  }
+
 }

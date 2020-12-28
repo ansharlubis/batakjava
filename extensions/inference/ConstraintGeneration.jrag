@@ -232,7 +232,17 @@ aspect ConstraintGeneration {
    */
   eq Literal.constraints() {
     AndConstraint and = new AndConstraint();
-    and.addType(this, type());
+    if (type().isFloat() || type().isInt()) {
+      OrConstraint or = new OrConstraint();
+      or.addType(this, program().typeDouble());
+      or.addType(this, program().typeFloat());
+      if (type().isInt()) {
+        or.addType(this, program().typeInt());
+      }
+      and.add(or);
+    } else {
+      and.addType(this, type());
+    }
     return and;
   }
 
@@ -382,7 +392,7 @@ aspect ConstraintGeneration {
 
         // Parameter constraints
         for (int i = 0; i < getNumArg(); i++) {
-          and.add(getArg(i), constructor.getParameter(i).type());
+          and.addExact(getArg(i), constructor.getParameter(i).type());
         }
 
         or.add(and);
@@ -398,7 +408,7 @@ aspect ConstraintGeneration {
         and.add(this, type);
 
         for (int i = 0; i < getNumArg(); i++) {
-          and.add(getArg(i), constructor.getParameter(i).type());
+          and.addExact(getArg(i), constructor.getParameter(i).type());
         }
 
         or.add(and);
@@ -413,7 +423,7 @@ aspect ConstraintGeneration {
         if (getNumArg() == method.getNumParameter()) {
           AndConstraint and = new AndConstraint();
           for (int i = 0; i< getNumArg(); i++) {
-            and.add(getArg(i), method.getParameter(i).type());
+            and.addExact(getArg(i), method.getParameter(i).type());
           }
           and.add(this, method.type());
           or.add(and);
@@ -437,7 +447,7 @@ aspect ConstraintGeneration {
                 if (getNumArg() == method.getNumParameter()) {
                   AndConstraint and = new AndConstraint();
                   for (int i = 0; i < getNumArg(); i++) {
-                    and.add(getArg(i), method.getParameter(i).type());
+                    and.addExact(getArg(i), method.getParameter(i).type());
                   }
                   and.add(this, method.type());
                   and.add(superAccess, superType);

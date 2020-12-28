@@ -1,5 +1,44 @@
 aspect JavaGeneration {
 
+  public final Map<String,Integer> CompilationUnit.priorityVersionMap = new HashMap();
+
+  syn Optional<Map<String,Integer>> ClassDecl.prioritySet(Set<Map<String,Integer>> solutions) {
+    if (compilationUnit().priorityVersionMap.size() > 0) {
+      Set<Map<String,Integer>> priority = new HashSet();
+      for (Map<String,Integer> solution: solutions) {
+        boolean fulfill = true;
+        for (String solutionKey: solution.keySet()) {
+          if (solutionKey.substring(0,1).equals("t")) {
+            String packageName = packageNameFromQualifiedName(intToTypeName(solution.get(solutionKey)));
+            if (compilationUnit().priorityVersionMap.containsKey(packageName)) {
+              if (compilationUnit().priorityVersionMap.get(packageName) != solution.get("v" + solutionKey.substring(1))) {
+                fulfill = false;
+                break;
+              }
+            }
+          }
+        }
+        if (fulfill) {
+          priority.add(solution);
+        }
+      }
+      if (priority.size() > 0) {
+        if (hasSuperClass() && superclass().isOverview() && priority.size() > 1) {
+          Integer maxVersion = priority.stream()
+            .map(solution -> solution.get(getSuperClass().versionVariable()))
+            .reduce(0, (a,b) -> a > b ? a : b);
+          priority = priority.stream()
+            .filter(solution -> solution.get(getSuperClass().versionVariable()) == maxVersion)
+            .collect(Collectors.toCollection(HashSet::new));
+          return Optional.of(priority.iterator().next());
+        } else {
+          return Optional.of(priority.iterator().next());
+        }
+      }
+    }
+    return Optional.empty();
+  }
+
   private Set<Map<String,Integer>> FieldDecl.getSolutionSet(Set<Map<String,Integer>> filtered) {
     Set<Map<String,Integer>> result = new HashSet();
     Set<Integer> added = new HashSet();

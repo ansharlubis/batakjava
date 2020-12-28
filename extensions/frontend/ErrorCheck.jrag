@@ -14,7 +14,7 @@ aspect BatakjavaErrorCheck {
 
   syn Collection<Problem> CompilationUnit.batakjavaWarnings() {
     Collection<Problem> warnings = new LinkedList();
-    for (Problem problem : problems()) {
+    for (Problem problem : batakjavaProblems()) {
       if (problem.severity() == Problem.Severity.WARNING) {
         warnings.add(problem);
       }
@@ -22,6 +22,9 @@ aspect BatakjavaErrorCheck {
     return warnings;
   }
 
+  /**
+   * A .batakjava code must have version specified on the package declaration
+   */
   CompilationUnit contributes each pathProblems() to CompilationUnit.batakjavaProblems();
 
   syn Collection<Problem> CompilationUnit.pathProblems() {
@@ -34,5 +37,17 @@ aspect BatakjavaErrorCheck {
   }
 
   eq BatakjavaCompilationUnit.pathProblems() = Collections.emptyList();
+
+  /**
+   * Checks if the priority finds a corresponding solution
+   */
+  ClassDecl contributes each priorityProblems() to CompilationUnit.batakjavaProblems();
+
+  syn Collection<Problem> ClassDecl.priorityProblems() {
+    if ((compilationUnit().priorityVersionMap.size() > 0) && !prioritySet(program().solutions).isPresent()) {
+      return Collections.singletonList(warning("Priority is not found."));
+    }
+    return Collections.emptyList();
+  }
 
 }
