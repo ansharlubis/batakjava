@@ -51,6 +51,8 @@ aspect InferenceConstraint {
      */
     public Constraint post(Model model, IntVar[] versions, IntVar[] types) { return null; }
 
+    public String toString() { return "empty"; }
+
   }
 
   public class VersionConstraint extends InferenceConstraint {

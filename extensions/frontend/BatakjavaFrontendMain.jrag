@@ -1,13 +1,12 @@
 aspect BatakjavaFrontendMain {
 
-  public long Program.batakjavaErrorCheckTime;
+  public long Program.batakjavaCheckTime;
 
   refine FrontendMain public void Program.resetStatistics() {
     javaParseTime = 0;
     bytecodeParseTime = 0;
     codeGenTime = 0;
     errorCheckTime = 0;
-    batakjavaErrorCheckTime = 0;
     numJavaFiles = 0;
     numClassFiles = 0;
   }
@@ -63,11 +62,30 @@ aspect BatakjavaFrontendMain {
 
         int compileResult = EXIT_SUCCESS;
 
-        // Pre-checking
+        // Name/error checking
         Iterator<CompilationUnit> checkIter = program.compilationUnitIterator();
         while (checkIter.hasNext()) {
           CompilationUnit unit = checkIter.next();
           int result = processBatakjavaCompilationUnit(unit);
+          switch (result) {
+            case EXIT_SUCCESS:
+              break;
+            case EXIT_UNHANDLED_ERROR:
+              return result;
+            default:
+              compileResult = result;
+          }
+        }
+
+        if (compileResult != EXIT_SUCCESS) {
+          return compileResult;
+        }
+
+        // Pre-inference checking
+        Iterator<CompilationUnit> preInferenceIter = program.compilationUnitIterator();
+        while (preInferenceIter.hasNext()) {
+          CompilationUnit unit = preInferenceIter.next();
+          int result = processPreInferenceCompilationUnit(unit);
           switch (result) {
             case EXIT_SUCCESS:
               break;
@@ -118,6 +136,17 @@ aspect BatakjavaFrontendMain {
 
     }
 
+    protected int processPreInferenceCompilationUnit(CompilationUnit unit) {
+      if (unit != null && unit.fromSource()) {
+        Collection<Problem> errors = unit.preInferenceErrors();
+        if (!errors.isEmpty()) {
+          processErrors(errors, unit);
+          return EXIT_ERROR;
+        }
+      }
+      return EXIT_SUCCESS;
+    }
+
     protected int processBatakjavaCompilationUnit(CompilationUnit unit) {
       if (unit != null && unit.fromSource()) {
         Collection<Problem> errors = unit.parseErrors();
@@ -126,7 +155,6 @@ aspect BatakjavaFrontendMain {
           long start = System.nanoTime();
           errors = unit.batakjavaErrors();
           warnings = unit.batakjavaWarnings();
-          program.batakjavaErrorCheckTime += System.nanoTime() - start;
         }
         if (!errors.isEmpty()) {
           processErrors(errors, unit);
@@ -288,7 +316,6 @@ aspect BatakjavaFrontendMain {
           long start = System.nanoTime();
           errors = unit.batakjavaErrors();
           warnings = unit.batakjavaWarnings();
-          program.batakjavaErrorCheckTime += System.nanoTime() - start;
         }
         if (!errors.isEmpty()) {
           processErrors(errors, unit);

@@ -253,7 +253,11 @@ aspect ConstraintGeneration {
 
   eq TypeAccess.constraints() {
     OrConstraint or = new OrConstraint();
-    generateVarConstraints(type(), or);
+
+    if (!type().isUnknown()) {
+      generateVarConstraints(type(), or);
+    }
+
     return or;
   }
 
@@ -286,6 +290,11 @@ aspect ConstraintGeneration {
         }
       }
     }
+
+    if (decls().isEmpty() && or.size() == 0) {
+      return new EmptyConstraint();
+    }
+
     return or;
   }
 
@@ -294,6 +303,9 @@ aspect ConstraintGeneration {
     if (!hasParentDot()) {
       TypeDecl type = hostType();
       generateMethodConstraints(type, or);
+    }
+    if (or.size() == 0) {
+      return new EmptyConstraint();
     }
     return or;
   }
@@ -317,6 +329,11 @@ aspect ConstraintGeneration {
         generateConstructorConstraints(type, or);
       }
     }
+
+    if (or.size() == 0) {
+      return new EmptyConstraint();
+    }
+
     return or;
   }
 
@@ -342,6 +359,11 @@ aspect ConstraintGeneration {
         }
       }
     }
+
+    if (or.size() == 0) {
+      return new EmptyConstraint();
+    }
+
     return or;
   }
 
@@ -539,6 +561,11 @@ aspect ConstraintGeneration {
     } else {
       generateConstructorConstraints(type, or);
     }
+
+    if (or.size() == 0) {
+      return new EmptyConstraint();
+    }
+
     return or;
   }
 
@@ -584,13 +611,17 @@ aspect ConstraintGeneration {
         }
       }
     }
+
+    if (or.size() == 0) {
+      return new EmptyConstraint();
+    }
+
     return or;
   }
 
   protected InferenceConstraint MethodAccess.initializeConstraints() {
-    TypeDecl type = hostType();
     OrConstraint or = new OrConstraint();
-    generateMethodConstraints(type, or);
+    generateMethodConstraints(hostType(), or);
     return or;
   }
 
@@ -600,9 +631,10 @@ aspect ConstraintGeneration {
 
   // Assumption: SuperAccess is only used for super.METHODNAME(ARGS) pattern
   protected InferenceConstraint SuperAccess.initializeConstraints() {
-    TypeDecl type = type();
     OrConstraint or = new OrConstraint();
-    generateVarConstraints(type, or);
+    if (!type().isUnknown()) {
+      generateVarConstraints(type(), or);
+    }
     return or;
   }
 
@@ -644,6 +676,11 @@ aspect ConstraintGeneration {
           or.add(constraint);
         }
       }
+
+      if (or.size() == 0) {
+        return new EmptyConstraint();
+      }
+
       return or;
     }
 
@@ -658,6 +695,10 @@ aspect ConstraintGeneration {
         for (InferenceConstraint constraint: andArgs) {
           generateMethodConstraints(type, or, constraint);
         }
+      }
+
+      if (or.size() == 0) {
+        return new EmptyConstraint();
       }
 
       return or;
@@ -695,6 +736,11 @@ aspect ConstraintGeneration {
           or.add(constraint);
         }
       }
+
+      if (or.size() == 0) {
+        return new EmptyConstraint();
+      }
+
       return or;
     }
 
