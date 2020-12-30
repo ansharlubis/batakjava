@@ -253,11 +253,13 @@ aspect ConstraintGeneration {
 
   eq TypeAccess.constraints() {
     OrConstraint or = new OrConstraint();
-
     if (!type().isUnknown()) {
       generateVarConstraints(type(), or);
+      // This shouldn't happen because a name check is done prior to this
+      if (or.size() == 0) {
+        return new EmptyConstraint();
+      }
     }
-
     return or;
   }
 
@@ -289,10 +291,11 @@ aspect ConstraintGeneration {
           }
         }
       }
-    }
 
-    if (decls().isEmpty() && or.size() == 0) {
-      return new EmptyConstraint();
+      // This means that the variable is not found
+      if (or.size() == 0) {
+        return new EmptyConstraint();
+      }
     }
 
     return or;
@@ -303,9 +306,11 @@ aspect ConstraintGeneration {
     if (!hasParentDot()) {
       TypeDecl type = hostType();
       generateMethodConstraints(type, or);
-    }
-    if (or.size() == 0) {
-      return new EmptyConstraint();
+
+      // This means that the method is not found in this class
+      if (or.size() == 0) {
+        return new EmptyConstraint();
+      }
     }
     return or;
   }
@@ -328,10 +333,11 @@ aspect ConstraintGeneration {
       } else {
         generateConstructorConstraints(type, or);
       }
-    }
 
-    if (or.size() == 0) {
-      return new EmptyConstraint();
+      // This means that a corresponding constructor is not found
+      if (or.size() == 0) {
+        return new EmptyConstraint();
+      }
     }
 
     return or;
@@ -360,6 +366,7 @@ aspect ConstraintGeneration {
       }
     }
 
+    // This means that a corresponding super constructor is not found
     if (or.size() == 0) {
       return new EmptyConstraint();
     }
@@ -562,6 +569,7 @@ aspect ConstraintGeneration {
       generateConstructorConstraints(type, or);
     }
 
+    // This means that the corresponding constructor is not found
     if (or.size() == 0) {
       return new EmptyConstraint();
     }
@@ -612,6 +620,7 @@ aspect ConstraintGeneration {
       }
     }
 
+    // This means that this variable is not found
     if (or.size() == 0) {
       return new EmptyConstraint();
     }
@@ -677,6 +686,7 @@ aspect ConstraintGeneration {
         }
       }
 
+      // This means that a corresponding method can not be found based on the available constraints
       if (or.size() == 0) {
         return new EmptyConstraint();
       }
@@ -697,6 +707,7 @@ aspect ConstraintGeneration {
         }
       }
 
+      // This means that a corresponding method can not be found based on the available constraints
       if (or.size() == 0) {
         return new EmptyConstraint();
       }
@@ -737,6 +748,7 @@ aspect ConstraintGeneration {
         }
       }
 
+      // This means that a corresponding variable (field) can not be found based on the available constraints
       if (or.size() == 0) {
         return new EmptyConstraint();
       }
