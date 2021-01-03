@@ -544,6 +544,7 @@ aspect ConstraintGeneration {
         AndConstraint and = new AndConstraint();
         and.add(with);
         and.add(this, field.type());
+        or.add(and);
       }
     }
   }
@@ -697,14 +698,14 @@ aspect ConstraintGeneration {
     if (args instanceof AndConstraint) {
       TypeDecl type = prevExpr().type();
 
+      AndConstraint and = new AndConstraint();
       OrConstraint or = new OrConstraint();
-      AndConstraint andArgs = (AndConstraint) args;
 
       // In case of AndConstraint, it shouldn't be a versioned class
       if (!type.isUnknown() && !type.isOverview()) {
-        for (InferenceConstraint constraint: andArgs) {
-          generateMethodConstraints(type, or, constraint);
-        }
+        generateMethodConstraints(type, or);
+        and.add(args);
+        and.add(or);
       }
 
       // This means that a corresponding method can not be found based on the available constraints
@@ -712,7 +713,7 @@ aspect ConstraintGeneration {
         return new EmptyConstraint();
       }
 
-      return or;
+      return and;
     }
 
     return args;
@@ -758,9 +759,10 @@ aspect ConstraintGeneration {
 
     if (args instanceof AndConstraint) {
       TypeDecl type = prevExpr().type();
+
       AndConstraint and = new AndConstraint();
-      AndConstraint andArgs = (AndConstraint) args;
       OrConstraint or = new OrConstraint();
+
       // In case of AndConstraint, it shouldn't be a versioned class
       if (!type.isUnknown() && !type.isOverview()) {
         Map<String,SimpleSet<Variable>> fieldMap = type.versionedMemberFieldsMap();
@@ -771,10 +773,15 @@ aspect ConstraintGeneration {
             or.add(sub);
           }
         }
-        and.add(andArgs);
+        and.add(args);
         and.add(or);
-        return and;
       }
+
+      if (or.size() == 0) {
+        return new EmptyConstraint();
+      }
+
+      return and;
     }
     return args;
   }

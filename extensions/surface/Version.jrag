@@ -1,5 +1,16 @@
 aspect BatakjavaVersion {
 
+  syn Map<String,Integer> CompilationUnit.versionMap() {
+    Map<String,Integer> map = new HashMap(getNumImportDecl());
+    for (ImportDecl decl: getImportDeclList()) {
+      if (decl instanceof TypeImportOnDemandDeclWithVersion) {
+        TypeImportOnDemandDeclWithVersion importDecl = (TypeImportOnDemandDeclWithVersion) decl;
+        map.put(((PackageAccess) importDecl.getAccess()).name(), Integer.valueOf(importDecl.version()));
+      }
+    }
+    return map;
+  }
+
   // Used to deal with FILENAME.batakjava and Overview files
   syn boolean TypeDecl.versioned() = false;
   eq ClassDecl.versioned() = isOverview() || !hostVersion().equals("0");

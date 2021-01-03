@@ -59,26 +59,25 @@ aspect JavaGeneration {
   eq ClassDecl.generateJavaType(Set<Map<String,Integer>> solutions) {
     Optional<Map<String,Integer>> priority = prioritySet(solutions);
 
-    Map<String,Integer> selected;
     Set<Map<String,Integer>> filtered = solutions;
+    Map<String,Integer> selected;
 
     Opt<Access> superAccess = getSuperClassOpt();
     List<BodyDecl> bodyDecls = new List();
 
     if (priority.isPresent()) {
       selected = priority.get();
-      // Add the extends versions if superclass exists
-      if (hasSuperClass() && superclass().isOverview()) {
-        Integer maxVersion = selected.get(getSuperClass().versionVariable());
-        filtered = solutions.stream()
-          .filter(solution -> solution.get(getSuperClass().versionVariable()) == maxVersion)
-          .collect(Collectors.toCollection(HashSet::new));
-        superAccess = new Opt(getSuperClass().attachVersion(maxVersion));
-      }
 
-      filtered = solutionSet(filtered);
+      // Filter the solutions in case the class extends
+      if (hasSuperClass() && superclass().isOverview()) {
+        Integer version = selected.get(getSuperClass().versionVariable());
+        filtered = solutions.stream()
+          .filter(solution -> solution.get(getSuperClass().versionVariable()) == version)
+          .collect(Collectors.toCollection(HashSet::new));
+        superAccess = new Opt(getSuperClass().attachVersion(version));
+      }
     } else {
-      // Add the extends versions if superclass exists
+      // The same as above but find the max version for superclass first
       if (hasSuperClass() && superclass().isOverview()) {
         Integer maxVersion = solutions.stream()
           .map(solution -> solution.get(getSuperClass().versionVariable()))
@@ -89,9 +88,8 @@ aspect JavaGeneration {
         superAccess = new Opt(getSuperClass().attachVersion(maxVersion));
       }
 
-      filtered = solutionSet(filtered);
-      // A random choice from the filtered as the default solution
-      selected = filtered.iterator().next();
+      // Grab one random solution from the set of largest solutions
+      selected = solutionSet(filtered).iterator().next();
     }
 
     for (BodyDecl bodyDecl: getBodyDeclList()) {

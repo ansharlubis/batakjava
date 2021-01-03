@@ -2,16 +2,21 @@ aspect JavaGeneration {
 
   public final Map<String,Integer> CompilationUnit.priorityVersionMap = new HashMap();
 
-  syn Optional<Map<String,Integer>> ClassDecl.prioritySet(Set<Map<String,Integer>> solutions) {
-    if (compilationUnit().priorityVersionMap.size() > 0) {
+  public Optional<Map<String,Integer>> TypeDecl.prioritySet(Set<Map<String,Integer>> solutions) {
+    return Optional.empty();
+  }
+
+  public Optional<Map<String,Integer>> ClassDecl.prioritySet(Set<Map<String,Integer>> solutions) {
+    if (compilationUnit().versionMap().size() > 0) {
+      Map<String,Integer> versionMap = compilationUnit().versionMap();
       Set<Map<String,Integer>> priority = new HashSet();
       for (Map<String,Integer> solution: solutions) {
         boolean fulfill = true;
         for (String solutionKey: solution.keySet()) {
           if (solutionKey.substring(0,1).equals("t")) {
             String packageName = packageNameFromQualifiedName(intToTypeName(solution.get(solutionKey)));
-            if (compilationUnit().priorityVersionMap.containsKey(packageName)) {
-              if (compilationUnit().priorityVersionMap.get(packageName) != solution.get("v" + solutionKey.substring(1))) {
+            if (versionMap.containsKey(packageName)) {
+              if (versionMap.get(packageName) != solution.get("v" + solutionKey.substring(1))) {
                 fulfill = false;
                 break;
               }
@@ -30,44 +35,80 @@ aspect JavaGeneration {
           priority = priority.stream()
             .filter(solution -> solution.get(getSuperClass().versionVariable()) == maxVersion)
             .collect(Collectors.toCollection(HashSet::new));
-          return Optional.of(priority.iterator().next());
-        } else {
-          return Optional.of(priority.iterator().next());
         }
+        return Optional.of(solutionSet(priority).iterator().next());
       }
     }
     return Optional.empty();
   }
 
-  private Set<Map<String,Integer>> FieldDecl.getSolutionSet(Set<Map<String,Integer>> filtered) {
-    Set<Map<String,Integer>> result = new HashSet();
-    Set<Integer> added = new HashSet();
+  public Optional<Map<String,Integer>> BodyDecl.prioritySet(Set<Map<String,Integer>> solutions) {
+    return hostType().prioritySet(solutions);
+  }
+
+  protected Set<Map<String,Integer>> BodyDecl.getSolutionSet(Set<Map<String,Integer>> filtered) {
+    Map<Map<String,Integer>, Set<Map<String,Integer>>> mapping = new HashMap(filtered.size());
     for (Map<String,Integer> solution: filtered) {
-      Integer current = solution.get(getTypeAccess().versionVariable());
-      if (!added.contains(current)) {
-        result.add(solution);
-        added.add(current);
+      Map<String,Integer> map = buildParameterMap(solution);
+
+      if (mapping.containsKey(map)) {
+        mapping.get(map).add(solution);
+      } else {
+        Set<Map<String,Integer>> mapSet = new HashSet();
+        mapSet.add(solution);
+        mapping.put(map, mapSet);
       }
     }
+
+    Set<Map<String,Integer>> result = new HashSet(mapping.size());
+    for (Map<String,Integer> key: mapping.keySet()) {
+      Optional<Map<String,Integer>> priority = prioritySet(mapping.get(key));
+      if (priority.isPresent()) {
+        result.add(priority.get());
+      } else {
+        result.add(solutionSet(mapping.get(key)).iterator().next());
+      }
+    }
+
     return result;
   }
 
-  private Set<Map<String,Integer>> ConstructorDecl.getSolutionSet(Set<Map<String,Integer>> filtered) {
-    Set<Map<String,Integer>> result = new HashSet();
-    Set<Map<String,Integer>> added = new HashSet();
-    for (Map<String,Integer> solution: filtered) {
-      Map<String,Integer> map = new HashMap(getNumParameter());
-      for (ParameterDeclaration param: getParameterList()) {
-        if (param.type().versioned()) {
-          map.put(param.versionVariable(), solution.get(param.versionVariable()));
-        }
-      }
-      if (!added.contains(map)) {
-        result.add(solution);
-        added.add(map);
+  protected Map<String,Integer> BodyDecl.buildParameterMap(Map<String,Integer> solution) {
+    return new HashMap();
+  }
+
+  protected Map<String,Integer> FieldDecl.buildParameterMap(Map<String,Integer> solution) {
+    Map<String,Integer> map = new HashMap(1);
+    if (type().versioned()) {
+      map.put(getTypeAccess().versionVariable(), solution.get(getTypeAccess().versionVariable()));
+    }
+    return map;
+  }
+
+  protected Map<String,Integer> ConstructorDecl.buildParameterMap(Map<String,Integer> solution) {
+    Map<String,Integer> map = new HashMap(getNumParameter());
+    // Add the parameter
+    for (ParameterDeclaration param: getParameterList()) {
+      if (param.type().versioned()) {
+        map.put(param.versionVariable(), solution.get(param.versionVariable()));
       }
     }
-    return result;
+    return map;
+  }
+
+  protected Map<String,Integer> MethodDecl.buildParameterMap(Map<String,Integer> solution) {
+    Map<String,Integer> map = new HashMap(getNumParameter() + 1);
+    // Add the parameter
+    for (ParameterDeclaration param: getParameterList()) {
+      if (param.type().versioned()) {
+        map.put(param.versionVariable(), solution.get(param.versionVariable()));
+      }
+    }
+    // Add the return type
+    if (getTypeAccess().type().versioned()) {
+      map.put(getTypeAccess().versionVariable(), solution.get(getTypeAccess().versionVariable()));
+    }
+    return map;
   }
 
   private List<ParameterDeclaration> ConstructorDecl.attachVersionToParameter(Map<String,Integer> solution) {
@@ -85,26 +126,6 @@ aspect JavaGeneration {
     return parameterList;
   }
 
-  private Set<Map<String,Integer>> MethodDecl.getSolutionSet(Set<Map<String,Integer>> filtered) {
-    Set<Map<String,Integer>> result = new HashSet();
-    Set<Map<String,Integer>> added = new HashSet();
-    for (Map<String,Integer> solution: filtered) {
-      Map<String,Integer> map = new HashMap(getNumParameter()+1);
-      for (ParameterDeclaration param: getParameterList()) {
-        if (param.type().versioned()) {
-          map.put(param.versionVariable(), solution.get(param.versionVariable()));
-        }
-      }
-      if (getTypeAccess().type().versioned()) {
-        map.put(getTypeAccess().versionVariable(), solution.get(getTypeAccess().versionVariable()));
-      }
-      if (!added.contains(map)) {
-        result.add(solution);
-        added.add(map);
-      }
-    }
-    return result;
-  }
 
   protected List<ParameterDeclaration> MethodDecl.attachVersionToParameter(Map<String,Integer> solution) {
     List<ParameterDeclaration> parameterList = new List();
@@ -128,76 +149,52 @@ aspect JavaGeneration {
   public Set<Map<String,Integer>> ASTNode.solutionSet(Set<Map<String,Integer>> filtered) {
     Set<Map<String,Integer>> solutions = new HashSet(filtered.size());
     for (Map<String,Integer> candidate: filtered) {
-      Optional<Map<String,Integer>> compare = Optional.empty();
-      for (Map<String,Integer> solution: solutions) {
-        compare = lessMap(solution, candidate);
-        if (compare.isPresent()) {
-          break;
+      Iterator<Map<String,Integer>> iter = solutions.iterator();
+      boolean flag = false;
+      while (iter.hasNext()) {
+        Map<String,Integer> solution = iter.next();
+        Optional<Boolean> compare = lessMap(solution, candidate);
+        if (compare.isPresent() && compare.get()) {
+          iter.remove();
+          flag = true;
         }
       }
-      if (compare.isPresent()) {
-        if (compare.get() != candidate) {
-          solutions.remove(compare.get());
-          solutions.add(candidate);
-        }
-      } else {
+      if (flag || solutions.size() == 0) {
         solutions.add(candidate);
       }
     }
     return solutions;
   }
 
-  /*
-  public Set<Map<String,Integer>> ASTNode.solutionSet(Set<Map<String,Integer>> filtered) {
-    Set<Map<String,Integer>> solutions = new HashSet(filtered.size());
-    for (Map<String,Integer> candidate: filtered) {
-      if (solutions.isEmpty()) {
-        solutions.add(candidate);
-      } else {
-        for (Map<String,Integer> solution: solutions) {
-          Optional<Boolean> compare = lessMap(solution, candidate);
-          if (compare.isPresent()) {
-            if (compare.get().booleanValue()) {
-              solutions.remove(solution);
-              solutions.add(candidate);
-            }
-          } else {
-            solutions.add(candidate);
+  private Optional<Boolean> ASTNode.lessMap(Map<String,Integer> mapA, Map<String,Integer> mapB) {
+    boolean ongoing = false;
+    boolean less = false;
+    for (String varA: mapA.keySet()) {
+      if (varA.substring(0,1).equals("v")) {
+        if (!mapB.containsKey(varA)) {
+          return Optional.empty();
+        }
+        Integer valA = mapA.get(varA);
+        Integer valB = mapB.get(varA);
+        if (valA > valB) {
+          if (ongoing && less) {
+            return Optional.empty();
+          }
+          if (!ongoing) {
+            ongoing = true;
+          }
+        } else if (valA < valB) {
+          if (ongoing && !less) {
+            return Optional.empty();
+          }
+          if (!ongoing) {
+            ongoing = true;
+            less = true;
           }
         }
       }
     }
-    return solutions;
-  }
-  */
-
-  public Optional<Map<String,Integer>> ASTNode.lessMap(Map<String,Integer> mapA, Map<String,Integer> mapB) {
-    boolean ongoing = false;
-    boolean less = false;
-    for (String varA: mapA.keySet()) {
-      if (!mapB.containsKey(varA)) {
-        return Optional.empty();
-      }
-      Integer valA = mapA.get(varA);
-      Integer valB = mapB.get(varA);
-      if (valA > valB) {
-        if (ongoing && less) {
-          return Optional.empty();
-        }
-        if (!ongoing) {
-          ongoing = true;
-        }
-      } else if (valA < valB) {
-        if (ongoing && !less) {
-          return Optional.empty();
-        }
-        if (!ongoing) {
-          ongoing = true;
-          less = true;
-        }
-      }
-    }
-    return less ? Optional.of(mapA) : Optional.of(mapB);
+    return less ? Optional.of(Boolean.valueOf(true)) : Optional.of(Boolean.valueOf(false));
   }
 
 }

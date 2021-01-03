@@ -63,21 +63,26 @@ aspect BatakjavaNameCheck {
   /**
    * Overlapping import declaration with version is warned
    */
-  TypeImportOnDemandDeclWithVersion contributes each batakjavaNameProblems() to CompilationUnit.batakjavaProblems();
+  CompilationUnit contributes each batakjavaNameProblems() to CompilationUnit.batakjavaProblems();
 
-  syn Collection<Problem> TypeImportOnDemandDeclWithVersion.batakjavaNameProblems() {
-    if (getAccess() instanceof PackageAccess) {
-      String packageName = ((PackageAccess) getAccess()).name();
-      if (compilationUnit().priorityVersionMap.containsKey(packageName)) {
-        if (compilationUnit().priorityVersionMap.get(packageName) != Integer.valueOf(version())) {
-          compilationUnit().priorityVersionMap.replace(packageName, Integer.valueOf(version()));
+  syn Collection<Problem> CompilationUnit.batakjavaNameProblems() {
+    Collection<Problem> problems = new LinkedList();
+    Map<String,Integer> priorityMap = new HashMap(getNumImportDecl());
+    for (ImportDecl decl: getImportDeclList()) {
+      if (decl instanceof TypeImportOnDemandDeclWithVersion) {
+        TypeImportOnDemandDeclWithVersion importDecl = (TypeImportOnDemandDeclWithVersion) decl;
+        String packageName = ((PackageAccess) importDecl.getAccess()).name();
+        if (priorityMap.containsKey(packageName)) {
+          if (priorityMap.get(packageName) != Integer.valueOf(importDecl.version())) {
+            priorityMap.replace(packageName, Integer.valueOf(importDecl.version()));
+          }
+          problems.add(warning("Import declaration " + packageName + ".* is multiply declared"));
+        } else {
+          priorityMap.put(packageName, Integer.valueOf(version()));
         }
-        return Collections.singletonList(warning("Import declaration " + packageName + ".* is multiply declared"));
-      } else {
-        compilationUnit().priorityVersionMap.put(packageName, Integer.valueOf(version()));
       }
     }
-    return Collections.emptyList();
+    return problems;
   }
 
 }

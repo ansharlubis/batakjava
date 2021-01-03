@@ -154,15 +154,10 @@ aspect BatakjavaFrontendMain {
         if (errors.isEmpty() || program.options().hasOption("-recover")) {
           long start = System.nanoTime();
           errors = unit.batakjavaErrors();
-          warnings = unit.batakjavaWarnings();
         }
         if (!errors.isEmpty()) {
           processErrors(errors, unit);
           return EXIT_ERROR;
-        } else {
-          if (!warnings.isEmpty() && !program.options().hasOption("-nowarn")) {
-            processWarnings(warnings, unit);
-          }
         }
       }
       return EXIT_SUCCESS;
@@ -216,7 +211,7 @@ aspect BatakjavaFrontendMain {
 
         int compileResult = EXIT_SUCCESS;
 
-        // Pre-checking
+        // Name/error checking
         Iterator<CompilationUnit> checkIter = program.compilationUnitIterator();
         while (checkIter.hasNext()) {
           CompilationUnit unit = checkIter.next();
@@ -235,20 +230,56 @@ aspect BatakjavaFrontendMain {
           return compileResult;
         }
 
-        /**
-         * Inference
-         */
+        // Pre-inference checking
+        Iterator<CompilationUnit> preInferenceIter = program.compilationUnitIterator();
+        while (preInferenceIter.hasNext()) {
+          CompilationUnit unit = preInferenceIter.next();
+          int result = processPreInferenceCompilationUnit(unit);
+          switch (result) {
+            case EXIT_SUCCESS:
+              break;
+            case EXIT_UNHANDLED_ERROR:
+              return result;
+            default:
+              compileResult = result;
+          }
+        }
+
+        if (compileResult != EXIT_SUCCESS) {
+          return compileResult;
+        }
+
+        // Inference
         compileResult = program.solve();
 
-        if (compileResult == EXIT_UNHANDLED_ERROR) {
+        if (compileResult != EXIT_SUCCESS) {
           System.err.println("No solution found for the program.");
           return compileResult;
         }
 
-        Iterator<CompilationUnit> iter = program.compilationUnitIterator();
+        // Post-inference checking
+        Iterator<CompilationUnit> postInferenceIter = program.compilationUnitIterator();
+        while (postInferenceIter.hasNext()) {
+          CompilationUnit unit = postInferenceIter.next();
+          int result = processPostInferenceCompilationUnit(unit);
+          switch (result) {
+            case EXIT_SUCCESS:
+              break;
+            case EXIT_UNHANDLED_ERROR:
+              return result;
+            default:
+              compileResult = result;
+          }
+        }
+
+        if (compileResult != EXIT_SUCCESS) {
+          return compileResult;
+        }
+
+        Iterator<CompilationUnit> generateIter = program.compilationUnitIterator();
         LinkedList<CompilationUnit> generated = new LinkedList<CompilationUnit>();
-        while (iter.hasNext()) {
-          CompilationUnit unit = iter.next();
+        while (generateIter.hasNext()) {
+          CompilationUnit unit = generateIter.next();
           if (unit instanceof BatakjavaCompilationUnit) {
             CompilationUnit generatedJava = unit.generateJava(program.solutions);
             CompilationUnit generatedOverview = unit.generateOverview();
@@ -324,6 +355,28 @@ aspect BatakjavaFrontendMain {
           if (!warnings.isEmpty() && !program.options().hasOption("-nowarn")) {
             processWarnings(warnings, unit);
           }
+        }
+      }
+      return EXIT_SUCCESS;
+    }
+
+    protected int processPreInferenceCompilationUnit(CompilationUnit unit) {
+      if (unit != null && unit.fromSource()) {
+        Collection<Problem> errors = unit.preInferenceErrors();
+        if (!errors.isEmpty()) {
+          processErrors(errors, unit);
+          return EXIT_ERROR;
+        }
+      }
+      return EXIT_SUCCESS;
+    }
+
+    protected int processPostInferenceCompilationUnit(CompilationUnit unit) {
+      if (unit != null && unit.fromSource()) {
+        Collection<Problem> warnings = unit.postInferenceWarnings();
+        if (!warnings.isEmpty()) {
+          processWarnings(warnings, unit);
+          return EXIT_ERROR;
         }
       }
       return EXIT_SUCCESS;
