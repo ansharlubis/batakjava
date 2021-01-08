@@ -10,6 +10,8 @@ aspect VersionInference {
   public int Program.solve() {
     LinkedList<InferenceConstraint> constraints = getConstraints();
 
+    System.err.println(typeNameToIntMap);
+
     Model model = new Model("Version inference");
     IntVar[] versions = new IntVar[variableCount];
     IntVar[] types = new IntVar[variableCount];

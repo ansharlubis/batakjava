@@ -1,84 +1,13 @@
-package downstream.application ver 1;
-import upstream.collection.Point;
-/**
- *  upstream/collection/Point.overview:
- *
- *  package upstream.collection ver 1;
- *  class Point extends Object;
- *  Point(float, float) in ver 1;
- *  float getX() in ver 1;
- *  float getY() in ver 1;
- *  float distance(Point) in ver 1;
- */
+package downstream.application;
+import upstream.collection.*;
 import mid.utility.*;
-/**
- *  mid/utility/ExtendedPoint.overview:
- *
- *  package mid.utility ver 1;
- *  class ExtendedPoint extends Point;
- *  ver 1 requires
- *    upstream.collection.Point ver 1;
- *  ExtendedPoint(float, float) in ver 1;
- *  float distanceFromZero() in ver 1;
- *  Point parent() in ver 1;
- *
- *  mid/utility/PointUtility.overview:
- *
- *  package mid.utility ver 1;
- *  class PointUtility extends Object;
- *  ver 1 requires
- *    upstream.collection.Point ver 1;
- *  Point target in ver 1;
- *  PointUtility(Point) in ver 1;
- *  Point mirrorField() in ver 1;
- *  static Point mirror(Point) in ver 1;
- *  static boolean equals(Point, Point) in ver 1;
- */
-import mid.empty.Empty;
-/**
- *  mid/empty/Empty.overview:
- *
- *  pacakge mid.empty ver 1,2;
- *  class Empty extends Object;
- *  Empty() in ver 1,2;
- */
+import mid.empty.*;
 
-public class Main {
-                //n1              //n2     //m1
-  public static Point createPoint(Point p, Empty e) {
-               //n3
-    return new Point(0f, 0f);
+public class Main extends Test {
+
+  public Main(float x, float y) {
+    super(x,y);
   }
-                //m2              //n4
-  public static Empty createEmpty(Point p) {
-                //m3
-    return new Empty();
-  }
-  public static void main(String[] args) {
-    //n5          //n6
-    Point a = new Point(1f, 2f);
-        //o1                //o2
-    ExtendedPoint b = new ExtendedPoint(0f, 0f);
-    //n8            //o3
-    Point e = new ExtendedPoint(0f, 0f);
-    //n7     //o1 //r1
-    Point c = b.parent();
-             //n5
-    float x = a.getX();
-             //n5
-    float y = a.getY();
-     //n9               //p1       //r2  //n5
-    Point mirroredA = PointUtility.mirror(a);
-                     //n5       //o1
-    float distanceA = a.distance(b);
-                     //o1  //r3         //o1
-    float distanceB = b.parent().distance(b);
-                     //n5       //o1 //r4
-    float distanceC = a.distance(b.parent());
-                     //o1
-    float bFromZero = b.distanceFromZero();
-                  //p2           //n5     //n7
-    boolean t = PointUtiity.equals(a, new Point(0f, 0f));
-  }
+
+
 }
-

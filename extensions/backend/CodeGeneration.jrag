@@ -69,7 +69,7 @@ aspect JavaGeneration {
       selected = priority.get();
 
       // Filter the solutions in case the class extends
-      if (hasSuperClass() && superclass().isOverview()) {
+      if (hasSuperClass() && superclass().versioned()) {
         Integer version = selected.get(getSuperClass().versionVariable());
         filtered = solutions.stream()
           .filter(solution -> solution.get(getSuperClass().versionVariable()) == version)
@@ -78,7 +78,7 @@ aspect JavaGeneration {
       }
     } else {
       // The same as above but find the max version for superclass first
-      if (hasSuperClass() && superclass().isOverview()) {
+      if (hasSuperClass() && superclass().versioned()) {
         Integer maxVersion = solutions.stream()
           .map(solution -> solution.get(getSuperClass().versionVariable()))
           .reduce(0, (a,b) -> a > b ? a : b);
@@ -296,7 +296,7 @@ aspect JavaGeneration {
   syn nta Access Access.generateJavaAccess(Map<String,Integer> solution) = treeCopy();
 
   eq VarAccess.generateJavaAccess(Map<String,Integer> solution)
-    = (isFieldAccess() && type().versioned())
+    = (isFieldAccess() && solution.get(versionVariable()) != 0)
       ? new VarAccess(getID() + "_ver_" + solution.get(versionVariable()).toString())
       : treeCopy();
 

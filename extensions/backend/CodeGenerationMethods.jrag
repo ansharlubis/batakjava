@@ -96,21 +96,6 @@ aspect JavaGeneration {
     return map;
   }
 
-  protected Map<String,Integer> MethodDecl.buildParameterMap(Map<String,Integer> solution) {
-    Map<String,Integer> map = new HashMap(getNumParameter() + 1);
-    // Add the parameter
-    for (ParameterDeclaration param: getParameterList()) {
-      if (param.type().versioned()) {
-        map.put(param.versionVariable(), solution.get(param.versionVariable()));
-      }
-    }
-    // Add the return type
-    if (getTypeAccess().type().versioned()) {
-      map.put(getTypeAccess().versionVariable(), solution.get(getTypeAccess().versionVariable()));
-    }
-    return map;
-  }
-
   private List<ParameterDeclaration> ConstructorDecl.attachVersionToParameter(Map<String,Integer> solution) {
     List<ParameterDeclaration> parameterList = new List();
     for (ParameterDeclaration param: getParameterList()) {
@@ -126,6 +111,20 @@ aspect JavaGeneration {
     return parameterList;
   }
 
+  protected Map<String,Integer> MethodDecl.buildParameterMap(Map<String,Integer> solution) {
+    Map<String,Integer> map = new HashMap(getNumParameter() + 1);
+    // Add the parameter
+    for (ParameterDeclaration param: getParameterList()) {
+      if (param.type().versioned()) {
+        map.put(param.versionVariable(), solution.get(param.versionVariable()));
+      }
+    }
+    // Add the return type
+    if (getTypeAccess().type().versioned()) {
+      map.put(getTypeAccess().versionVariable(), solution.get(getTypeAccess().versionVariable()));
+    }
+    return map;
+  }
 
   protected List<ParameterDeclaration> MethodDecl.attachVersionToParameter(Map<String,Integer> solution) {
     List<ParameterDeclaration> parameterList = new List();
@@ -143,9 +142,6 @@ aspect JavaGeneration {
     return parameterList;
   }
 
-  /**
-   * This could be removed, but let's keep it for the moment
-   */
   public Set<Map<String,Integer>> ASTNode.solutionSet(Set<Map<String,Integer>> filtered) {
     Set<Map<String,Integer>> solutions = new HashSet(filtered.size());
     for (Map<String,Integer> candidate: filtered) {
