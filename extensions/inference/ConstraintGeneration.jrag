@@ -20,6 +20,15 @@ aspect InferenceVariable {
   syn String Expr.versionVariable() = "v" + versionNum().toString();
   syn String Expr.typeVariable() = "t" + versionNum().toString();
 
+  eq Unary.versionVariable() = getOperand().versionVariable();
+  eq Unary.typeVariable() = getOperand().typeVariable();
+
+  eq AssignExpr.versionVariable() = getDest().versionVariable();
+  eq AssignExpr.typeVariable() = getDest().typeVariable();
+
+  eq ParExpr.versionVariable() = getExpr().versionVariable();
+  eq ParExpr.typeVariable() = getExpr().typeVariable();
+
   eq VarAccess.versionVariable() = decl().versionVariable();
   eq VarAccess.typeVariable() = decl().typeVariable();
 
@@ -65,8 +74,6 @@ aspect InferenceVariable {
     }
     return null;
   }
-
-  // TODO: ThisAccess
 
   syn lazy Integer Variable.versionNum() = program().freshVariable();
 
@@ -198,7 +205,31 @@ aspect ConstraintGeneration {
     return and;
   }
 
-  eq Unary.constraints() = getOperand().constraints();
+  eq LogicalExpr.constraints() {
+    AndConstraint and = new AndConstraint();
+    and.add(getLeftOperand(), typeBoolean());
+    and.add(getRightOperand(), typeBoolean());
+    and.add(this, typeBoolean());
+    return and;
+  }
+
+  eq RelationalExpr.constraints() {
+    AndConstraint and = new AndConstraint();
+    and.add(new EqualConstraint(getLeftOperand().versionVariable(), getRightOperand().versionVariable(), false));
+    and.add(new EqualConstraint(getLeftOperand().typeVariable(), getRightOperand().typeVariable(), true));
+    and.add(this, typeBoolean());
+    return and;
+  }
+
+  eq ShiftExpr.constraints() {
+    AndConstraint and = new AndConstraint();
+    and.add(getLeftOperand(), typeByte());
+    and.add(getRightOperand(), typeByte());
+    and.add(this, typeByte());
+    return and;
+  }
+
+  eq Unary.constraints() = new AndConstraint();
 
   eq ArrayInit.constraints() {
     AndConstraint and = new AndConstraint();
@@ -213,6 +244,7 @@ aspect ConstraintGeneration {
     AndConstraint and = new AndConstraint();
     and.add(new EqualConstraint(getExpr().versionVariable(), getTypeAccess().versionVariable(), false));
     and.add(new EqualConstraint(getExpr().typeVariable(), getTypeAccess().typeVariable(), true));
+    and.add(this, typeBoolean());
     return and;
   }
 
@@ -225,7 +257,7 @@ aspect ConstraintGeneration {
     return and;
   }
 
-  eq ParExpr.constraints() = getExpr().constraints();
+  eq ParExpr.constraints() = new AndConstraint();
 
   /**
    * Literals
@@ -240,7 +272,7 @@ aspect ConstraintGeneration {
         or.addType(this, program().typeInt());
       }
       and.add(or);
-    } else {
+    } if (!type().isNull()) {
       and.addType(this, type());
     }
     return and;
@@ -270,7 +302,22 @@ aspect ConstraintGeneration {
     return or;
   }
 
-  eq VarAccess.constraints() = new OrConstraint();
+  eq VarAccess.constraints() {
+    OrConstraint or = new OrConstraint();
+    if (!hasParentDot()) {
+      if (!decls().isEmpty()) {
+        generateVarConstraints(type(), or);
+      } else {
+        generateFieldConstraints(hostType(), or);
+      }
+
+      if (or.size() == 0) {
+       return new EmptyConstraint();
+      }
+    }
+
+    return or;
+  }
 
   eq MethodAccess.constraints() {
     OrConstraint or = new OrConstraint();
@@ -398,6 +445,8 @@ aspect ConstraintGeneration {
     OrConstraint or = new OrConstraint();
     if (!decls().isEmpty()) {
       generateVarConstraints(type(), or);
+    } else {
+      generateFieldConstraints(hostType(), or);
     }
 
     // This means that this variable is not found
@@ -411,6 +460,11 @@ aspect ConstraintGeneration {
   protected InferenceConstraint MethodAccess.initializeConstraints() {
     OrConstraint or = new OrConstraint();
     generateMethodConstraints(hostType(), or);
+
+    if (or.size() == 0) {
+      return new EmptyConstraint();
+    }
+
     return or;
   }
 

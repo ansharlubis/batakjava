@@ -60,6 +60,17 @@ aspect BatakjavaNameCheck {
     }
   }
 
+  /*
+  VarAccess contributes each batakjavaNameProblems() to CompilationUnit.batakjavaProblems();
+
+  syn Collection<Problem> VarAccess.batakjavaNameProblems() {
+    if (decls().isEmpty() && !isQualified()) {
+      return Collections.singletonList(errorf("no variable named %s is accessible", name()));
+    }
+    return Collections.emptyList();
+  }
+  */
+
   /**
    * Overlapping import declaration with version is warned
    */

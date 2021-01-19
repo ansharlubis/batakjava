@@ -166,8 +166,12 @@ aspect JavaGeneration {
     boolean ongoing = false;
     boolean less = false;
     for (String varA: mapA.keySet()) {
+      String num = varA.substring(1);
       if (varA.substring(0,1).equals("v")) {
         if (!mapB.containsKey(varA)) {
+          return Optional.empty();
+        }
+        if (mapA.get("t"+num) != mapB.get("t"+num)) {
           return Optional.empty();
         }
         Integer valA = mapA.get(varA);
@@ -192,5 +196,4 @@ aspect JavaGeneration {
     }
     return less ? Optional.of(Boolean.valueOf(true)) : Optional.of(Boolean.valueOf(false));
   }
-
 }

@@ -101,7 +101,7 @@ aspect BatakjavaLookupFullyQualifiedTypes {
 
   inh Access ReturnStmt.returnTypeAccess();
   eq TypeDecl.getBodyDecl().returnTypeAccess() = null;
-  eq MethodDecl.getBlock().returnTypeAccess() = getTypeAccess();
+  eq MethodDecl.getBlock().returnTypeAccess() = !isVoid() ? getTypeAccess() : null;
   eq Program.getChild().returnTypeAccess() = null;
 
 }

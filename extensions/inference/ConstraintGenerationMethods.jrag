@@ -250,6 +250,62 @@ aspect ConstraintGeneration {
     }
   }
 
+  private void VarAccess.generateFieldConstraints(TypeDecl type, OrConstraint or) {
+    Map<String,SimpleSet<Variable>> fieldMap = type.versionedMemberFieldsMap();
+    if (fieldMap.containsKey(name())) {
+      for (Variable field: fieldMap.get(name())) {
+        TypeDecl fieldType = field.type();
+        if (fieldType.isOverview()) {
+          SimpleSet<TypeDecl> typeSet = lookupTypeSet(fieldType.packageName(), fieldType.name());
+          Iterator<TypeDecl> iter = typeSet.iterator();
+          while (iter.hasNext()) {
+            AndConstraint and = new AndConstraint();
+            and.addExact(this, iter.next());
+            or.add(and);
+          }
+        } else {
+          AndConstraint and = new AndConstraint();
+          and.addExact(this, fieldType);
+          or.add(and);
+        }
+      }
+    }
+    if (type instanceof ClassDecl && or.size() == 0) {
+      SimpleSet<Access> ancestorAccess = type.overviewAncestor();
+      if (ancestorAccess.isSingleton()) {
+        Access superAccess = ancestorAccess.singletonValue();
+        TypeDecl superClass = superAccess.type();
+        SimpleSet<TypeDecl> superTypes = lookupTypeSet(superClass.packageName(), superClass.name());
+        Iterator<TypeDecl> iter = superTypes.iterator();
+        while (iter.hasNext()) {
+          // This part may cause problems, because of overridden methods
+          TypeDecl superType = iter.next();
+          Map<String,SimpleSet<Variable>> superFieldMap = superType.versionedMemberFieldsMap();
+          if (superFieldMap.containsKey(name())) {
+            for (Variable field: superFieldMap.get(name())) {
+              TypeDecl fieldType = field.type();
+              if (fieldType.isOverview()) {
+                SimpleSet<TypeDecl> typeSetSuperField = lookupTypeSet(fieldType.packageName(), fieldType.name());
+                Iterator<TypeDecl> iterSuperField = typeSetSuperField.iterator();
+                while (iterSuperField.hasNext()) {
+                  AndConstraint and = new AndConstraint();
+                  and.add(superAccess, superType);
+                  and.addExact(this, iterSuperField.next());
+                  or.add(and);
+                }
+              } else {
+                AndConstraint and = new AndConstraint();
+                and.add(superAccess, superType);
+                and.addExact(this, fieldType);
+                or.add(and);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   private void VarAccess.generateFieldConstraints(TypeDecl type, OrConstraint or, InferenceConstraint with) {
     Map<String,SimpleSet<Variable>> fieldMap = type.versionedMemberFieldsMap();
     if (fieldMap.containsKey(name())) {
@@ -272,7 +328,7 @@ aspect ConstraintGeneration {
         }
       }
     }
-    if (type instanceof ClassDecl) {
+    if (type instanceof ClassDecl && or.size() == 0) {
       SimpleSet<Access> ancestorAccess = type.overviewAncestor();
       if (ancestorAccess.isSingleton()) {
         Access superAccess = ancestorAccess.singletonValue();

@@ -60,15 +60,6 @@ aspect InferenceConstraint {
     private final Integer version;
 
     public VersionConstraint(String variable, Integer version) {
-      /*
-      if (program.variableToDomainMap().containsKey(version)) {
-        program.variableToDomainMap.get(variable).add(version);
-      } else {
-        Set<Integer> domain = new HashSet();
-        domain.add(version);
-        program.variableToDomainMap.put(variable, domain);
-      }
-      */
       this.variable = variable;
       this.version = version;
     }
@@ -176,39 +167,6 @@ aspect InferenceConstraint {
     public void addExact(Expr expr, TypeDecl type) {
       Program program = type.program();
 
-      /*
-      if (type.isOverview()) {
-        OrConstraint or = new OrConstraint();
-        SimpleSet<TypeDecl> typeSet = type.lookupTypeSet(type.packageName(), type.name());
-        Iterator<TypeDecl> iter = typeSet.iterator();
-        while (iter.hasNext()) {
-          TypeDecl currentType = iter.next();
-          AndConstraint currentAnd = new AndConstraint();
-          currentAnd.add(expr, currentType);
-          or.add(currentAnd);
-        }
-        constraints.add(or);
-      } else {
-        if (program.variableToDomainMap.containsKey(expr.versionVariable())) {
-          program.variableToDomainMap.get(expr.versionVariable()).add(Integer.valueOf(type.initialVersion()));
-        } else {
-          Set<Integer> domain = new HashSet();
-          domain.add(Integer.valueOf(type.initialVersion()));
-          program.variableToDomainMap.put(expr.versionVariable(), domain);
-        }
-        constraints.add(new VersionConstraint(expr.versionVariable(),Integer.valueOf(type.initialVersion())));
-
-        if (program.variableToDomainMap.containsKey(expr.versionVariable())) {
-          program.variableToDomainMap.get(expr.versionVariable()).add(Integer.valueOf(type.initialVersion()));
-        } else {
-          Set<Integer> domain = new HashSet();
-          domain.add(Integer.valueOf(type.initialVersion()));
-          program.variableToDomainMap.put(expr.versionVariable(), domain);
-        }
-        constraints.add(new VersionConstraint(expr.versionVariable(), Integer.valueOf(type.initialVersion())));
-      }
-      */
-
       if (program.variableToDomainMap.containsKey(expr.versionVariable())) {
         program.variableToDomainMap.get(expr.versionVariable()).add(Integer.valueOf(type.initialVersion()));
       } else {
@@ -230,44 +188,6 @@ aspect InferenceConstraint {
         constraints.add(new TypeConstraint(expr.typeVariable(), typeInt));
       }
     }
-
-    /*
-    public void add(Expr expr, TypeDecl type) {
-      Program program = type.program();
-      if (type.isOverview()) {
-        OrConstraint or = new OrConstraint();
-        SimpleSet<TypeDecl> typeSet = type.lookupTypeSet(type.packageName(), type.name());
-        Iterator<TypeDecl> iter = typeSet.iterator();
-        while (iter.hasNext()) {
-          TypeDecl currentType = iter.next();
-          AndConstraint currentAnd = new AndConstraint();
-          currentAnd.add(expr, currentType);
-          or.add(currentAnd);
-        }
-        constraints.add(or);
-      } else {
-        if (type.isFloat() || type.isInt()) {
-          OrConstraint or = new OrConstraint();
-          or.addType(expr, program.typeDouble());
-          or.addType(expr, program.typeFloat());
-          if (type.isInt()) {
-            or.addType(expr, program.typeInt());
-          }
-          constraints.add(or);
-        } else {
-          addType(expr, type);
-        }
-        if (program.variableToDomainMap.containsKey(expr.versionVariable())) {
-          program.variableToDomainMap.get(expr.versionVariable()).add(Integer.valueOf(type.initialVersion()));
-        } else {
-          Set<Integer> domain = new HashSet();
-          domain.add(Integer.valueOf(type.initialVersion()));
-          program.variableToDomainMap.put(expr.versionVariable(), domain);
-        }
-        constraints.add(new VersionConstraint(expr.versionVariable(), Integer.valueOf(type.initialVersion())));
-      }
-    }
-    */
 
     public void add(Expr expr, TypeDecl type) {
       Program program = type.program();
