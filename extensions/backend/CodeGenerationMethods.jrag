@@ -2,48 +2,33 @@ aspect JavaGeneration {
 
   public final Map<String,Integer> CompilationUnit.priorityVersionMap = new HashMap();
 
-  public Optional<Map<String,Integer>> TypeDecl.prioritySet(Set<Map<String,Integer>> solutions) {
-    return Optional.empty();
-  }
-
-  public Optional<Map<String,Integer>> ClassDecl.prioritySet(Set<Map<String,Integer>> solutions) {
+  public Optional<Map<String,Integer>> ASTNode.prioritySet(Set<Map<String,Integer>> solutions) {
     if (compilationUnit().versionMap().size() > 0) {
       Map<String,Integer> versionMap = compilationUnit().versionMap();
-      Set<Map<String,Integer>> priority = new HashSet();
+      Map<String,Integer> priority = new HashMap();
+      int mostApplicable = 0;
       for (Map<String,Integer> solution: solutions) {
-        boolean fulfill = true;
+        int currentMap = 0;
         for (String solutionKey: solution.keySet()) {
-          if (solutionKey.substring(0,1).equals("t")) {
+          if (solutionKey.substring(0,1).equals("t") && solution.get(solutionKey) != 0) {
             String packageName = packageNameFromQualifiedName(intToTypeName(solution.get(solutionKey)));
             if (versionMap.containsKey(packageName)) {
-              if (versionMap.get(packageName) != solution.get("v" + solutionKey.substring(1))) {
-                fulfill = false;
-                break;
+              if (versionMap.get(packageName) == solution.get("v" + solutionKey.substring(1))) {
+                currentMap++;
               }
             }
           }
         }
-        if (fulfill) {
-          priority.add(solution);
+        if (currentMap > mostApplicable) {
+          priority = solution;
+          mostApplicable = currentMap;
         }
       }
-      if (priority.size() > 0) {
-        if (hasSuperClass() && superclass().isOverview() && priority.size() > 1) {
-          Integer maxVersion = priority.stream()
-            .map(solution -> solution.get(getSuperClass().versionVariable()))
-            .reduce(0, (a,b) -> a > b ? a : b);
-          priority = priority.stream()
-            .filter(solution -> solution.get(getSuperClass().versionVariable()) == maxVersion)
-            .collect(Collectors.toCollection(HashSet::new));
-        }
-        return Optional.of(solutionSet(priority).iterator().next());
+      if (mostApplicable != 0) {
+        return Optional.of(priority);
       }
     }
     return Optional.empty();
-  }
-
-  public Optional<Map<String,Integer>> BodyDecl.prioritySet(Set<Map<String,Integer>> solutions) {
-    return hostType().prioritySet(solutions);
   }
 
   protected Set<Map<String,Integer>> BodyDecl.getSolutionSet(Set<Map<String,Integer>> filtered) {

@@ -272,7 +272,7 @@ aspect ConstraintGeneration {
         or.addType(this, program().typeInt());
       }
       and.add(or);
-    } if (!type().isNull()) {
+    } else if (!type().isNull()) {
       and.addType(this, type());
     }
     return and;
