@@ -295,10 +295,13 @@ aspect JavaGeneration {
    */
   syn nta Access Access.generateJavaAccess(Map<String,Integer> solution) = treeCopy();
 
-  eq VarAccess.generateJavaAccess(Map<String,Integer> solution)
-    = (isFieldAccess() && solution.get(versionVariable()) != 0)
-      ? new VarAccess(getID() + "_ver_" + solution.get(versionVariable()).toString())
-      : treeCopy();
+  eq VarAccess.generateJavaAccess(Map<String,Integer> solution) {
+    if (isFieldAccess() && solution.get(versionVariable()) != null && solution.get(versionVariable()) != 0) {
+      return new VarAccess(getID() + "_ver_" + solution.get(versionVariable()).toString());
+    }
+    return treeCopy();
+  }
+
 
   eq TypeAccess.generateJavaAccess(Map<String,Integer> solution)
     = type().versioned()

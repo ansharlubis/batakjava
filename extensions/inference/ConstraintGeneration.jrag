@@ -113,8 +113,8 @@ aspect ConstraintGeneration {
       if (orConstraints.size() > 0) {
         result.add(orConstraints);
       }
-      System.err.println(prettyPrint());
-      System.err.println(orConstraints);
+      //System.err.println(prettyPrint());
+      //System.err.println(orConstraints);
       return result;
     }
     if (constraints instanceof AndConstraint) {
@@ -122,12 +122,12 @@ aspect ConstraintGeneration {
       if (andConstraints.size() > 0) {
         result.add(andConstraints);
       }
-      System.err.println(prettyPrint());
-      System.err.println(andConstraints);
+      //System.err.println(prettyPrint());
+      //System.err.println(andConstraints);
       return result;
     }
-    System.err.println(prettyPrint());
-    System.err.println(constraints);
+    //System.err.println(prettyPrint());
+    //System.err.println(constraints);
     return Collections.singletonList(constraints);
   }
 
@@ -141,8 +141,8 @@ aspect ConstraintGeneration {
       if (orConstraints.size() > 0) {
         result.add(orConstraints);
       }
-      System.err.println(prettyPrint());
-      System.err.println(orConstraints);
+      //System.err.println(prettyPrint());
+      //System.err.println(orConstraints);
       return result;
     }
     if (constraints instanceof AndConstraint) {
@@ -150,12 +150,12 @@ aspect ConstraintGeneration {
       if (andConstraints.size() > 0) {
         result.add(andConstraints);
       }
-      System.err.println(prettyPrint());
-      System.err.println(andConstraints);
+      //System.err.println(prettyPrint());
+      //System.err.println(andConstraints);
       return result;
     }
-    System.err.println(prettyPrint());
-    System.err.println(constraints);
+    //System.err.println(prettyPrint());
+    //System.err.println(constraints);
     return Collections.singletonList(constraints);
   }
 
@@ -169,8 +169,8 @@ aspect ConstraintGeneration {
       if (orConstraints.size() > 0) {
         result.add(orConstraints);
       }
-      System.err.println(prettyPrint());
-      System.err.println(orConstraints);
+      //System.err.println(prettyPrint());
+      //System.err.println(orConstraints);
       return result;
     }
     if (constraints instanceof AndConstraint) {
@@ -178,12 +178,12 @@ aspect ConstraintGeneration {
       if (andConstraints.size() > 0) {
         result.add(andConstraints);
       }
-      System.err.println(prettyPrint());
-      System.err.println(andConstraints);
+      //System.err.println(prettyPrint());
+      //System.err.println(andConstraints);
       return result;
     }
-    System.err.println(prettyPrint());
-    System.err.println(constraints);
+    //System.err.println(prettyPrint());
+    //System.err.println(constraints);
     return Collections.singletonList(constraints);
   }
 
@@ -299,6 +299,14 @@ aspect ConstraintGeneration {
         return new EmptyConstraint();
       }
     }
+    return or;
+  }
+
+  eq ThisAccess.constraints() {
+    OrConstraint or = new OrConstraint();
+    AndConstraint and = new AndConstraint();
+    and.add(this, hostType());
+    or.add(and);
     return or;
   }
 

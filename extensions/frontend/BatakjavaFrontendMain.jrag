@@ -1,6 +1,8 @@
 aspect BatakjavaFrontendMain {
 
-  public long Program.batakjavaCheckTime;
+  public long Program.constraintGenTime;
+  public long Program.solvingTime;
+  public long Program.javaGenTime;
 
   refine FrontendMain public void Program.resetStatistics() {
     javaParseTime = 0;
@@ -9,6 +11,9 @@ aspect BatakjavaFrontendMain {
     errorCheckTime = 0;
     numJavaFiles = 0;
     numClassFiles = 0;
+    constraintGenTime = 0;
+    solvingTime = 0;
+    javaGenTime = 0;
   }
 
   abstract public class ConstraintFrontend extends Frontend {
@@ -276,6 +281,7 @@ aspect BatakjavaFrontendMain {
           return compileResult;
         }
 
+        long genStart = System.nanoTime();
         Iterator<CompilationUnit> generateIter = program.compilationUnitIterator();
         LinkedList<CompilationUnit> generated = new LinkedList<CompilationUnit>();
         while (generateIter.hasNext()) {
@@ -293,6 +299,7 @@ aspect BatakjavaFrontendMain {
             generated.add(unit);
           }
         }
+        program.javaGenTime += System.nanoTime() - genStart;
 
         program.setCompilationUnitList(new List());
         for (CompilationUnit generatedUnit: generated) {
@@ -336,6 +343,7 @@ aspect BatakjavaFrontendMain {
           program.printStatistics(System.out);
         }
       }
+      printTime();
       return EXIT_SUCCESS;
     }
 
@@ -382,5 +390,12 @@ aspect BatakjavaFrontendMain {
       return EXIT_SUCCESS;
     }
 
+    private void printTime() {
+      System.err.println("Constraint generation: " + program.constraintGenTime);
+      System.err.println("Solving: " + program.solvingTime);
+      System.err.println("Java generation: " + program.javaGenTime);
+      System.err.println("Type checking: " + program.errorCheckTime);
+      System.err.println("Bytecode generation: " + program.codeGenTime);
+    }
   }
 }

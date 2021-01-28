@@ -8,7 +8,9 @@ aspect VersionInference {
   public final Set<Map<String,Integer>> Program.solutions = new HashSet();
 
   public int Program.solve() {
+    long start = System.nanoTime();
     LinkedList<InferenceConstraint> constraints = getConstraints();
+    constraintGenTime += System.nanoTime() - start;
 
     Model model = new Model("Version inference");
     IntVar[] versions = new IntVar[variableCount];
@@ -28,7 +30,9 @@ aspect VersionInference {
       constraint.post(model, versions, types).post();
     }
 
+    start = System.nanoTime();
     java.util.List<Solution> solverSolutions = model.getSolver().findAllSolutions();
+    solvingTime += System.nanoTime() - start;
 
     for (Solution solverSolution: solverSolutions) {
       Map<String,Integer> solution = new HashMap();
@@ -39,7 +43,7 @@ aspect VersionInference {
       solutions.add(solution);
     }
 
-    System.err.println(solutions);
+    //System.err.println(solutions);
 
     return solutions.size() > 0 ? 0 : 4;
   }

@@ -246,7 +246,9 @@ aspect ConstraintGeneration {
       }
       and.add(subOr);
     } else {
-      and.addExact(getArg(i), type);
+      if (!type.isObject()) {
+        and.addExact(getArg(i), type);
+      }
     }
   }
 
