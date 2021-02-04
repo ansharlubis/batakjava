@@ -1,0 +1,14 @@
+package mid.utility ver 2;
+
+import upstream.collection.*;
+
+public class PointUtility {
+  public Point i = new Point(0f,0);
+
+  public Point returnField() { return this.i; }
+
+  public Point returnPoint(Point p) {
+    p.getAngle();
+    return new Point(0,0);
+  }
+}

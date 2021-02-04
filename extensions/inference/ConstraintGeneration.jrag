@@ -38,8 +38,10 @@ aspect InferenceVariable {
   eq ClassInstanceExpr.versionVariable() = getAccess().versionVariable();
   eq ClassInstanceExpr.typeVariable() = getAccess().typeVariable();
 
+  /*
   eq ArrayAccess.versionVariable() = getExpr().versionVariable();
   eq ArrayAccess.typeVariable() = getExpr().typeVariable();
+  */
 
   // TODO: Add checks for super class existence
   // TODO: Careful about the null value
@@ -231,11 +233,24 @@ aspect ConstraintGeneration {
 
   eq Unary.constraints() = new AndConstraint();
 
+  /*
   eq ArrayInit.constraints() {
     AndConstraint and = new AndConstraint();
     for (Expr init: getInitList()) {
       and.add(new EqualConstraint(versionVariable(), init.versionVariable(), false));
       and.add(new EqualConstraint(typeVariable(), init.typeVariable(), true));
+    }
+    return and;
+  }
+  */
+
+  eq ArrayInit.constraints() {
+    AndConstraint and = new AndConstraint();
+    if (getNumInit() > 1) {
+      for (int i = 1; i < getNumInit(); i++) {
+        and.add(new EqualConstraint(getInit(0).versionVariable(), getInit(i).versionVariable(), false));
+        and.add(new EqualConstraint(getInit(0).typeVariable(), getInit(i).typeVariable(), true));
+      }
     }
     return and;
   }
@@ -410,6 +425,12 @@ aspect ConstraintGeneration {
   }
 
   syn InferenceConstraint Stmt.constraints() = new AndConstraint();
+
+  eq IfStmt.constraints() {
+    AndConstraint and = new AndConstraint();
+    and.add(getCondition(), getCondition().typeBoolean());
+    return and;
+  }
 
   eq ReturnStmt.constraints() {
     AndConstraint and = new AndConstraint();

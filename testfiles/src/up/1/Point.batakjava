@@ -1,4 +1,4 @@
-package upstream.collection ver 1;
+package upstream ver 1;
 public class Point extends Object {
   private float x;
   private float y;
@@ -6,21 +6,13 @@ public class Point extends Object {
     this.x = x;
     this.y = y;
   }
-  public float getX() { return x; }
-  public float getY() { return y; }
   public Point move(Displacement d) {
-    return new Point(x + d.getValue(new Displacement(1)), 0);
+    return new Point(x + d.getValue(new Displacement(1f)), 0f);
   }
-  public double distance(Point other, Point another) {
-    return java.lang.Math.sqrt(
-      (x - another.getX()) * (x - another.getX()) +
-      (y - another.getY()) * (y - another.getY())
-    );
-  }
+
 }
 
 /*
-
 What I want to do:
 Generate constraints from method invocations/object instantiations.
 

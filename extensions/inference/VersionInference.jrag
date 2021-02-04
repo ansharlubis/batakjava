@@ -44,6 +44,7 @@ aspect VersionInference {
     }
 
     //System.err.println(solutions);
+    //System.err.println(typeNameToIntMap);
 
     return solutions.size() > 0 ? 0 : 4;
   }

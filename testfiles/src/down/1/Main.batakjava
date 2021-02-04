@@ -1,0 +1,16 @@
+package downstream ver 1;
+import upstream.*;
+import mid.utility.*;
+import mid.empty.*;
+
+public class Main extends Test {
+
+  public Main(float x, int y) {
+    super(x,y);
+  }
+
+  public static void main(String[] args) {
+    Main m = new Main(0,0).getX();
+  }
+
+}

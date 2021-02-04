@@ -5,10 +5,14 @@ public class ExtendedPoint extends Point {
   public ExtendedPoint(float x, float y) {
     super(x,y);
   }
-  public float distanceFromZero() {
-    return new Point(0f,0f).distance(this);
+  public double distanceFromZero() {
+    return new Point(0f,0f).distance(new Point(0f,0f), new Point(0f,0f));
   }
   public Point parent() {
     return new Point(getX(), getY());
+  }
+
+  public Point recursive() {
+    return recursive();
   }
 }

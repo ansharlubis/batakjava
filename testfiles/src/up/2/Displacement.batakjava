@@ -1,4 +1,4 @@
-package upstream.collection ver 2;
+package upstream ver 2;
 
 public class Displacement {
   private float value;

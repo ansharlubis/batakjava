@@ -235,19 +235,21 @@ aspect ConstraintGeneration {
 
   private void MethodAccess.generateArgConstraints(int i, MethodDecl method, AndConstraint and) {
     TypeDecl type = method.getParameter(i).type();
-    if (type.isOverview()) {
-      OrConstraint subOr = new OrConstraint();
-      SimpleSet<TypeDecl> typeSet = lookupTypeSet(type.packageName(), type.name());
-      Iterator<TypeDecl> iter = typeSet.iterator();
-      while (iter.hasNext()) {
-        AndConstraint subAnd = new AndConstraint();
-        subAnd.addExact(getArg(i), iter.next());
-        subOr.add(subAnd);
-      }
-      and.add(subOr);
-    } else {
-      if (!type.isObject()) {
-        and.addExact(getArg(i), type);
+    if (!type.isTypeVariable()) {
+      if (type.isOverview()) {
+        OrConstraint subOr = new OrConstraint();
+        SimpleSet<TypeDecl> typeSet = lookupTypeSet(type.packageName(), type.name());
+        Iterator<TypeDecl> iter = typeSet.iterator();
+        while (iter.hasNext()) {
+          AndConstraint subAnd = new AndConstraint();
+          subAnd.addExact(getArg(i), iter.next());
+          subOr.add(subAnd);
+        }
+        and.add(subOr);
+      } else {
+        if (!type.isObject()) {
+          and.addExact(getArg(i), type);
+        }
       }
     }
   }

@@ -343,7 +343,7 @@ aspect BatakjavaFrontendMain {
           program.printStatistics(System.out);
         }
       }
-      printTime();
+      //printTime();
       return EXIT_SUCCESS;
     }
 

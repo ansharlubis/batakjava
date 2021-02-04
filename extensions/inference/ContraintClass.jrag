@@ -150,14 +150,20 @@ aspect InferenceConstraint {
 
     public void add(InferenceConstraint arg) {
       if (arg instanceof AndConstraint) {
-        for (InferenceConstraint constraint: ((AndConstraint) arg)) {
-          constraints.add(constraint);
+        AndConstraint andArg = (AndConstraint) arg;
+        if (andArg.size() != 0) {
+          for (InferenceConstraint constraint: andArg) {
+            constraints.add(constraint);
+          }
         }
         return;
       } else if (arg instanceof OrConstraint) {
         OrConstraint orArg = (OrConstraint) arg;
         if (orArg.size() == 1) {
           constraints.add(orArg.iterator().next());
+          return;
+        }
+        if (orArg.size() == 0) {
           return;
         }
       }
@@ -292,14 +298,19 @@ aspect InferenceConstraint {
     public void add(InferenceConstraint arg) {
       if (arg instanceof OrConstraint) {
         OrConstraint orArg = (OrConstraint) arg;
-        for (InferenceConstraint constraint: orArg) {
-          constraints.add(constraint);
+        if (orArg.size() != 0) {
+          for (InferenceConstraint constraint: orArg) {
+            constraints.add(constraint);
+          }
         }
         return;
       } else if (arg instanceof AndConstraint) {
         AndConstraint andArg = (AndConstraint) arg;
         if (andArg.size() == 1) {
           constraints.add(andArg.iterator().next());
+          return;
+        }
+        if (andArg.size() == 0) {
           return;
         }
       }
