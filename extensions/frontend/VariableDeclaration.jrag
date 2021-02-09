@@ -1,0 +1,18 @@
+aspect Variables {
+
+  syn String Declarator.initialName() {
+    if (hostType().isGenerated()) {
+      String[] splitName = getID().split("_");
+      if (splitName.length > 2 && splitName[splitName.length-2].equals("ver")) {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < splitName.length-2; i++) {
+          if (i != 0) result.append("_");
+          result.append(splitName[i]);
+        }
+        return result.toString();
+      }
+    }
+    return getID();
+  }
+
+}

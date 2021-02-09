@@ -1,13 +1,3 @@
-/**
- * Additions:
- * 1) The package declaration has version
- * 2) The import declaration has version priority
- * Limitations:
- * 1) No interfaces
- * 2) No exceptions
- * 3) Class declarations made in BatakJava only have FieldDecl, MethodDecl, ConstructorDecl
- * 4) Only SingleTypeImportDecl
- */
 CompilationUnit compilation_unit =
     package_and_version_with_comment.pv batakjava_import_declarations.i? batakjava_class_declarations.t? doc_comment_list?
     {: return new BatakjavaCompilationUnit(pv.getIDX(), pv.getIDY(), i, t); :}
@@ -28,11 +18,16 @@ ImportDecl batakjava_import_with_comment =
   ;
 ImportDecl batakjava_import_declaration =
     type_import_on_demand_declaration
-  | type_import_on_demand_declaration_with_version
+  | type_import_on_demand_priority_declaration
+  | type_import_on_demand_exempt_declaration
   ;
-ImportDecl type_import_on_demand_declaration_with_version =
+ImportDecl type_import_on_demand_priority_declaration =
     IMPORT name DOT MULT PRIORITIZES VER version_number.v SEMICOLON
-    {: return new TypeImportOnDemandDeclWithVersion(name, new Version(v)); :}
+    {: return new TypeImportOnDemandPriorityDecl(name, new Version(v)); :}
+  ;
+ImportDecl type_import_on_demand_exempt_declaration =
+    IMPORT name DOT MULT EXEMPTS VER version_number.v SEMICOLON
+    {: return new TypeImportOnDemandExemptDecl(name, new Version(v)); :}
   ;
 List batakjava_class_declarations =
     batakjava_class_with_comment.t                                  {: return new List().add(t); :}
@@ -49,6 +44,10 @@ TypeDecl batakjava_class_with_comment =
 TypeDecl batakjava_class_declaration =
     modifiers.m? CLASS IDENTIFIER super.s? batakjava_class_body.b
     {: return new ClassDecl(new Modifiers(m), IDENTIFIER, s, new List(), b); :}
+  ;
+Opt super =
+    EXTENDS class_type.c VER version_number.v
+    {: return new Opt(new VersionedAccess(c, v)); :}
   ;
 List batakjava_class_body =
     LBRACE batakjava_body_declarations.c? doc_comment_list? RBRACE    {: return c; :}

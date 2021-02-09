@@ -1,0 +1,301 @@
+import org.chocosolver.solver.constraints.Constraint;
+
+aspect Constraint {
+
+  /**
+   * Convert type names into integer to allow working with external solver
+   */
+  private Integer Program.typeCount = 0;
+
+  public void Program.initializeTypeCount() { typeCount = 0; }
+
+  public Integer Program.freshTypeCount() {
+    Integer count = typeCount;
+    typeCount++;
+    return count;
+  }
+
+  public final Map<TypeDecl,Integer> Program.typeToIntMap = new HashMap();
+
+  public final Map<String,Set<Integer>> Program.variableToDomainMap = new HashMap();
+
+  public TypeDecl ASTNode.intToType(Integer typeInt) {
+    for (TypeDecl type: program().typeToIntMap.keySet()) {
+      if (program().typeToIntMap.get(type) == typeInt) {
+        return type;
+      }
+    }
+    return program().unknownType();
+  }
+
+  public ConjunctionConstraint Expr.add(ConjunctionConstraint constraint, TypeDecl type) {
+    if (program().variableToDomainMap.containsKey(versionVariable())) {
+      program().variableToDomainMap.get(versionVariable()).add(Integer.valueOf(type.version()));
+    } else {
+      Set<Integer> newDomain = new HashSet();
+      newDomain.add(Integer.valueOf(type.version()));
+      program().variableToDomainMap.put(versionVariable(), newDomain);
+    }
+    constraint.add(new VersionConstraint(versionVariable(), Integer.valueOf(type.version())));
+
+    Integer typeInt;
+    if (program().typeToIntMap.containsKey(type)) {
+      typeInt = program().typeToIntMap.get(type);
+    } else {
+      typeInt = program().freshTypeCount();
+      program().typeToIntMap.put(type, typeInt);
+    }
+    constraint.add(new TypeConstraint(typeVariable(), typeInt));
+
+    return constraint;
+  }
+
+}
+
+aspect ConstraintClass {
+
+  public abstract class LocalConstraint {
+    public abstract Optional<Integer> getVersion(String arg);
+    public abstract Optional<Integer> getTypeInt(String arg);
+    public abstract Constraint post(Model model, IntVar[] versions, IntVar[] types);
+    public abstract void addTo(ConjunctionConstraint target);
+    public abstract void addTo(DisjunctionConstraint target);
+    public boolean isUnknown() { return false; }
+  }
+
+  public class VersionConstraint extends LocalConstraint {
+    private final String variable;
+    private final Integer version;
+
+    public VersionConstraint(String variable, Integer version) {
+      this.variable = variable;
+      this.version = version;
+    }
+
+    public Optional<Integer> getVersion(String arg) {
+      return variable.equals(arg) ? Optional.of(version) : Optional.empty();
+    }
+
+    public Optional<Integer> getTypeInt(String arg) {
+      return Optional.empty();
+    }
+
+    public String toString() {
+      return variable + ": " + version.toString();
+    }
+
+    public void addTo(ConjunctionConstraint target) {
+      target.constraints.add(this);
+    }
+
+    public void addTo(DisjunctionConstraint target) {
+      target.constraints.add(this);
+    }
+
+    public Constraint post(Model model, IntVar[] versions, IntVar[] types) {
+      Integer num = Integer.valueOf(variable.substring(1));
+      return model.arithm(versions[num], "=", version);
+    }
+  }
+
+  public class TypeConstraint extends LocalConstraint {
+    private final String variable;
+    private final Integer typeInt;
+
+    public TypeConstraint(String variable, Integer typeInt) {
+      this.variable = variable;
+      this.typeInt = typeInt;
+    }
+
+    public Optional<Integer> getVersion(String arg) {
+      return Optional.empty();
+    }
+
+    public Optional<Integer> getTypeInt(String arg) {
+      return variable.equals(arg) ? Optional.of(typeInt) : Optional.empty();
+    }
+
+    public String toString() {
+      return variable + ": " + typeInt.toString();
+    }
+
+    public void addTo(ConjunctionConstraint target) {
+      target.constraints.add(this);
+    }
+
+    public void addTo(DisjunctionConstraint target) {
+      target.constraints.add(this);
+    }
+
+    public Constraint post(Model model, IntVar[] versions, IntVar[] types) {
+      Integer num = Integer.valueOf(variable.substring(1));
+      return model.arithm(types[num], "=", typeInt);
+    }
+  }
+
+  public class ConjunctionConstraint extends LocalConstraint
+      implements Iterable<LocalConstraint> {
+    public java.util.List<LocalConstraint> constraints = new LinkedList();
+
+    public ConjunctionConstraint() {}
+
+    public void add(LocalConstraint arg) {
+      arg.addTo(this);
+    }
+
+    public void addTo(ConjunctionConstraint target) {
+      if (constraints.size() > 0) {
+        for (LocalConstraint thisConstraint: constraints) {
+          target.constraints.add(thisConstraint);
+        }
+      }
+    }
+
+    public void addTo(DisjunctionConstraint target) {
+      if (size() == 1) {
+        target.constraints.add(iterator().next());
+      } else if (size() > 1) {
+        target.constraints.add(this);
+      }
+    }
+
+    public int size() {
+      return this.constraints.size();
+    }
+
+    public boolean isEmpty() {
+      return this.constraints.isEmpty();
+    }
+
+    public Optional<Integer> getVersion(String arg) {
+      java.util.List<Optional<Integer>> result = new ArrayList<Optional<Integer>>();
+      for (LocalConstraint constraint: constraints) {
+        if (constraint.getVersion(arg).isPresent()) {
+          result.add(constraint.getVersion(arg));
+        }
+      }
+      if (result.size() == 1) {
+        return result.iterator().next();
+      }
+      return Optional.empty();
+    }
+
+    public Optional<Integer> getTypeInt(String arg) {
+      java.util.List<Optional<Integer>> result = new ArrayList<Optional<Integer>>();
+      for (LocalConstraint constraint: constraints) {
+        if (constraint.getTypeInt(arg).isPresent()) {
+          result.add(constraint.getTypeInt(arg));
+        }
+      }
+      if (result.size() == 1) {
+        return result.iterator().next();
+      }
+      return Optional.empty();
+    }
+
+    public Iterator<LocalConstraint> iterator() {
+      return constraints.iterator();
+    }
+
+    public String toString() {
+      StringBuilder result = new StringBuilder();
+      result.append("[");
+      int i = 0;
+      for (LocalConstraint constraint: constraints) {
+        if (i != 0) result.append(" && ");
+        result.append(constraint.toString());
+        i++;
+      }
+      result.append("]");
+      return result.toString();
+    }
+
+    public Constraint post(Model model, IntVar[] versions, IntVar[] types) {
+      Constraint[] toPost = new Constraint[size()];
+      for (int i = 0; i < size(); i++) {
+        toPost[i] = constraints.get(i).post(model, versions, types);
+      }
+      return model.and(toPost);
+    }
+  }
+
+  public class DisjunctionConstraint extends LocalConstraint
+      implements Iterable<LocalConstraint> {
+    public java.util.List<LocalConstraint> constraints = new LinkedList();
+
+    public DisjunctionConstraint() {}
+
+    public void add(LocalConstraint arg) {
+      arg.addTo(this);
+    }
+
+    public void addTo(DisjunctionConstraint target) {
+      if (size() != 0) {
+        for (LocalConstraint thisConstraint: constraints) {
+          target.constraints.add(thisConstraint);
+        }
+      }
+    }
+
+    public void addTo(ConjunctionConstraint target) {
+      if (size() == 1) {
+        target.constraints.add(iterator().next());
+      } else if (size() > 1) {
+        target.constraints.add(this);
+      }
+    }
+
+    public int size() {
+      return this.constraints.size();
+    }
+
+    public boolean isEmpty() {
+      return this.constraints.isEmpty();
+    }
+
+    public Optional<Integer> getVersion(String arg) {
+      return Optional.empty();
+    }
+
+    public Optional<Integer> getTypeInt(String arg) {
+      return Optional.empty();
+    }
+
+    public Iterator<LocalConstraint> iterator() {
+      return constraints.iterator();
+    }
+
+    public String toString() {
+      StringBuilder result = new StringBuilder();
+      result.append("[");
+      int i = 0;
+      for (LocalConstraint constraint: constraints) {
+        if (i != 0) result.append(" || ");
+        result.append(constraint.toString());
+        i++;
+      }
+      result.append("]");
+      return result.toString();
+    }
+
+    public Constraint post(Model model, IntVar[] versions, IntVar[] types) {
+      Constraint[] toPost = new Constraint[size()];
+      for (int i = 0; i < size(); i++) {
+        toPost[i] = constraints.get(i).post(model, versions, types);
+      }
+      return model.or(toPost);
+    }
+  }
+
+  public class UnknownConstraint extends LocalConstraint {
+    public Optional<Integer> getVersion(String arg) { return Optional.empty(); }
+    public Optional<Integer> getTypeInt(String arg) { return Optional.empty(); }
+    public Constraint post(Model model, IntVar[] versions, IntVar[] types) { return null; }
+    public void addTo(ConjunctionConstraint target) { return; }
+    public void addTo(DisjunctionConstraint target) { return; }
+    public String toString() { return "{}"; }
+    @Override public boolean isUnknown() { return true; }
+
+  }
+
+}

@@ -1,3 +1,20 @@
+aspect TypeScopePropagation {
+
+  syn TypeDecl VersionedAccess.decl() {
+    SimpleSet<TypeDecl> decls = decls();
+    if (decls.isSingleton()) {
+      return decls.singletonValue();
+    }
+    return unknownType();
+  }
+
+  syn SimpleSet<TypeDecl> VersionedAccess.decls() =
+      packageName().equals("")
+      ? lookupType(name()+"_ver_"+getVersionNum())
+      : toSet(lookupType(packageName(), name()+"_ver_"+getVersionNum()));
+
+}
+
 aspect BatakjavaLookupFullyQualifiedTypes {
 
   // Get the qualifier type without checking the decl
@@ -32,7 +49,7 @@ aspect BatakjavaLookupFullyQualifiedTypes {
 
   inh TypeDecl Variable.lookupType(String packageName, String typeName);
 
-  inh SimpleSet<TypeDecl> Expr.lookupTypeSet(String pockageName, String typeName);
+  inh SimpleSet<TypeDecl> Expr.lookupTypeSet(String packageName, String typeName);
   inh SimpleSet<TypeDecl> Stmt.lookupTypeSet(String packageName, String typeName);
   inh SimpleSet<TypeDecl> BodyDecl.lookupTypeSet(String packageName, String typeName);
   inh SimpleSet<TypeDecl> TypeDecl.lookupTypeSet(String packageName, String typeName);
@@ -92,7 +109,7 @@ aspect BatakjavaLookupFullyQualifiedTypes {
     Iterator<TypeDecl> iter = types.iterator();
     while (iter.hasNext()) {
       TypeDecl next = iter.next();
-      if (next.initialVersion().equals(version)) {
+      if (next.version().equals(version)) {
         return next;
       }
     }

@@ -27,11 +27,21 @@ aspect BatakJavaPrettyPrint {
     out.println();
   }
 
-  public void TypeImportOnDemandDeclWithVersion.prettyPrint(PrettyPrinter out) {
+  public void TypeImportOnDemandPriorityDecl.prettyPrint(PrettyPrinter out) {
     out.print("import ");
     out.print(getAccess());
     out.print(".* ");
     out.print(" prioritizes ver ");
+    out.print(getVersion());
+    out.print(";");
+    out.println();
+  }
+
+  public void TypeImportOnDemandExemptDecl.prettyPrint(PrettyPrinter out) {
+    out.print("import ");
+    out.print(getAccess());
+    out.print(".* ");
+    out.print(" exempts ver ");
     out.print(getVersion());
     out.print(";");
     out.println();
@@ -76,6 +86,12 @@ aspect BatakJavaPrettyPrint {
     }
     out.print("}");
     out.println();
+  }
+
+  public void VersionedAccess.prettyPrint(PrettyPrinter out) {
+    out.print(getTypeAccess());
+    out.print(" ver ");
+    out.print(getVersionNum());
   }
 
 }

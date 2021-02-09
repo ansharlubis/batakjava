@@ -64,7 +64,7 @@ aspect JavaGeneration {
 
   protected Map<String,Integer> FieldDecl.buildParameterMap(Map<String,Integer> solution) {
     Map<String,Integer> map = new HashMap(1);
-    if (type().versioned()) {
+    if (type().isVersioned()) {
       map.put(getTypeAccess().versionVariable(), solution.get(getTypeAccess().versionVariable()));
     }
     return map;
@@ -74,7 +74,7 @@ aspect JavaGeneration {
     Map<String,Integer> map = new HashMap(getNumParameter());
     // Add the parameter
     for (ParameterDeclaration param: getParameterList()) {
-      if (param.type().versioned()) {
+      if (param.type().isVersioned()) {
         map.put(param.versionVariable(), solution.get(param.versionVariable()));
       }
     }
@@ -84,7 +84,7 @@ aspect JavaGeneration {
   private List<ParameterDeclaration> ConstructorDecl.attachVersionToParameter(Map<String,Integer> solution) {
     List<ParameterDeclaration> parameterList = new List();
     for (ParameterDeclaration param: getParameterList()) {
-      if (param.type().versioned()) {
+      if (param.type().isVersioned()) {
         parameterList.add(new ParameterDeclaration(
           param.getModifiers(),
           param.getTypeAccess().attachVersion(solution.get(param.versionVariable())),
@@ -100,12 +100,12 @@ aspect JavaGeneration {
     Map<String,Integer> map = new HashMap(getNumParameter() + 1);
     // Add the parameter
     for (ParameterDeclaration param: getParameterList()) {
-      if (param.type().versioned()) {
+      if (param.type().isVersioned()) {
         map.put(param.versionVariable(), solution.get(param.versionVariable()));
       }
     }
     // Add the return type
-    if (getTypeAccess().type().versioned()) {
+    if (getTypeAccess().type().isVersioned()) {
       map.put(getTypeAccess().versionVariable(), solution.get(getTypeAccess().versionVariable()));
     }
     return map;
@@ -114,7 +114,7 @@ aspect JavaGeneration {
   protected List<ParameterDeclaration> MethodDecl.attachVersionToParameter(Map<String,Integer> solution) {
     List<ParameterDeclaration> parameterList = new List();
     for (ParameterDeclaration param: getParameterList()) {
-      if (param.type().versioned()) {
+      if (param.type().isVersioned()) {
         parameterList.add(new ParameterDeclaration(
           param.getModifiers(),
           param.getTypeAccess().attachVersion(solution.get(param.versionVariable())),

@@ -5,15 +5,17 @@ aspect InferenceConstraint {
   /**
    * Convert type names into integer to allow working in solver
    */
-  private Integer Program.typeCount = 0;
+  //private Integer Program.typeCount = 0;
 
-  private void Program.initializeTypeCount() { typeCount = 0; }
+  //private void Program.initializeTypeCount() { typeCount = 0; }
 
+  /*
   public Integer Program.freshTypeCount() {
     Integer count = typeCount;
     typeCount++;
     return count;
   }
+  */
 
   public final Map<String, Integer> Program.typeNameToIntMap = new HashMap();
 
@@ -21,7 +23,7 @@ aspect InferenceConstraint {
    * Domain for each version variable, where
    * integer is added as constraints are built
    */
-  public final Map<String, Set<Integer>> Program.variableToDomainMap = new HashMap();
+  //public final Map<String, Set<Integer>> Program.variableToDomainMap = new HashMap();
 
   public String ASTNode.intToTypeName(Integer typeInt) {
     for (String typeName: program().typeNameToIntMap.keySet()) {
@@ -220,6 +222,16 @@ aspect InferenceConstraint {
       constraints.add(new VersionConstraint(
         expr.versionVariable(),
         Integer.valueOf(type.initialVersion())));
+
+      if (program.typeNameToIntMap.containsKey(type.fullInitialName())) {
+        constraints.add(new TypeConstraint(
+          expr.typeVariable(),
+          program.typeNameToIntMap.get(type.fullInitialName())));
+      } else {
+        Integer typeInt = program.freshTypeCount();
+        program.typeNameToIntMap.put(type.fullInitialName(), typeInt);
+        constraints.add(new TypeConstraint(expr.typeVariable(), typeInt));
+      }
 
     }
 

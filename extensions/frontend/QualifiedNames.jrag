@@ -1,0 +1,43 @@
+aspect Names {
+
+  eq VersionedAccess.packageName() = ((TypeAccess) getTypeAccess()).packageName();
+  syn String VersionedAccess.name() = ((TypeAccess) getTypeAccess()).name();
+
+}
+
+aspect TypeName {
+
+  syn String TypeDecl.initialName() = name();
+  eq ClassDecl.initialName() {
+    String[] splitName = name().split("_");
+    if (isGenerated()) {
+      StringBuilder result = new StringBuilder();
+      for (int i = 0; i < splitName.length-2; i++) {
+        if (i != 0) result.append("_");
+        result.append(splitName[i]);
+      }
+      return result.toString();
+    }
+    return name();
+  }
+
+  /**
+   * Get the full initial name = package name + type initial name
+   */
+  syn lazy String TypeDecl.fullInitialName() = fullName();
+  eq ClassDecl.fullInitialName() = !packageName().isEmpty() ? packageName() + "." + initialName() : name();
+
+  /**
+   * Grab name from a fully qualified type name
+   */
+  public String ASTNode.packageNameFromQualifiedName(String fullyQualifiedName) {
+    StringBuilder result = new StringBuilder();
+    String[] splitName = fullyQualifiedName.split("\\.");
+    for (int i = 0; i < splitName.length-1; i++) {
+      if (i != 0) result.append(".");
+      result.append(splitName[i]);
+    }
+    return result.toString();
+  }
+
+}

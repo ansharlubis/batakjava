@@ -16,9 +16,9 @@ aspect BatakjavaFrontendMain {
     javaGenTime = 0;
   }
 
-  abstract public class ConstraintFrontend extends Frontend {
+  abstract public class SolverFrontend extends Frontend {
 
-    protected ConstraintFrontend(String name, String version) { super(name, version); }
+    protected SolverFrontend(String name, String version) { super(name, version); }
 
     @Override
     public int run(String[] args, BytecodeReader reader, JavaParser parser) {
@@ -34,11 +34,6 @@ aspect BatakjavaFrontendMain {
       }
 
       Collection<String> files = program.options().files();
-
-      if (program.options().hasOption("-version")) {
-        printVersion();
-        return EXIT_SUCCESS;
-      }
 
       if (program.options().hasOption("-version")) {
         printVersion();
@@ -354,7 +349,6 @@ aspect BatakjavaFrontendMain {
         if (errors.isEmpty() || program.options().hasOption("-recover")) {
           long start = System.nanoTime();
           errors = unit.batakjavaErrors();
-          warnings = unit.batakjavaWarnings();
         }
         if (!errors.isEmpty()) {
           processErrors(errors, unit);

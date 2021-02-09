@@ -12,7 +12,6 @@ aspect BatakjavaNameCheck {
           name(), enclosingType().typeName()));
     }
 
-    // 14.3
     if (isLocalClass()) {
       TypeDecl typeDecl = extractSingleType(lookupType(name()));
       if (typeDecl != null && typeDecl != this && typeDecl.isLocalClass()
@@ -27,12 +26,51 @@ aspect BatakjavaNameCheck {
       problems.add(errorf("type name conflicts with a package using the same name: %s", name()));
     }
 
-    // 8.1 & 9.1
     if (hasEnclosingTypeDecl(name())) {
       problems.add(error(
           "type may not have the same simple name as an enclosing type declaration"));
     }
     return problems;
+  }
+
+  /**
+   * Overlapping import declaration with version is warned
+   */
+  CompilationUnit contributes each batakjavaNameProblems() to CompilationUnit.batakjavaProblems();
+
+  syn Collection<Problem> CompilationUnit.batakjavaNameProblems() {
+    Collection<Problem> problems = new LinkedList();
+    Map<String,Integer> priorityMap = new HashMap(getNumImportDecl());
+    for (ImportDecl decl: getImportDeclList()) {
+      if (decl instanceof TypeImportOnDemandPriorityDecl) {
+        TypeImportOnDemandPriorityDecl importDecl = (TypeImportOnDemandPriorityDecl) decl;
+        String packageName = ((PackageAccess) importDecl.getAccess()).name();
+        if (priorityMap.containsKey(packageName)) {
+          if (priorityMap.get(packageName) != Integer.valueOf(importDecl.version())) {
+            priorityMap.replace(packageName, Integer.valueOf(importDecl.version()));
+          }
+          problems.add(warning("Import declaration " + packageName + ".* is multiply declared"));
+        } else {
+          priorityMap.put(packageName, Integer.valueOf(version()));
+        }
+      }
+    }
+    return problems;
+  }
+
+  /**
+   * Check if the version declared on the class' header is appropriate
+   */
+  ClassDecl contributes each batakjavaNameProblems() to CompilationUnit.batakjavaProblems();
+
+  syn Collection<Problem> ClassDecl.batakjavaNameProblems() {
+    if (hasSuperClass()) {
+      if (superclass().isOverview() && !getSuperClass().isVersioned()) {
+        return Collections.singletonList(
+          errorf("superclass %s's version is not specified", getSuperClass().prettyPrint()));
+      }
+    }
+    return Collections.emptyList();
   }
 
   /**
@@ -58,42 +96,6 @@ aspect BatakjavaNameCheck {
       }
       return Collections.singletonList(error(sb.toString()));
     }
-  }
-
-  /*
-  VarAccess contributes each batakjavaNameProblems() to CompilationUnit.batakjavaProblems();
-
-  syn Collection<Problem> VarAccess.batakjavaNameProblems() {
-    if (decls().isEmpty() && !isQualified()) {
-      return Collections.singletonList(errorf("no variable named %s is accessible", name()));
-    }
-    return Collections.emptyList();
-  }
-  */
-
-  /**
-   * Overlapping import declaration with version is warned
-   */
-  CompilationUnit contributes each batakjavaNameProblems() to CompilationUnit.batakjavaProblems();
-
-  syn Collection<Problem> CompilationUnit.batakjavaNameProblems() {
-    Collection<Problem> problems = new LinkedList();
-    Map<String,Integer> priorityMap = new HashMap(getNumImportDecl());
-    for (ImportDecl decl: getImportDeclList()) {
-      if (decl instanceof TypeImportOnDemandDeclWithVersion) {
-        TypeImportOnDemandDeclWithVersion importDecl = (TypeImportOnDemandDeclWithVersion) decl;
-        String packageName = ((PackageAccess) importDecl.getAccess()).name();
-        if (priorityMap.containsKey(packageName)) {
-          if (priorityMap.get(packageName) != Integer.valueOf(importDecl.version())) {
-            priorityMap.replace(packageName, Integer.valueOf(importDecl.version()));
-          }
-          problems.add(warning("Import declaration " + packageName + ".* is multiply declared"));
-        } else {
-          priorityMap.put(packageName, Integer.valueOf(version()));
-        }
-      }
-    }
-    return problems;
   }
 
 }

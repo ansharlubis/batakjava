@@ -1,11 +1,14 @@
-// Compilation unit
-BatakjavaCompilationUnit : CompilationUnit ::= <PackageDecl:String> <VersionNum:String> ImportDecl* TypeDecl* ;
+/* Compilation Unit */
+BatakjavaCompilationUnit : CompilationUnit ::= <PackageDecl:String> <VersionNum:String> ImportDecl* TypeDecl*;
 
-// Import declarations
-TypeImportOnDemandDeclWithVersion : TypeImportOnDemandDecl ::= Version ;
+/* Import Declaration */
+TypeImportOnDemandPriorityDecl : TypeImportOnDemandDecl ::= Version;
+TypeImportOnDemandExemptDecl : TypeImportOnDemandDecl ::= Version;
 
-// Version number
+/* Versioned Access */
+VersionedAccess : Access ::= TypeAccess:Access <VersionNum:String>;
+
+/* Version Number */
 Version ::= <VersionNum:String> ;
 
-// Utility data structure
-PairIdUse ::= <IDX:String> <IDY:String> ;
+PairIdUse ::= <IDX:String> <IDY:String>;

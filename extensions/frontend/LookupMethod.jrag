@@ -3,7 +3,7 @@ aspect BatakjavaMemberMethods {
   syn lazy Map<String,Collection<MethodDecl>> TypeDecl.versionedMethodsNameMap() = methodsNameMap();
 
   eq ClassDecl.versionedMethodsNameMap() {
-    if (isGeneratedClass()) {
+    if (isGenerated()) {
       Map<String,Collection<MethodDecl>> map = new HashMap();
       for (MethodDecl m: methods()) {
         Collection<MethodDecl> methods = map.get(m.initialName());
@@ -23,7 +23,7 @@ aspect BatakjavaMemberMethods {
 aspect BatakjavaMethodDecl {
 
   syn String MethodDecl.initialName() {
-    if (hostType().isGeneratedClass()) {
+    if (hostType().isGenerated()) {
       String[] splitName = name().split("_");
       if (splitName.length > 2 && splitName[splitName.length-2].equals("ver")) {
         StringBuilder result = new StringBuilder();
@@ -36,7 +36,5 @@ aspect BatakjavaMethodDecl {
     }
     return name();
   }
-
-
 
 }

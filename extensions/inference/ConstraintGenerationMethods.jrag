@@ -379,7 +379,7 @@ aspect ConstraintGeneration {
         return true;
       }
 
-      if (superclass.versioned()) {
+      if (superclass.isVersioned()) {
         return superclass.hasOverviewAncestor();
       }
     }
@@ -396,7 +396,7 @@ aspect ConstraintGeneration {
         return set.add(getSuperClass());
       }
 
-      if (superclass.versioned()) {
+      if (superclass.isVersioned()) {
         return superclass.overviewAncestor();
       }
     }

@@ -115,8 +115,8 @@ aspect ConstraintGeneration {
       if (orConstraints.size() > 0) {
         result.add(orConstraints);
       }
-      //System.err.println(prettyPrint());
-      //System.err.println(orConstraints);
+      System.err.println(prettyPrint());
+      System.err.println(orConstraints);
       return result;
     }
     if (constraints instanceof AndConstraint) {
@@ -124,12 +124,12 @@ aspect ConstraintGeneration {
       if (andConstraints.size() > 0) {
         result.add(andConstraints);
       }
-      //System.err.println(prettyPrint());
-      //System.err.println(andConstraints);
+      System.err.println(prettyPrint());
+      System.err.println(andConstraints);
       return result;
     }
-    //System.err.println(prettyPrint());
-    //System.err.println(constraints);
+    System.err.println(prettyPrint());
+    System.err.println(constraints);
     return Collections.singletonList(constraints);
   }
 
@@ -143,8 +143,8 @@ aspect ConstraintGeneration {
       if (orConstraints.size() > 0) {
         result.add(orConstraints);
       }
-      //System.err.println(prettyPrint());
-      //System.err.println(orConstraints);
+      System.err.println(prettyPrint());
+      System.err.println(orConstraints);
       return result;
     }
     if (constraints instanceof AndConstraint) {
@@ -152,12 +152,12 @@ aspect ConstraintGeneration {
       if (andConstraints.size() > 0) {
         result.add(andConstraints);
       }
-      //System.err.println(prettyPrint());
-      //System.err.println(andConstraints);
+      System.err.println(prettyPrint());
+      System.err.println(andConstraints);
       return result;
     }
-    //System.err.println(prettyPrint());
-    //System.err.println(constraints);
+    System.err.println(prettyPrint());
+    System.err.println(constraints);
     return Collections.singletonList(constraints);
   }
 
@@ -171,8 +171,8 @@ aspect ConstraintGeneration {
       if (orConstraints.size() > 0) {
         result.add(orConstraints);
       }
-      //System.err.println(prettyPrint());
-      //System.err.println(orConstraints);
+      System.err.println(prettyPrint());
+      System.err.println(orConstraints);
       return result;
     }
     if (constraints instanceof AndConstraint) {
@@ -180,12 +180,12 @@ aspect ConstraintGeneration {
       if (andConstraints.size() > 0) {
         result.add(andConstraints);
       }
-      //System.err.println(prettyPrint());
-      //System.err.println(andConstraints);
+      System.err.println(prettyPrint());
+      System.err.println(andConstraints);
       return result;
     }
-    //System.err.println(prettyPrint());
-    //System.err.println(constraints);
+    System.err.println(prettyPrint());
+    System.err.println(constraints);
     return Collections.singletonList(constraints);
   }
 
@@ -232,17 +232,6 @@ aspect ConstraintGeneration {
   }
 
   eq Unary.constraints() = new AndConstraint();
-
-  /*
-  eq ArrayInit.constraints() {
-    AndConstraint and = new AndConstraint();
-    for (Expr init: getInitList()) {
-      and.add(new EqualConstraint(versionVariable(), init.versionVariable(), false));
-      and.add(new EqualConstraint(typeVariable(), init.typeVariable(), true));
-    }
-    return and;
-  }
-  */
 
   eq ArrayInit.constraints() {
     AndConstraint and = new AndConstraint();
@@ -415,6 +404,7 @@ aspect ConstraintGeneration {
     return or;
   }
 
+  /*
   syn InferenceConstraint Declarator.constraints() {
     AndConstraint and = new AndConstraint();
     if (hasInit()) {
@@ -422,6 +412,76 @@ aspect ConstraintGeneration {
       and.add(new EqualConstraint(typeVariable(), getInit().typeVariable(), true));
     }
     return and;
+  }
+  */
+
+  syn InferenceConstraint Declarator.constraints() {
+    OrConstraint result = new OrConstraint();
+    if (hasInit()) {
+      TypeDecl destType = getTypeAccess().type();
+      InferenceConstraint initConstraints = getInit().constraints();
+
+      if (initConstraints instanceof OrConstraint) {
+        OrConstraint initOrConstraints = (OrConstraint) initConstraints;
+
+        for (InferenceConstraint initConstraint: initOrConstraints) {
+          TypeDecl initType = initConstraint.getTypeInt(getInit().typeVariable()).isPresent()
+            ? lookupType("", intToTypeName(initConstraint.getTypeInt(getInit().typeVariable()).get())) : destType.unknownType();
+
+          if (!initType.isUnknown()) {
+            if (initType.isOverview()) {
+              TypeDecl specificInitType = initConstraint.getVersion(getInit().versionVariable()).isPresent()
+                ? lookupTypeVersion(initType.packageName(), initType.name(), initConstraint.getVersion(getInit().versionVariable()).get().toString())
+                : destType.unknownType();
+              if (!specificInitType.isUnknown()) {
+                if (destType.isOverview()) {
+                  SimpleSet<TypeDecl> destTypes = lookupTypeSet(destType.packageName(), destType.name());
+                  Iterator<TypeDecl> destTypesIter = destTypes.iterator();
+                  while (destTypesIter.hasNext()) {
+                    TypeDecl currentDestType = destTypesIter.next();
+                    if (specificInitType.subtype(currentDestType)) {
+                      AndConstraint sub = new AndConstraint();
+                      sub.add(declarationType(), currentDestType);
+                      sub.add(getInit(), specificInitType);
+                      result.add(sub);
+                    }
+                  }
+                } else {
+                  if (specificInitType.subtype(destType)) {
+                    AndConstraint sub = new AndConstraint();
+                    sub.add(declarationType(), destType);
+                    sub.add(getInit(), specificInitType);
+                    result.add(sub);
+                  }
+                }
+              }
+            } else {
+              if (destType.isOverview()) {
+                SimpleSet<TypeDecl> destTypes = lookupTypeSet(destType.packageName(), destType.name());
+                Iterator<TypeDecl> destTypesIter = destTypes.iterator();
+                while (destTypesIter.hasNext()) {
+                  TypeDecl currentDestType = destTypesIter.next();
+                  if (initType.subtype(currentDestType)) {
+                    AndConstraint sub = new AndConstraint();
+                    sub.add(declarationType(), currentDestType);
+                    sub.add(getInit(), initType);
+                    result.add(sub);
+                  }
+                }
+              } else {
+                if (initType.subtype(destType)) {
+                  AndConstraint sub = new AndConstraint();
+                  sub.add(declarationType(), destType);
+                  sub.add(getInit(), initType);
+                  result.add(sub);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    return result;
   }
 
   syn InferenceConstraint Stmt.constraints() = new AndConstraint();

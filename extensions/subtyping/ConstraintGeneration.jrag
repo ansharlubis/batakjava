@@ -1,0 +1,97 @@
+aspect VariableAssignment {
+
+  /**
+   * The number of version and type variable in the program
+   */
+  private Integer Program.variableCount = 0;
+
+  public void Program.initializeVariable() { variableCount = 0; }
+
+  public Integer Program.freshVariable() {
+    Integer count = variableCount;
+    variableCount++;
+    return count;
+  }
+
+  syn lazy Integer Expr.variableNum() = program().freshVariable();
+
+  syn String Expr.versionVariable() = "v" + variableNum().toString();
+  syn String Expr.typeVariable() = "t" + variableNum().toString();
+
+  eq Unary.versionVariable() = getOperand().versionVariable();
+  eq Unary.typeVariable() = getOperand().typeVariable();
+
+  eq AssignExpr.versionVariable() = getDest().versionVariable();
+  eq AssignExpr.typeVariable() = getDest().typeVariable();
+
+  eq ParExpr.versionVariable() = getExpr().versionVariable();
+  eq ParExpr.typeVariable() = getExpr().typeVariable();
+
+  eq VarAccess.versionVariable() = decl().versionVariable();
+  eq VarAccess.typeVariable() = decl().typeVariable();
+
+  eq Dot.versionVariable() = lastAccess().versionVariable();
+  eq Dot.typeVariable() = lastAccess().typeVariable();
+
+  eq ClassInstanceExpr.versionVariable() = getAccess().versionVariable();
+  eq ClassInstanceExpr.typeVariable() = getAccess().typeVariable();
+
+  syn lazy Integer Variable.variableNum() = program().freshVariable();
+
+  syn String Variable.versionVariable();
+  syn String Variable.typeVariable();
+
+  eq ParameterDeclaration.versionVariable() = getTypeAccess().versionVariable();
+  eq ParameterDeclaration.typeVariable() = getTypeAccess().typeVariable();
+
+  eq Declarator.versionVariable() = declarationType().versionVariable();
+  eq Declarator.typeVariable() = declarationType().typeVariable();
+
+  eq EnumConstant.versionVariable() = "v" + variableNum().toString();
+  eq EnumConstant.typeVariable() = "t" + variableNum().toString();
+
+  eq CatchParameterDeclaration.versionVariable() = "v" + variableNum().toString();
+  eq CatchParameterDeclaration.typeVariable() = "t" + variableNum().toString();
+
+  eq InferredParameterDeclaration.versionVariable() = "v" + variableNum().toString();
+  eq InferredParameterDeclaration.typeVariable() = "t" + variableNum().toString();
+
+}
+
+aspect ConstraintGeneration {
+
+  // The conjunction constraint here is just a placeholder
+  syn LocalConstraint Expr.constraints() = new ConjunctionConstraint();
+
+  /**
+   * Literals
+   */
+  eq Literal.constraints() = add(new ConjunctionConstraint(), type());
+
+  eq ClassInstanceExpr.constraints() {
+    // The class of the object that needs to be instantiated
+    TypeDecl type = type();
+
+    if (!type.isUnknown()) {
+      DisjunctionConstraint result = new DisjunctionConstraint();
+      if (type.isOverview()) {
+        SimpleSet<TypeDecl> types = lookupTypeSet(type.packageName(), type.name());
+        Iterator<TypeDecl> iter = types.iterator();
+        while (iter.hasNext()) {
+          generateConstructorConstraints(iter.next(), result);
+        }
+      } else {
+        generateConstructorConstraints(type, result);
+      }
+
+      if (result.size() == 0) {
+        return new UnknownConstraint();
+      }
+
+      return result;
+    }
+
+    return new UnknownConstraint();
+  }
+
+}

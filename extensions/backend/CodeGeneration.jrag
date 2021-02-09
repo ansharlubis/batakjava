@@ -51,7 +51,7 @@ aspect JavaGeneration {
 
   syn nta List<ImportDecl> ImportDecl.generateJavaImport() = new List().add(this);
 
-  eq TypeImportOnDemandDeclWithVersion.generateJavaImport()
+  eq TypeImportOnDemandPriorityDecl.generateJavaImport()
     = new List().add(new TypeImportOnDemandDecl(getAccess()));
 
   syn nta TypeDecl TypeDecl.generateJavaType(Set<Map<String,Integer>> solutions) = treeCopy();
@@ -69,7 +69,7 @@ aspect JavaGeneration {
       selected = priority.get();
 
       // Filter the solutions in case the class extends
-      if (hasSuperClass() && superclass().versioned()) {
+      if (hasSuperClass() && superclass().isVersioned()) {
         Integer version = selected.get(getSuperClass().versionVariable());
         filtered = solutions.stream()
           .filter(solution -> solution.get(getSuperClass().versionVariable()) == version)
@@ -78,7 +78,7 @@ aspect JavaGeneration {
       }
     } else {
       // The same as above but find the max version for superclass first
-      if (hasSuperClass() && superclass().versioned()) {
+      if (hasSuperClass() && superclass().isVersioned()) {
         Integer maxVersion = solutions.stream()
           .map(solution -> solution.get(getSuperClass().versionVariable()))
           .reduce(0, (a,b) -> a > b ? a : b);
@@ -149,7 +149,7 @@ aspect JavaGeneration {
         String methodName = getID();
         Access typeAccess = getTypeAccess();
         List<ParameterDeclaration> subParameterList = attachVersionToParameter(solution);
-        if (getTypeAccess().type().versioned()) {
+        if (getTypeAccess().type().isVersioned()) {
           methodName = methodName + "_ver_" + solution.get(getTypeAccess().versionVariable()).toString();
           typeAccess = typeAccess.attachVersion(solution.get(getTypeAccess().versionVariable()));
         }
@@ -304,7 +304,7 @@ aspect JavaGeneration {
 
 
   eq TypeAccess.generateJavaAccess(Map<String,Integer> solution)
-    = type().versioned()
+    = type().isVersioned()
       ? attachVersion(solution.get(versionVariable()))
       : treeCopy();
 
@@ -359,7 +359,7 @@ aspect JavaGeneration {
     = new VariableDeclarator(getID(), getDimsList(), hasInit() ? new Opt(getInit().generateJavaExpr(solution)) : new Opt());
 
   syn nta FieldDeclarator FieldDeclarator.generateJavaDeclarator(Map<String,Integer> solution)
-    = type().versioned()
+    = type().isVersioned()
       ? new FieldDeclarator(
           getID() + "_ver_" + solution.get(versionVariable()).toString(),
           getDimsList(), hasInit() ? new Opt(getInit().generateJavaExpr(solution)) : new Opt())
@@ -390,5 +390,6 @@ aspect JavaGeneration {
 
   eq ArrayTypeAccess.attachVersion(Integer version) = new ArrayTypeAccess(getAccess().attachVersion(version));
 
+  eq VersionedAccess.attachVersion(Integer version) = getTypeAccess().attachVersion(version);
 
 }

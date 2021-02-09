@@ -1,0 +1,61 @@
+aspect BatakjavaTypeAnalysis {
+
+  syn boolean TypeDecl.isGenerated() = false;
+
+  eq ClassDecl.isGenerated() {
+    String[] splitName = name().split("_");
+    return splitName.length > 2 && splitName[splitName.length-2].equals("ver");
+  }
+
+  // Used to deal with FILENAME.batakjava and Overview files
+  syn boolean TypeDecl.isVersioned() = false;
+  eq ClassDecl.isVersioned() = isOverview() || !hostVersion().equals("0");
+
+  syn boolean Access.isVersioned() = false;
+  eq VersionedAccess.isVersioned() = true;
+
+  syn boolean BodyDecl.versionDependent() = false;
+  eq FieldDecl.versionDependent() = type().isVersioned();
+  eq ConstructorDecl.versionDependent() {
+    for (ParameterDeclaration param: getParameterList()) {
+      if (param.type().isVersioned()) { return true; }
+    }
+    return false;
+  }
+  eq MethodDecl.versionDependent() {
+    for (ParameterDeclaration param: getParameterList()) {
+      if (param.type().isVersioned()) { return true; }
+    }
+    if (type().isVersioned()) { return true; }
+    return false;
+  }
+
+  /**
+   * Check if the CompilationUnit is an overview unit by checking
+   * that there is only one TypeDecl that is an Overview
+   */
+  syn boolean CompilationUnit.isOverviewUnit()
+    = getNumTypeDecl() == 1 && getTypeDecl(0).isOverview();
+
+  /**
+   * Check if the ClassDecl is a generated overview
+   * which contains FieldDeclarator BATAKJAVACLASS
+   */
+  syn boolean TypeDecl.isOverview() = false;
+
+  eq ClassDecl.isOverview() {
+    for (BodyDecl bodyDecl: getBodyDeclList()) {
+      if (bodyDecl instanceof FieldDecl) {
+        FieldDecl decl = (FieldDecl) bodyDecl;
+        if (decl.getNumDeclarator() == 1 &&
+            decl.getDeclarator(0).getID().equals("BATAKJAVACLASS")) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  eq VersionedAccess.type() = decl();
+
+}

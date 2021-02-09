@@ -1,0 +1,27 @@
+aspect BatakjavaErrorCheck {
+
+  coll LinkedList<Problem> CompilationUnit.constraintProblems() root CompilationUnit;
+
+  syn Collection<Problem> CompilationUnit.constraintErrors() {
+    Collection<Problem> errors = new LinkedList();
+    for (Problem problem: constraintProblems()) {
+      if (problem.severity() == Problem.Severity.ERROR) {
+        errors.add(problem);
+      }
+    }
+    return errors;
+  }
+
+  Expr contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> Expr.constraintProblems() = Collections.emptyList();
+
+  eq ClassInstanceExpr.constraintProblems() {
+    if (constraints().isUnknown()) {
+      return Collections.singletonList(errorf("no applicable constructor found for %s", prettyPrint()));
+    }
+    return Collections.emptyList();
+  }
+
+
+}
