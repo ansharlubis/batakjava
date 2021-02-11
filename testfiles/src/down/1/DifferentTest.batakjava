@@ -1,0 +1,15 @@
+package down ver 1;
+import up.* prioritizes ver 2;
+
+public class DifferentTest {
+/*
+  public boolean isZeroAngle(DifferentPoint p) {
+    return p.getAngle() == 0f;
+  }
+*/
+  public static void main(String[] args) {
+    DifferentPoint p1 = new DifferentPoint(0);
+    DifferentPoint p2 = new DifferentPoint(0);
+    int a = p1.newMethod();
+  }
+}

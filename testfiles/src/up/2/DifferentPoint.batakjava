@@ -1,0 +1,13 @@
+package up ver 2;
+public class DifferentPoint {
+  public int angle;
+  public DifferentPoint(int angle) {
+    this.angle = angle;
+  }
+  public int getAngle() {
+    return angle;
+  }
+  public int newMethod() {
+    return 1;
+  }
+}

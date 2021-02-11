@@ -1,6 +1,6 @@
 package mid.utility ver 1;
 
-import upstream.collection.*;
+import up.*;
 
 public class PointUtility {
   public int i = 0;

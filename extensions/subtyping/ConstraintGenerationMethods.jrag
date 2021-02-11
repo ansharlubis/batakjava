@@ -1,5 +1,23 @@
 aspect ConstraintGeneration {
 
+  /**
+   * Used for type access
+   */
+  public void Expr.generateTypeConstraints(TypeDecl type, DisjunctionConstraint result) {
+    if (type.isOverview()) {
+      Iterator<TypeDecl> iter = lookupTypeSet(type.packageName(), type.name()).iterator();
+      while (iter.hasNext()) {
+        result.add(add(new ConjunctionConstraint(), iter.next()));
+      }
+    } else {
+      result.add(add(new ConjunctionConstraint(), type));
+    }
+  }
+
+  /**
+   * Methods for ClassInstanceExpr.constraints()
+   */
+  // this is the object instantiation; type is the type that can be instantiated; result is the resulting constraint
   private LocalConstraint ClassInstanceExpr.generateConstructorConstraints(TypeDecl type, DisjunctionConstraint result) {
     for (ConstructorDecl constructor: type.constructors()) {
       if ((getNumArg() == constructor.getNumParameter()) && constructor.accessibleFrom(hostType())
@@ -21,77 +39,165 @@ aspect ConstraintGeneration {
     return result;
   }
 
+  // this is the given argument; parameter is the parameter to be checked against
   public LocalConstraint Expr.generateArgConstraints(ParameterDeclaration parameter) {
     LocalConstraint argConstraints = constraints();
-    if (!argConstraints.isUnknown()) {
-      if (argConstraints instanceof DisjunctionConstraint) {
-        DisjunctionConstraint result = new DisjunctionConstraint();
-        DisjunctionConstraint orArgConstraints = (DisjunctionConstraint) argConstraints;
-        for (LocalConstraint argConstraint: orArgConstraints) {
-          TypeDecl argType = argConstraint.getTypeInt(typeVariable()).isPresent()
-            ? intToType(argConstraint.getTypeInt(typeVariable()).get()) : unknownType();
-          TypeDecl parameterType = parameter.type();
-          if (!argType.isUnknown()) {
-            if (argType.isOverview()) {
-              TypeDecl specificArgType = argConstraint.getVersion(versionVariable()).isPresent()
-                ? lookupTypeVersion(argType.packageName(), argType.name(), argConstraint.getVersion(versionVariable()).get().toString())
-                : unknownType();
-              if (!specificArgType.isUnknown()) {
-                if (parameterType.isOverview()) {
-                  SimpleSet<TypeDecl> parameterTypes = lookupTypeSet(parameterType.packageName(), parameterType.name());
-                  Iterator<TypeDecl> parameterTypesIter = parameterTypes.iterator();
-                  while (parameterTypesIter.hasNext()) {
-                    TypeDecl currentParameterType = parameterTypesIter.next();
-                    if (specificArgType.subtype(currentParameterType)) {
-                      ConjunctionConstraint temp = add(new ConjunctionConstraint(), specificArgType);
-                      result.add(parameter.getTypeAccess().add(temp, currentParameterType));
-                    }
-                  }
-                } else {
-                  if (specificArgType.subtype(parameterType)) {
-                    result.add(add(new ConjunctionConstraint(), specificArgType));
-                  }
-                }
-              }
-            } else {
-              if (parameterType.isOverview()) {
-                SimpleSet<TypeDecl> parameterTypes = lookupTypeSet(parameterType.packageName(), parameterType.name());
-                Iterator<TypeDecl> parameterTypesIter = parameterTypes.iterator();
-                while (parameterTypesIter.hasNext()) {
-                  TypeDecl currentParameterType = parameterTypesIter.next();
-                  if (argType.subtype(currentParameterType)) {
-                    ConjunctionConstraint temp = add(new ConjunctionConstraint(), argType);
-                    result.add(parameter.getTypeAccess().add(temp, currentParameterType));
-                  }
-                }
-              } else {
-                if (argType.subtype(parameterType)) {
-                  result.add(add(new ConjunctionConstraint(), argType));
-                }
-              }
+    DisjunctionConstraint result = new DisjunctionConstraint();
+
+    if (argConstraints instanceof DisjunctionConstraint) {
+      DisjunctionConstraint orArgConstraints = (DisjunctionConstraint) argConstraints;
+      for (LocalConstraint argConstraint: orArgConstraints) {
+        TypeDecl argType = argConstraint.getTypeInt(typeVariable()).isPresent()
+          ? intToType(argConstraint.getTypeInt(typeVariable()).get()) : unknownType();
+        TypeDecl parameterType = parameter.type();
+        if (parameterType.isOverview()) {
+          Iterator<TypeDecl> parameterTypesIter = lookupTypeSet(parameterType.packageName(), parameterType.name()).iterator();
+          while (parameterTypesIter.hasNext()) {
+            TypeDecl currentParameterType = parameterTypesIter.next();
+            if (argType.subtype(currentParameterType)) {
+              result.add(parameter.getTypeAccess().add(
+                add(new ConjunctionConstraint(), argType),
+                currentParameterType));
             }
           }
-        }
-        if (result.size() == 0) {
-          return new UnknownConstraint();
-        }
-        return result;
-      }
-      if (argConstraints instanceof ConjunctionConstraint) {
-        ConjunctionConstraint andArgConstraints = (ConjunctionConstraint) argConstraints;
-        TypeDecl argType = andArgConstraints.getTypeInt(typeVariable()).isPresent()
-          ? intToType(andArgConstraints.getTypeInt(typeVariable()).get()) : unknownType();
-        // In case of conjunction constraint, there is no possibility of Batakjava classes
-        TypeDecl parameterType = parameter.type();
-        if (!parameterType.isOverview()) {
+        } else {
           if (argType.subtype(parameterType)) {
-            return add(new ConjunctionConstraint(), argType);
+            result.add(add(new ConjunctionConstraint(), argType));
           }
         }
       }
     }
+
+    if (argConstraints instanceof ConjunctionConstraint) {
+      ConjunctionConstraint andArgConstraints = (ConjunctionConstraint) argConstraints;
+      TypeDecl argType = andArgConstraints.getTypeInt(typeVariable()).isPresent()
+        ? intToType(andArgConstraints.getTypeInt(typeVariable()).get()) : unknownType();
+      // In case of conjunction constraint, there is no possibility of Batakjava classes
+      TypeDecl parameterType = parameter.type();
+      if (!parameterType.isOverview()) {
+        if (argType.subtype(parameterType)) {
+          result.add(add(new ConjunctionConstraint(), argType));
+        }
+      }
+    }
+
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
+  /**
+   * Methods used for Declarator.constraints() and ReturnStmt.constraints
+   */
+  // Declarator: this is the rhs expressions; destination is the lhs type access; result is the resulting constraints
+  // ReturnStmt: this is the return stmt's result; destination is the method's return type access;
+  //             result is the resulting constraint
+  public LocalConstraint Expr.generateSubtypeConstraints(Expr destination, DisjunctionConstraint result) {
+    LocalConstraint initConstraints = constraints();
+
+    if (initConstraints instanceof DisjunctionConstraint) {
+      DisjunctionConstraint orInitConstraints = (DisjunctionConstraint) initConstraints;
+      for (LocalConstraint initConstraint: orInitConstraints) {
+        TypeDecl initType = initConstraint.getTypeInt(typeVariable()).isPresent()
+          ? intToType(initConstraint.getTypeInt(typeVariable()).get()) : unknownType();
+        TypeDecl destinationType = destination.type();
+        if (destinationType.isOverview()) {
+          Iterator<TypeDecl> destinationTypesIter = lookupTypeSet(destinationType.packageName(), destinationType.name()).iterator();
+          while (destinationTypesIter.hasNext()) {
+            TypeDecl currentDestinationType = destinationTypesIter.next();
+            if (initType.subtype(currentDestinationType)) {
+              result.add(destination.add(add(new ConjunctionConstraint(), initType), currentDestinationType));
+            }
+          }
+        } else {
+          if (initType.subtype(destinationType)) {
+            result.add(add(new ConjunctionConstraint(), initType));
+          }
+        }
+      }
+    }
+
+    if (initConstraints instanceof ConjunctionConstraint) {
+      ConjunctionConstraint andInitConstraints = (ConjunctionConstraint) initConstraints;
+      TypeDecl initType = andInitConstraints.getTypeInt(typeVariable()).isPresent()
+        ? intToType(andInitConstraints.getTypeInt(typeVariable()).get()) : unknownType();
+      TypeDecl destinationType = destination.type();
+      if (!destinationType.isOverview()) {
+        if (initType.subtype(destinationType)) {
+          result.add(add(new ConjunctionConstraint(), initType));
+        }
+      }
+    }
+
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
+  /**
+   * Methods for VarAccess.constraints()
+   */
+  // this is the VarAccess; result is the resulting constraint
+  private LocalConstraint VarAccess.generateNonQualifiedConstraints(DisjunctionConstraint result) {
+    if (!type().isUnknown()) {
+      generateTypeConstraints(type(), result);
+      return result;
+    }
+
+    if (!hostType().versionedMemberFieldsMap().containsKey(name())) {
+      Map<String,SimpleSet<Variable>> fieldMap = hostType().versionedMemberFieldsMap();
+      if (fieldMap.containsKey(name())) {
+        for (Variable field: fieldMap.get(name())) {
+          generateTypeConstraints(field.type(), result);
+        }
+      }
+      return result;
+    }
+
     return new UnknownConstraint();
   }
 
+  // this is the source expression; destination is the destination expression; result is the resulting constraint
+  public LocalConstraint Expr.generateAssignConstraints(Expr destination, DisjunctionConstraint result) {
+    DisjunctionConstraint orDestConstraints = new DisjunctionConstraint();
+
+    if (destination.constraints() instanceof DisjunctionConstraint) {
+      orDestConstraints = (DisjunctionConstraint) destination.constraints();
+    } else {
+      return new UnknownConstraint();
+    }
+
+    LocalConstraint sourceConstraints = constraints();
+
+    if (sourceConstraints instanceof DisjunctionConstraint) {
+      DisjunctionConstraint orSourceConstraints = (DisjunctionConstraint) sourceConstraints;
+      for (LocalConstraint sourceConstraint: orSourceConstraints) {
+        TypeDecl sourceType = sourceConstraint.getTypeInt(typeVariable()).isPresent()
+          ? intToType(sourceConstraint.getTypeInt(typeVariable()).get()) : unknownType();
+        for (LocalConstraint destConstraint: orDestConstraints) {
+          TypeDecl destType = destConstraint.getTypeInt(destination.typeVariable()).isPresent()
+            ? intToType(destConstraint.getTypeInt(destination.typeVariable()).get()) : unknownType();
+          if (sourceType.subtype(destType)) {
+            result.add(destination.add(
+              add(new ConjunctionConstraint(), sourceType),
+              destType));
+          }
+        }
+      }
+    }
+
+    if (sourceConstraints instanceof ConjunctionConstraint) {
+      ConjunctionConstraint andSourceConstraints = (ConjunctionConstraint) sourceConstraints;
+      TypeDecl sourceType = andSourceConstraints.getTypeInt(typeVariable()).isPresent()
+        ? intToType(andSourceConstraints.getTypeInt(typeVariable()).get()) : unknownType();
+      for (LocalConstraint destConstraint: orDestConstraints) {
+        TypeDecl destType = destConstraint.getTypeInt(destination.typeVariable()).isPresent()
+          ? intToType(destConstraint.getTypeInt(destination.typeVariable()).get()) : unknownType();
+        if (sourceType.subtype(destType)) {
+          result.add(destination.add(
+            add(new ConjunctionConstraint(), sourceType),
+            destType));
+        }
+      }
+    }
+
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
 
 }

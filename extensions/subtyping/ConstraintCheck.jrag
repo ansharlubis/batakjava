@@ -16,12 +16,32 @@ aspect BatakjavaErrorCheck {
 
   syn Collection<Problem> Expr.constraintProblems() = Collections.emptyList();
 
-  eq ClassInstanceExpr.constraintProblems() {
-    if (constraints().isUnknown()) {
-      return Collections.singletonList(errorf("no applicable constructor found for %s", prettyPrint()));
-    }
-    return Collections.emptyList();
-  }
+  eq ClassInstanceExpr.constraintProblems() =
+    constraints().isUnknown()
+    ? Collections.singletonList(errorf("no applicable constructor found for %s", prettyPrint()))
+    : Collections.emptyList();
 
+  eq AssignExpr.constraintProblems() =
+    constraints().isUnknown()
+    ? Collections.singletonList(errorf("can not assign %s to %s", getSource().prettyPrint(), getDest().prettyPrint()))
+    : Collections.emptyList();
+
+  Declarator contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> Declarator.constraintProblems() =
+    hasInit() && constraints().isUnknown()
+    ? Collections.singletonList(errorf("can not assign %s to variable %s of type %s",
+        getInit().prettyPrint(), getID(), getTypeAccess().prettyPrint()))
+    : Collections.emptyList();
+
+  Stmt contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> Stmt.constraintProblems() = Collections.emptyList();
+
+  eq ReturnStmt.constraintProblems() =
+    hasResult() && constraints().isUnknown()
+    ? Collections.singletonList(errorf("return value %s must be an instance of %s",
+        getResult().prettyPrint(), returnTypeAccess().prettyPrint()))
+    : Collections.emptyList();
 
 }

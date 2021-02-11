@@ -14,14 +14,13 @@ aspect BatakjavaFields {
 
   syn lazy Map<String,SimpleSet<Variable>> TypeDecl.versionedMemberFieldsMap() = memberFieldsMap();
 
-  // TODO: No interface support yet
+  // This follows better with the idea of specified superclass
   eq ClassDecl.versionedMemberFieldsMap() {
     Map<String,SimpleSet<Variable>> map = new HashMap(versionedLocalFieldsMap());
     if (hasSuperclass()) {
       Iterator<Variable> iter = superclass().fieldsIterator();
       while (iter.hasNext()) {
         FieldDeclarator decl = (FieldDeclarator) iter.next();
-        // decl.accessibleFrom(this) is troublesome
         if (!decl.isPrivate() && decl.accessibleFrom(this)
             && !versionedLocalFieldsMap().containsKey(decl.initialName())) {
           putSimpleSetElement(map, decl.initialName(), decl);

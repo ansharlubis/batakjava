@@ -1,0 +1,9 @@
+package down ver 1;
+import mid.utility.*;
+
+public class Test extends ExtendedPoint {
+
+  public Test(float x, float y) {
+    super(x,y);
+  }
+}

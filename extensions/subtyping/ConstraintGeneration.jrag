@@ -71,26 +71,60 @@ aspect ConstraintGeneration {
   eq ClassInstanceExpr.constraints() {
     // The class of the object that needs to be instantiated
     TypeDecl type = type();
-
-    if (!type.isUnknown()) {
-      DisjunctionConstraint result = new DisjunctionConstraint();
-      if (type.isOverview()) {
-        SimpleSet<TypeDecl> types = lookupTypeSet(type.packageName(), type.name());
-        Iterator<TypeDecl> iter = types.iterator();
-        while (iter.hasNext()) {
-          generateConstructorConstraints(iter.next(), result);
-        }
-      } else {
-        generateConstructorConstraints(type, result);
+    DisjunctionConstraint result = new DisjunctionConstraint();
+    if (type.isOverview()) {
+      SimpleSet<TypeDecl> types = lookupTypeSet(type.packageName(), type.name());
+      Iterator<TypeDecl> iter = types.iterator();
+      while (iter.hasNext()) {
+        generateConstructorConstraints(iter.next(), result);
       }
-
-      if (result.size() == 0) {
-        return new UnknownConstraint();
-      }
-
-      return result;
+    } else {
+      generateConstructorConstraints(type, result);
     }
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
 
+  eq VarAccess.constraints() {
+    DisjunctionConstraint result = new DisjunctionConstraint();
+    if (isQualified()) {
+    } else {
+      generateNonQualifiedConstraints(result);
+    }
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
+  eq AssignExpr.constraints() {
+    if (!getDest().constraints().isUnknown() && !getSource().constraints().isUnknown()) {
+      DisjunctionConstraint result = new DisjunctionConstraint();
+      getSource().generateAssignConstraints(getDest(), result);
+      if (result.size() > 0) {
+        return result;
+      }
+    }
+    return new UnknownConstraint();
+  }
+
+  syn LocalConstraint Declarator.constraints() {
+    if (hasInit()) {
+      DisjunctionConstraint result = new DisjunctionConstraint();
+      getInit().generateSubtypeConstraints(getTypeAccess(), result);
+      if (result.size() > 0) {
+        return result;
+      }
+    }
+    return new UnknownConstraint();
+  }
+
+  syn LocalConstraint Stmt.constraints() = new UnknownConstraint();
+
+  eq ReturnStmt.constraints() {
+    if (hasResult()) {
+      DisjunctionConstraint result = new DisjunctionConstraint();
+      getResult().generateSubtypeConstraints(returnTypeAccess(), result);
+      if (result.size() > 0) {
+        return result;
+      }
+    }
     return new UnknownConstraint();
   }
 

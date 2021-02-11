@@ -87,6 +87,8 @@ aspect BatakjavaFrontendMain {
           }
         }
 
+        System.err.println(program.typeToIntMap);
+
         if (compileResult != EXIT_SUCCESS) {
           return compileResult;
         }

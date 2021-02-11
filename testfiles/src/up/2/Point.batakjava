@@ -1,4 +1,4 @@
-package upstream ver 2;
+package up ver 2;
 
 public class Point {
   private float r;
@@ -15,5 +15,4 @@ public class Point {
       2f * r * other.getR() * java.lang.Math.cos(angle - other.getAngle())
     );
   }
-  public double someMethod() { return 1; }
 }

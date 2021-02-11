@@ -1,0 +1,10 @@
+aspect BatakjavaTypeCheck {
+
+  AssignExpr contributes each batakjavaTypeProblems() to CompilationUnit.batakjavaProblems();
+
+  syn Collection<Problem> AssignExpr.batakjavaTypeProblems()
+    = !getDest().isVariable()
+      ? Collections.singletonList(error("left hand side is not a variable"))
+      : Collections.emptyList();
+
+}

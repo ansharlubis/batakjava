@@ -1,0 +1,12 @@
+package up ver 1;
+public class DifferentPoint {
+  public int angle;
+  public DifferentPoint(int angle) {
+    this.angle = angle;
+  }
+  public int getAngle() {
+    String[] strings = {"A", "B"};
+    String s = strings[0];
+    return angle;
+  }
+}
