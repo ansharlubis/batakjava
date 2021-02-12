@@ -87,11 +87,14 @@ aspect ConstraintGeneration {
   eq VarAccess.constraints() {
     DisjunctionConstraint result = new DisjunctionConstraint();
     if (isQualified()) {
+      generateQualifiedConstraints(qualifier(), result);
     } else {
       generateNonQualifiedConstraints(result);
     }
     return result.size() > 0 ? result : new UnknownConstraint();
   }
+
+  eq Dot.constraints() = lastAccess().constraints();
 
   eq AssignExpr.constraints() {
     if (!getDest().constraints().isUnknown() && !getSource().constraints().isUnknown()) {

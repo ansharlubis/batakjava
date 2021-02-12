@@ -30,5 +30,6 @@ public class ExtendedPoint extends Point ver 1 {
 
   public static void main(String[] args) {
     Point p1 = new ExtendedPoint(0,1f);
+    p1.y = 2;
   }
 }

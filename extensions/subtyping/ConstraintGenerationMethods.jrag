@@ -85,7 +85,7 @@ aspect ConstraintGeneration {
   }
 
   /**
-   * Methods used for Declarator.constraints() and ReturnStmt.constraints
+   * Methods used for Declarator.constraints() and ReturnStmt.constraints()
    */
   // Declarator: this is the rhs expressions; destination is the lhs type access; result is the resulting constraints
   // ReturnStmt: this is the return stmt's result; destination is the method's return type access;
@@ -133,7 +133,54 @@ aspect ConstraintGeneration {
   /**
    * Methods for VarAccess.constraints()
    */
-  // this is the VarAccess; result is the resulting constraint
+  // this is the var access; result is the resulting constraint
+  private LocalConstraint VarAccess.generateQualifiedConstraints(Expr qualifier, DisjunctionConstraint result) {
+    LocalConstraint qualifierConstraints = qualifier.constraints();
+
+    if (qualifierConstraints instanceof DisjunctionConstraint) {
+      DisjunctionConstraint orQualifierConstraints = (DisjunctionConstraint) qualifierConstraints;
+      for (LocalConstraint qualifierConstraint: orQualifierConstraints) {
+        TypeDecl qualifierType = qualifierConstraint.getTypeInt(qualifier.typeVariable()).isPresent()
+          ? intToType(qualifierConstraint.getTypeInt(qualifier.typeVariable()).get()) : unknownType();
+        Map<String,SimpleSet<Variable>> fieldMap = qualifierType.versionedMemberFieldsMap();
+        if (fieldMap.containsKey(name())) {
+          for (Variable field: fieldMap.get(name())) {
+            TypeDecl fieldType = field.type();
+            if (fieldType.isOverview()) {
+              Iterator<TypeDecl> iter = lookupTypeSet(fieldType.packageName(), fieldType.name()).iterator();
+              while (iter.hasNext()) {
+                result.add(qualifier.add(
+                  add(new ConjunctionConstraint(), iter.next()),
+                  qualifierType));
+              }
+            } else {
+              result.add(qualifier.add(
+                add(new ConjunctionConstraint(), fieldType),
+                qualifierType));
+            }
+          }
+        }
+      }
+    }
+
+    if (qualifierConstraints instanceof ConjunctionConstraint) {
+      ConjunctionConstraint andQualifierConstraints = (ConjunctionConstraint) qualifierConstraints;
+      TypeDecl qualifierType = andQualifierConstraints.getTypeInt(qualifier.typeVariable()).isPresent()
+        ? intToType(andQualifierConstraints.getTypeInt(qualifier.typeVariable()).get()) : unknownType();
+      Map<String,SimpleSet<Variable>> fieldMap = qualifierType.versionedMemberFieldsMap();
+      if (fieldMap.containsKey(name())) {
+        for (Variable field: fieldMap.get(name())) {
+          result.add(qualifier.add(
+            add(new ConjunctionConstraint(), field.type()),
+            qualifierType));
+        }
+      }
+    }
+
+    return result;
+  }
+
+  // this is the var access; result is the resulting constraint
   private LocalConstraint VarAccess.generateNonQualifiedConstraints(DisjunctionConstraint result) {
     if (!type().isUnknown()) {
       generateTypeConstraints(type(), result);
