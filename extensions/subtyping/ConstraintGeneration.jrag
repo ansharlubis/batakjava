@@ -97,7 +97,23 @@ aspect ConstraintGeneration {
     return new UnknownConstraint();
   }
 
+  eq TypeAccess.constraints() {
+    DisjunctionConstraint result = new DisjunctionConstraint();
+    generateTypeConstraints(type(), result);
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
   eq VarAccess.constraints() {
+    DisjunctionConstraint result = new DisjunctionConstraint();
+    if (isQualified()) {
+      generateQualifiedConstraints(qualifier(), result);
+    } else {
+      generateNonQualifiedConstraints(result);
+    }
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
+  eq MethodAccess.constraints() {
     DisjunctionConstraint result = new DisjunctionConstraint();
     if (isQualified()) {
       generateQualifiedConstraints(qualifier(), result);

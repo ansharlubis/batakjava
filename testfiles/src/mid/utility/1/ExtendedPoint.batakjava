@@ -28,8 +28,14 @@ public class ExtendedPoint extends Point ver 1 {
     return new ExtendedPoint(0,0);
   }
 
+  public Point recursive() {
+    return recursive();
+  }
+
   public static void main(String[] args) {
     Point p1 = new ExtendedPoint(0,1f);
+    double t = p1.distance(p1);
+    System.err.println(t);
     p1.y = 2;
   }
 }

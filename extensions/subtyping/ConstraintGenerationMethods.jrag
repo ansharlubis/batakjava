@@ -3,7 +3,7 @@ aspect ConstraintGeneration {
   /**
    * Used for type access
    */
-  public void Expr.generateTypeConstraints(TypeDecl type, DisjunctionConstraint result) {
+  public LocalConstraint Expr.generateTypeConstraints(TypeDecl type, DisjunctionConstraint result) {
     if (type.isOverview()) {
       Iterator<TypeDecl> iter = lookupTypeSet(type.packageName(), type.name()).iterator();
       while (iter.hasNext()) {
@@ -12,6 +12,7 @@ aspect ConstraintGeneration {
     } else {
       result.add(add(new ConjunctionConstraint(), type));
     }
+    return result;
   }
 
   /**
@@ -45,8 +46,7 @@ aspect ConstraintGeneration {
   // this is the super constructor access; type is the super type; result is the resulting constraint
   private LocalConstraint SuperConstructorAccess.generateConstructorConstraints(TypeDecl type, DisjunctionConstraint result) {
     for (ConstructorDecl constructor: type.constructors()) {
-      if ((getNumArg() == constructor.getNumParameter()) && constructor.accessibleFrom(hostType())
-          && (!constructor.isProtected() || constructor.hostPackage().equals(hostPackage()))) {
+      if ((getNumArg() == constructor.getNumParameter()) && constructor.accessibleFrom(hostType())) {
         ConjunctionConstraint sub = new ConjunctionConstraint();
         int applicableArg = 0;
         for (int i = 0; i < getNumArg(); i++) {
@@ -223,6 +223,97 @@ aspect ConstraintGeneration {
     }
 
     return new UnknownConstraint();
+  }
+
+  /**
+   * Methods for MethodAccess.constraints()
+   */
+  // this is the method access; qualifier is the qualifier; result is the resulting constraint
+  private LocalConstraint MethodAccess.generateQualifiedConstraints(Expr qualifier, DisjunctionConstraint result) {
+    LocalConstraint qualifierConstraints = qualifier.constraints();
+
+    if (qualifierConstraints instanceof DisjunctionConstraint) {
+      DisjunctionConstraint orQualifierConstraints = (DisjunctionConstraint) qualifierConstraints;
+      for (LocalConstraint qualifierConstraint: orQualifierConstraints) {
+        TypeDecl qualifierType = qualifierConstraint.getTypeInt(qualifier.typeVariable()).isPresent()
+          ? intToType(qualifierConstraint.getTypeInt(qualifier.typeVariable()).get()) : unknownType();
+        generateConstraints(qualifierType, result, true);
+      }
+    }
+
+    if (qualifierConstraints instanceof ConjunctionConstraint) {
+      ConjunctionConstraint andQualifierConstraints = (ConjunctionConstraint) qualifierConstraints;
+      TypeDecl qualifierType = andQualifierConstraints.getTypeInt(qualifier.typeVariable()).isPresent()
+        ? intToType(andQualifierConstraints.getTypeInt(qualifier.typeVariable()).get()) : unknownType();
+      generateConstraints(qualifierType, result, true);
+    }
+
+    return result;
+  }
+
+  // this is the method access; result is the resulting constraint
+  private LocalConstraint MethodAccess.generateNonQualifiedConstraints(DisjunctionConstraint result) {
+    return generateConstraints(hostType(), result, false);
+  }
+
+  /**
+   * Auxillary method for MethodAccess.generateQualifiedConstraints(Expr,DisjunctionConstraint) and
+   * MethodAccess.generateNonQualifiedConstraints(DisjunctionConstraint)
+   */
+  // this is the method access; type is the type of the qualifier/host; result is the resulting constraint;
+  // qualified is whether the access is qualified or not
+  private LocalConstraint MethodAccess.generateConstraints(TypeDecl type, DisjunctionConstraint result, boolean qualified) {
+    Map<String,Collection<MethodDecl>> methodMap = type.versionedMethodsNameMap();
+    if (methodMap.containsKey(name())) {
+      for (MethodDecl method: methodMap.get(name())) {
+        if (getNumArg() == method.getNumParameter()) {
+          TypeDecl returnType = method.type();
+          if (returnType.isOverview()) {
+            Iterator<TypeDecl> returnTypesIter = lookupTypeSet(returnType.packageName(), returnType.name()).iterator();
+            while (returnTypesIter.hasNext()) {
+              ConjunctionConstraint sub = new ConjunctionConstraint();
+              int applicableArg = 0;
+              for (int i = 0; i < getNumArg(); i++) {
+                LocalConstraint arg = getArg(i).generateArgConstraints(method.getParameter(i));
+                if (!arg.isUnknown()) {
+                  applicableArg++;
+                  sub.add(arg);
+                }
+              }
+              if (applicableArg == getNumArg()) {
+                if (qualified) {
+                  result.add(qualifier().add(
+                    add(sub, returnTypesIter.next()),
+                    type));
+                } else {
+                  result.add(add(sub, returnTypesIter.next()));
+                }
+              }
+            }
+          } else {
+            ConjunctionConstraint sub = new ConjunctionConstraint();
+            int applicableArg = 0;
+            for (int i = 0; i < getNumArg(); i++) {
+              LocalConstraint arg = getArg(i).generateArgConstraints(method.getParameter(i));
+              if (!arg.isUnknown()) {
+                applicableArg++;
+                sub.add(arg);
+              }
+            }
+            if (applicableArg == getNumArg()) {
+              if (qualified) {
+                result.add(qualifier().add(
+                  add(sub, returnType),
+                  type));
+              } else {
+                result.add(add(sub, returnType));
+              }
+            }
+          }
+        }
+      }
+    }
+    return result;
   }
 
   // this is the source expression; destination is the destination expression; result is the resulting constraint
