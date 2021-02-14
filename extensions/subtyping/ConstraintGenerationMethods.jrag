@@ -39,6 +39,31 @@ aspect ConstraintGeneration {
     return result;
   }
 
+  /**
+   * Methods for SuperConstructorAccess.constraints()
+   */
+  // this is the super constructor access; type is the super type; result is the resulting constraint
+  private LocalConstraint SuperConstructorAccess.generateConstructorConstraints(TypeDecl type, DisjunctionConstraint result) {
+    for (ConstructorDecl constructor: type.constructors()) {
+      if ((getNumArg() == constructor.getNumParameter()) && constructor.accessibleFrom(hostType())
+          && (!constructor.isProtected() || constructor.hostPackage().equals(hostPackage()))) {
+        ConjunctionConstraint sub = new ConjunctionConstraint();
+        int applicableArg = 0;
+        for (int i = 0; i < getNumArg(); i++) {
+          LocalConstraint arg = getArg(i).generateArgConstraints(constructor.getParameter(i));
+          if (!arg.isUnknown()) {
+            applicableArg++;
+            sub.add(arg);
+          }
+        }
+        if (applicableArg == getNumArg()) {
+          result.add(add(sub, type));
+        }
+      }
+    }
+    return result;
+  }
+
   // this is the given argument; parameter is the parameter to be checked against
   public LocalConstraint Expr.generateArgConstraints(ParameterDeclaration parameter) {
     LocalConstraint argConstraints = constraints();

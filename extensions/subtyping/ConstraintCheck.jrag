@@ -21,6 +21,11 @@ aspect BatakjavaErrorCheck {
     ? Collections.singletonList(errorf("no applicable constructor found for %s", prettyPrint()))
     : Collections.emptyList();
 
+  eq SuperConstructorAccess.constraintProblems() =
+    constraints().isUnknown()
+    ? Collections.singletonList(errorf("no applicable constructor found for %s", prettyPrint()))
+    : Collections.emptyList();
+
   eq AssignExpr.constraintProblems() =
     constraints().isUnknown()
     ? Collections.singletonList(errorf("can not assign %s to %s", getSource().prettyPrint(), getDest().prettyPrint()))

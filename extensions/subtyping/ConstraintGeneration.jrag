@@ -84,6 +84,19 @@ aspect ConstraintGeneration {
     return result.size() > 0 ? result : new UnknownConstraint();
   }
 
+  eq SuperConstructorAccess.constraints() {
+    TypeDecl hostType = hostType();
+    if (hostType instanceof ClassDecl) {
+      TypeDecl superType = ((ClassDecl) hostType).superclass();
+      DisjunctionConstraint result = new DisjunctionConstraint();
+      generateConstructorConstraints(superType, result);
+      if (result.size() > 0) {
+        return result;
+      }
+    }
+    return new UnknownConstraint();
+  }
+
   eq VarAccess.constraints() {
     DisjunctionConstraint result = new DisjunctionConstraint();
     if (isQualified()) {
@@ -96,6 +109,10 @@ aspect ConstraintGeneration {
 
   eq Dot.constraints() = lastAccess().constraints();
 
+  eq ThisAccess.constraints() = add(new ConjunctionConstraint(), type());
+
+  eq SuperAccess.constraints() = add(new ConjunctionConstraint(), type());
+
   eq AssignExpr.constraints() {
     if (!getDest().constraints().isUnknown() && !getSource().constraints().isUnknown()) {
       DisjunctionConstraint result = new DisjunctionConstraint();
@@ -106,6 +123,8 @@ aspect ConstraintGeneration {
     }
     return new UnknownConstraint();
   }
+
+  eq InstanceOfExpr.constraints() = add(new ConjunctionConstraint(), type());
 
   syn LocalConstraint Declarator.constraints() {
     if (hasInit()) {
