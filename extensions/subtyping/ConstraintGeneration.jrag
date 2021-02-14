@@ -21,6 +21,9 @@ aspect VariableAssignment {
   eq Unary.versionVariable() = getOperand().versionVariable();
   eq Unary.typeVariable() = getOperand().typeVariable();
 
+  eq CastExpr.versionVariable() = getTypeAccess().versionVariable();
+  eq CastExpr.typeVariable() = getTypeAccess().typeVariable();
+
   eq AssignExpr.versionVariable() = getDest().versionVariable();
   eq AssignExpr.typeVariable() = getDest().typeVariable();
 
@@ -140,7 +143,40 @@ aspect ConstraintGeneration {
     return new UnknownConstraint();
   }
 
-  eq InstanceOfExpr.constraints() = add(new ConjunctionConstraint(), type());
+  /**
+   * Since unknown check is already executed before constraint generation, there is no possibility
+   * of having unknown type in both instanceof and cast expressions
+   */
+  eq InstanceOfExpr.constraints() = add(new ConjunctionConstraint(), typeBoolean());
+  eq CastExpr.constraints() = generateTypeConstraints(getTypeAccess().type(), new DisjunctionConstraint());
+
+  eq Unary.constraints() = getOperand().constraints();
+  eq PlusExpr.constraints() = generateNumericConstraints(new DisjunctionConstraint());
+  eq MinusExpr.constraints() = generateNumericConstraints(new DisjunctionConstraint());
+  eq BitNotExpr.constraints() = generateNumericConstraints(new DisjunctionConstraint());
+  eq LogNotExpr.constraints() = add(new ConjunctionConstraint(), typeBoolean());
+
+  eq MultiplicativeExpr.constraints() {
+    DisjunctionConstraint result = new DisjunctionConstraint();
+    generateNumericConstraints(result);
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
+  eq AdditiveExpr.constraints() {
+    DisjunctionConstraint result = new DisjunctionConstraint();
+    generateNumericConstraints(result);
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
+  eq AddExpr.constraints() {
+    DisjunctionConstraint result = new DisjunctionConstraint();
+    generateAddConstraints(result);
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
+  eq RelationalExpr.constraints() = add(new ConjunctionConstraint(), typeBoolean());
+
+  eq LogicalExpr.constraints() = add(new ConjunctionConstraint(), typeBoolean());
 
   syn LocalConstraint Declarator.constraints() {
     if (hasInit()) {
