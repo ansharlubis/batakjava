@@ -1,0 +1,293 @@
+aspect BinaryConstraintGeneration {
+
+  /**
+   * Method used for constraint generation in numeric unary expressions
+   */
+  // this is the unary expression; result is the resulting constraint
+  protected LocalConstraint Unary.generateNumericConstraints(DisjunctionConstraint result) {
+    LocalConstraint operandConstraints = getOperand().constraints();
+
+    if (operandConstraints instanceof DisjunctionConstraint) {
+      DisjunctionConstraint orOperandConstraints = (DisjunctionConstraint) operandConstraints;
+      for (LocalConstraint operandConstraint: orOperandConstraints) {
+        TypeDecl operandType = operandConstraint.getTypeInt(getOperand().typeVariable()).isPresent()
+          ? intToType(operandConstraint.getTypeInt(getOperand().typeVariable()).get()) : unknownType();
+        result.add(getOperand().add(
+          add(new ConjunctionConstraint(), operandType.unaryNumericPromotion()),
+          operandType));
+      }
+    }
+
+    if (operandConstraints instanceof ConjunctionConstraint) {
+      LocalConstraint orOperandConstraints = (DisjunctionConstraint) operandConstraints;
+      TypeDecl operandType = operandConstraints.getTypeInt(getOperand().typeVariable()).isPresent()
+        ? intToType(operandConstraints.getTypeInt(getOperand().typeVariable()).get()) : unknownType();
+      result.add(getOperand().add(
+        add(new ConjunctionConstraint(), operandType.unaryNumericPromotion()),
+        operandType));
+    }
+
+    return result;
+  }
+
+  /**
+   * Method used for constraint generation in numeric binary expressions
+   */
+  protected LocalConstraint Binary.generateNumericConstraints(DisjunctionConstraint result) {
+    LocalConstraint leftConstraints = getLeftOperand().constraints();
+    LocalConstraint rightConstraints = getRightOperand().constraints();
+
+    if (leftConstraints instanceof DisjunctionConstraint) {
+      if (rightConstraints instanceof DisjunctionConstraint) {
+        DisjunctionConstraint orLeftConstraints = (DisjunctionConstraint) leftConstraints;
+        DisjunctionConstraint orRightConstraints = (DisjunctionConstraint) rightConstraints;
+        for (LocalConstraint leftConstraint: orLeftConstraints) {
+          for (LocalConstraint rightConstraint: orRightConstraints) {
+            TypeDecl leftType = leftConstraint.getTypeInt(getLeftOperand().typeVariable()).isPresent()
+              ? intToType(leftConstraint.getTypeInt(getLeftOperand().typeVariable()).get()) : unknownType();
+            TypeDecl rightType = rightConstraint.getTypeInt(getRightOperand().typeVariable()).isPresent()
+              ? intToType(rightConstraint.getTypeInt(getRightOperand().typeVariable()).get()) : unknownType();
+            checkBinaryPromotion(leftType, rightType, result);
+          }
+        }
+      }
+
+      if (rightConstraints instanceof ConjunctionConstraint) {
+        DisjunctionConstraint orLeftConstraints = (DisjunctionConstraint) leftConstraints;
+        ConjunctionConstraint andRightConstraints = (ConjunctionConstraint) rightConstraints;
+        TypeDecl rightType = andRightConstraints.getTypeInt(getRightOperand().typeVariable()).isPresent()
+          ? intToType(andRightConstraints.getTypeInt(getRightOperand().typeVariable()).get()) : unknownType();
+        for (LocalConstraint leftConstraint: orLeftConstraints) {
+          TypeDecl leftType = leftConstraint.getTypeInt(getLeftOperand().typeVariable()).isPresent()
+            ? intToType(leftConstraint.getTypeInt(getLeftOperand().typeVariable()).get()) : unknownType();
+          checkBinaryPromotion(leftType, rightType, result);
+        }
+      }
+    }
+
+    if (leftConstraints instanceof ConjunctionConstraint) {
+      if (rightConstraints instanceof DisjunctionConstraint) {
+        ConjunctionConstraint andLeftConstraints = (ConjunctionConstraint) leftConstraints;
+        DisjunctionConstraint orRightConstraints = (DisjunctionConstraint) rightConstraints;
+        TypeDecl leftType = andLeftConstraints.getTypeInt(getLeftOperand().typeVariable()).isPresent()
+          ? intToType(andLeftConstraints.getTypeInt(getLeftOperand().typeVariable()).get()) : unknownType();
+        for (LocalConstraint rightConstraint: orRightConstraints) {
+          TypeDecl rightType = rightConstraint.getTypeInt(getRightOperand().typeVariable()).isPresent()
+            ? intToType(rightConstraint.getTypeInt(getRightOperand().typeVariable()).get()) : unknownType();
+          checkBinaryPromotion(leftType, rightType, result);
+        }
+      }
+
+      if (rightConstraints instanceof ConjunctionConstraint) {
+        ConjunctionConstraint andLeftConstraints = (ConjunctionConstraint) leftConstraints;
+        ConjunctionConstraint andRightConstraints = (ConjunctionConstraint) rightConstraints;
+        TypeDecl leftType = andLeftConstraints.getTypeInt(getLeftOperand().typeVariable()).isPresent()
+          ? intToType(andLeftConstraints.getTypeInt(getLeftOperand().typeVariable()).get()) : unknownType();
+        TypeDecl rightType = andRightConstraints.getTypeInt(getRightOperand().typeVariable()).isPresent()
+          ? intToType(andRightConstraints.getTypeInt(getRightOperand().typeVariable()).get()) : unknownType();
+        checkBinaryPromotion(leftType, rightType, result);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Used to help work on Binary.generateNumericConstraints(DisjunctionConstraint)
+   */
+  protected void Binary.checkBinaryPromotion(TypeDecl leftType, TypeDecl rightType, DisjunctionConstraint result) {
+    if (!leftType.binaryNumericPromotion(rightType).isUnknown()) {
+      result.add(add(
+        getRightOperand().add(getLeftOperand().add(new ConjunctionConstraint(), leftType), rightType),
+        leftType.binaryNumericPromotion(rightType)));
+    }
+  }
+
+  /**
+   * Method used for constraint generation in add binary expressions
+   */
+  protected LocalConstraint AddExpr.generateNumericConstraints(DisjunctionConstraint result) {
+    LocalConstraint leftConstraints = getLeftOperand().constraints();
+    LocalConstraint rightConstraints = getRightOperand().constraints();
+
+    if (leftConstraints instanceof DisjunctionConstraint) {
+      if (rightConstraints instanceof DisjunctionConstraint) {
+        DisjunctionConstraint orLeftConstraints = (DisjunctionConstraint) leftConstraints;
+        DisjunctionConstraint orRightConstraints = (DisjunctionConstraint) rightConstraints;
+        for (LocalConstraint leftConstraint: orLeftConstraints) {
+          for (LocalConstraint rightConstraint: orRightConstraints) {
+            TypeDecl leftType = leftConstraint.getTypeInt(getLeftOperand().typeVariable()).isPresent()
+              ? intToType(leftConstraint.getTypeInt(getLeftOperand().typeVariable()).get()) : unknownType();
+            TypeDecl rightType = rightConstraint.getTypeInt(getRightOperand().typeVariable()).isPresent()
+              ? intToType(rightConstraint.getTypeInt(getRightOperand().typeVariable()).get()) : unknownType();
+            if (!leftType.isVoid() && !rightType.isVoid()) {
+              checkExpr(leftType, rightType, result);
+            }
+          }
+        }
+      }
+
+      if (rightConstraints instanceof ConjunctionConstraint) {
+        DisjunctionConstraint orLeftConstraints = (DisjunctionConstraint) leftConstraints;
+        ConjunctionConstraint andRightConstraints = (ConjunctionConstraint) rightConstraints;
+        TypeDecl rightType = andRightConstraints.getTypeInt(getRightOperand().typeVariable()).isPresent()
+          ? intToType(andRightConstraints.getTypeInt(getRightOperand().typeVariable()).get()) : unknownType();
+        for (LocalConstraint leftConstraint: orLeftConstraints) {
+          TypeDecl leftType = leftConstraint.getTypeInt(getLeftOperand().typeVariable()).isPresent()
+            ? intToType(leftConstraint.getTypeInt(getLeftOperand().typeVariable()).get()) : unknownType();
+          if (!leftType.isVoid() && !rightType.isVoid()) {
+            checkExpr(leftType, rightType, result);
+          }
+        }
+      }
+    }
+
+    if (leftConstraints instanceof ConjunctionConstraint) {
+      if (rightConstraints instanceof DisjunctionConstraint) {
+        ConjunctionConstraint andLeftConstraints = (ConjunctionConstraint) leftConstraints;
+        DisjunctionConstraint orRightConstraints = (DisjunctionConstraint) rightConstraints;
+        TypeDecl leftType = andLeftConstraints.getTypeInt(getLeftOperand().typeVariable()).isPresent()
+          ? intToType(andLeftConstraints.getTypeInt(getLeftOperand().typeVariable()).get()) : unknownType();
+        for (LocalConstraint rightConstraint: orRightConstraints) {
+          TypeDecl rightType = rightConstraint.getTypeInt(getRightOperand().typeVariable()).isPresent()
+            ? intToType(rightConstraint.getTypeInt(getRightOperand().typeVariable()).get()) : unknownType();
+          if (!leftType.isVoid() && !rightType.isVoid()) {
+            checkExpr(leftType, rightType, result);
+          }
+        }
+      }
+
+      if (rightConstraints instanceof ConjunctionConstraint) {
+        ConjunctionConstraint andLeftConstraints = (ConjunctionConstraint) leftConstraints;
+        ConjunctionConstraint andRightConstraints = (ConjunctionConstraint) rightConstraints;
+        TypeDecl leftType = andLeftConstraints.getTypeInt(getLeftOperand().typeVariable()).isPresent()
+          ? intToType(andLeftConstraints.getTypeInt(getLeftOperand().typeVariable()).get()) : unknownType();
+        TypeDecl rightType = andRightConstraints.getTypeInt(getRightOperand().typeVariable()).isPresent()
+          ? intToType(andRightConstraints.getTypeInt(getRightOperand().typeVariable()).get()) : unknownType();
+        if (!leftType.isVoid() && !rightType.isVoid()) {
+          checkExpr(leftType, rightType, result);
+        }
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Used to help work on Binary.generateAddConstraints(DisjunctionConstraint)
+   */
+  protected void AddExpr.checkExpr(TypeDecl leftType, TypeDecl rightType, DisjunctionConstraint result) {
+    if (!leftType.isString() && !rightType.isString()) {
+      result.add(add(
+        getRightOperand().add(getLeftOperand().add(new ConjunctionConstraint(), leftType), rightType),
+        leftType.binaryNumericPromotion(rightType)));
+    } else {
+      if (leftType.isString()) {
+        result.add(add(
+          getRightOperand().add(getLeftOperand().add(new ConjunctionConstraint(), leftType), rightType), leftType));
+      } else {
+        result.add(add(
+          getRightOperand().add(getLeftOperand().add(new ConjunctionConstraint(), leftType), rightType), rightType));
+      }
+    }
+  }
+
+  protected LocalConstraint ShiftExpr.generateNumericConstraints(DisjunctionConstraint result) {
+    LocalConstraint leftConstraints = getLeftOperand().constraints();
+
+    if (leftConstraints instanceof DisjunctionConstraint) {
+      DisjunctionConstraint orLeftConstraints = (DisjunctionConstraint) leftConstraints;
+      for (LocalConstraint leftConstraint: orLeftConstraints) {
+        TypeDecl leftType = leftConstraint.getTypeInt(getLeftOperand().typeVariable()).isPresent()
+          ? intToType(leftConstraint.getTypeInt(getLeftOperand().typeVariable()).get()) : unknownType();
+        result.add(getLeftOperand().add(
+          add(new ConjunctionConstraint(), leftType.unaryNumericPromotion()),
+          leftType));
+      }
+    }
+
+    if (leftConstraints instanceof ConjunctionConstraint) {
+      ConjunctionConstraint andLeftConstraints = (ConjunctionConstraint) leftConstraints;
+      TypeDecl leftType = andLeftConstraints.getTypeInt(getLeftOperand().typeVariable()).isPresent()
+        ? intToType(andLeftConstraints.getTypeInt(getLeftOperand().typeVariable()).get()) : unknownType();
+      result.add(getLeftOperand().add(
+        add(new ConjunctionConstraint(), leftType.unaryNumericPromotion()),
+        leftType));
+    }
+
+    return result;
+  }
+
+  protected LocalConstraint BitwiseExpr.generateNumericConstraints(DisjunctionConstraint result) {
+    LocalConstraint leftConstraints = getLeftOperand().constraints();
+    LocalConstraint rightConstraints = getRightOperand().constraints();
+
+    if (leftConstraints instanceof DisjunctionConstraint) {
+      if (rightConstraints instanceof DisjunctionConstraint) {
+        DisjunctionConstraint orLeftConstraints = (DisjunctionConstraint) leftConstraints;
+        DisjunctionConstraint orRightConstraints = (DisjunctionConstraint) rightConstraints;
+        for (LocalConstraint leftConstraint: orLeftConstraints) {
+          for (LocalConstraint rightConstraint: orRightConstraints) {
+            TypeDecl leftType = leftConstraint.getTypeInt(getLeftOperand().typeVariable()).isPresent()
+              ? intToType(leftConstraint.getTypeInt(getLeftOperand().typeVariable()).get()) : unknownType();
+            TypeDecl rightType = rightConstraint.getTypeInt(getRightOperand().typeVariable()).isPresent()
+              ? intToType(rightConstraint.getTypeInt(getRightOperand().typeVariable()).get()) : unknownType();
+            checkExpr(leftType, rightType, result);
+          }
+        }
+      }
+
+      if (rightConstraints instanceof ConjunctionConstraint) {
+        DisjunctionConstraint orLeftConstraints = (DisjunctionConstraint) leftConstraints;
+        ConjunctionConstraint andRightConstraints = (ConjunctionConstraint) rightConstraints;
+        TypeDecl rightType = andRightConstraints.getTypeInt(getRightOperand().typeVariable()).isPresent()
+          ? intToType(andRightConstraints.getTypeInt(getRightOperand().typeVariable()).get()) : unknownType();
+        for (LocalConstraint leftConstraint: orLeftConstraints) {
+          TypeDecl leftType = leftConstraint.getTypeInt(getLeftOperand().typeVariable()).isPresent()
+            ? intToType(leftConstraint.getTypeInt(getLeftOperand().typeVariable()).get()) : unknownType();
+          checkExpr(leftType, rightType, result);
+        }
+      }
+    }
+
+    if (leftConstraints instanceof ConjunctionConstraint) {
+      if (rightConstraints instanceof DisjunctionConstraint) {
+        ConjunctionConstraint andLeftConstraints = (ConjunctionConstraint) leftConstraints;
+        DisjunctionConstraint orRightConstraints = (DisjunctionConstraint) rightConstraints;
+        TypeDecl leftType = andLeftConstraints.getTypeInt(getLeftOperand().typeVariable()).isPresent()
+          ? intToType(andLeftConstraints.getTypeInt(getLeftOperand().typeVariable()).get()) : unknownType();
+        for (LocalConstraint rightConstraint: orRightConstraints) {
+          TypeDecl rightType = rightConstraint.getTypeInt(getRightOperand().typeVariable()).isPresent()
+            ? intToType(rightConstraint.getTypeInt(getRightOperand().typeVariable()).get()) : unknownType();
+          checkExpr(leftType, rightType, result);
+        }
+      }
+
+      if (rightConstraints instanceof ConjunctionConstraint) {
+        ConjunctionConstraint andLeftConstraints = (ConjunctionConstraint) leftConstraints;
+        ConjunctionConstraint andRightConstraints = (ConjunctionConstraint) rightConstraints;
+        TypeDecl leftType = andLeftConstraints.getTypeInt(getLeftOperand().typeVariable()).isPresent()
+          ? intToType(andLeftConstraints.getTypeInt(getLeftOperand().typeVariable()).get()) : unknownType();
+        TypeDecl rightType = andRightConstraints.getTypeInt(getRightOperand().typeVariable()).isPresent()
+          ? intToType(andRightConstraints.getTypeInt(getRightOperand().typeVariable()).get()) : unknownType();
+        checkExpr(leftType, rightType, result);
+      }
+    }
+    return result;
+  }
+
+  protected void BitwiseExpr.checkExpr(TypeDecl leftType, TypeDecl rightType, DisjunctionConstraint result) {
+    if (leftType.isIntegralType() && rightType.isIntegralType()) {
+      result.add(getRightOperand().add(
+        getLeftOperand().add(
+          add(new ConjunctionConstraint(), leftType.binaryNumericPromotion(rightType)),
+          leftType),
+        rightType));
+    } else if (leftType.isBoolean() && rightType.isBoolean()) {
+      result.add(getRightOperand().add(
+        getLeftOperand().add(
+          add(new ConjunctionConstraint(), typeBoolean()),
+          leftType),
+        rightType));
+    }
+  }
+}

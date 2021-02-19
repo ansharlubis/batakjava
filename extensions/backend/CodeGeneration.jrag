@@ -9,7 +9,10 @@ aspect OverviewGeneration {
     for (TypeDecl typeDecl: getTypeDeclList()) {
       typeDecls.addAll(typeDecl.generateOverviewType());
     }
-    return new CompilationUnit(getPackageDecl(), new List(), typeDecls);
+    CompilationUnit result = new CompilationUnit(getPackageDecl(), new List(), typeDecls);
+    result.setFromSource(true);
+    result.setClassSource(getClassSource());
+    return result;
   }
 
   syn nta List<TypeDecl> TypeDecl.generateOverviewType() = new List();
@@ -46,7 +49,10 @@ aspect JavaGeneration {
     for (TypeDecl typeDecl: getTypeDeclList()) {
       typeDecls.add(typeDecl.generateJavaType(solutions));
     }
-    return new CompilationUnit(getPackageDecl(), importDecls, typeDecls);
+    CompilationUnit result = new CompilationUnit(getPackageDecl(), importDecls, typeDecls);
+    result.setFromSource(true);
+    result.setClassSource(getClassSource());
+    return result;
   }
 
   syn nta List<ImportDecl> ImportDecl.generateJavaImport() = new List().add(this);
@@ -57,43 +63,49 @@ aspect JavaGeneration {
   syn nta TypeDecl TypeDecl.generateJavaType(Set<Map<String,Integer>> solutions) = treeCopy();
 
   eq ClassDecl.generateJavaType(Set<Map<String,Integer>> solutions) {
-    Optional<Map<String,Integer>> priority = prioritySet(solutions);
-
     Set<Map<String,Integer>> filtered = solutions;
-    Map<String,Integer> selected;
-
     Opt<Access> superAccess = getSuperClassOpt();
-    List<BodyDecl> bodyDecls = new List();
+    Map<String,Integer> def = null;
 
-    if (priority.isPresent()) {
-      selected = priority.get();
+    if (superclass().isGenerated()) {
+      Integer superVersion = Integer.valueOf(getSuperClass().version());
+      filtered = solutions.stream()
+        .filter(solution -> solution.get(getSuperClass().versionVariable()) == superVersion)
+        .collect(Collectors.toCollection(HashSet::new));
+      superAccess = new Opt(getSuperClass().attachVersion(superVersion));
 
-      // Filter the solutions in case the class extends
-      if (hasSuperClass() && superclass().isVersioned()) {
-        Integer version = selected.get(getSuperClass().versionVariable());
-        filtered = solutions.stream()
-          .filter(solution -> solution.get(getSuperClass().versionVariable()) == version)
-          .collect(Collectors.toCollection(HashSet::new));
-        superAccess = new Opt(getSuperClass().attachVersion(version));
+      Optional<Map<String,Integer>> priority = prioritySet(filtered);
+      if (priority.isPresent()) {
+        def = priority.get();
       }
     } else {
-      // The same as above but find the max version for superclass first
-      if (hasSuperClass() && superclass().isVersioned()) {
-        Integer maxVersion = solutions.stream()
-          .map(solution -> solution.get(getSuperClass().versionVariable()))
-          .reduce(0, (a,b) -> a > b ? a : b);
-        filtered = solutions.stream()
-          .filter(solution -> solution.get(getSuperClass().versionVariable()) == maxVersion)
-          .collect(Collectors.toCollection(HashSet::new));
-        superAccess = new Opt(getSuperClass().attachVersion(maxVersion));
+      Optional<Map<String,Integer>> priority = prioritySet(solutions);
+      if (priority.isPresent()) {
+        def = priority.get();
+        if (superclass().isOverview()) {
+          Integer superVersion = def.get(getSuperClass().versionVariable());
+          filtered = solutions.stream()
+            .filter(solution -> solution.get(getSuperClass().versionVariable()) == superVersion)
+            .collect(Collectors.toCollection(HashSet::new));
+          superAccess = new Opt(getSuperClass().attachVersion(superVersion));
+        }
+      } else {
+        if (superclass().isOverview()) {
+          Integer maxVersion = solutions.stream()
+            .map(solution -> solution.get(getSuperClass().versionVariable()))
+            .reduce(0, (a,b) -> a > b ? a : b);
+          filtered = solutions.stream()
+            .filter(solution -> solution.get(getSuperClass().versionVariable()) == maxVersion)
+            .collect(Collectors.toCollection(HashSet::new));
+          superAccess = new Opt(getSuperClass().attachVersion(maxVersion));
+        }
+        def = solutionSet(filtered).iterator().next();
       }
-
-      // Grab one random solution from the set of largest solutions
-      selected = solutionSet(filtered).iterator().next();
     }
 
+    List<BodyDecl> bodyDecls = new List();
     for (BodyDecl bodyDecl: getBodyDeclList()) {
-      bodyDecls.addAll(bodyDecl.generateJavaBody(filtered, selected));
+      bodyDecls.addAll(bodyDecl.generateJavaBody(filtered, def));
     }
 
     return new ClassDecl(getModifiers(), getID() + "_ver_" + hostVersion(), superAccess, getImplementsList(), bodyDecls);

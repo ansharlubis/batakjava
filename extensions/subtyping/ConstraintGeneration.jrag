@@ -190,21 +190,9 @@ aspect ConstraintGeneration {
   eq BitNotExpr.constraints() = generateNumericConstraints(new DisjunctionConstraint());
   eq LogNotExpr.constraints() = add(new ConjunctionConstraint(), typeBoolean());
 
-  eq MultiplicativeExpr.constraints() {
+  eq Binary.constraints() {
     DisjunctionConstraint result = new DisjunctionConstraint();
     generateNumericConstraints(result);
-    return result.size() > 0 ? result : new UnknownConstraint();
-  }
-
-  eq AdditiveExpr.constraints() {
-    DisjunctionConstraint result = new DisjunctionConstraint();
-    generateNumericConstraints(result);
-    return result.size() > 0 ? result : new UnknownConstraint();
-  }
-
-  eq AddExpr.constraints() {
-    DisjunctionConstraint result = new DisjunctionConstraint();
-    generateAddConstraints(result);
     return result.size() > 0 ? result : new UnknownConstraint();
   }
 

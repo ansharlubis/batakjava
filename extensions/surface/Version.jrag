@@ -46,6 +46,9 @@ aspect BatakjavaVersion {
     return isGenerated() ? splitName[splitName.length-1] : "0";
   }
 
+  syn String Access.version() = "0";
+  eq VersionedTypeAccess.version() = getVersionNum();
+
   inh String TypeDecl.hostVersion();
   inh String BodyDecl.hostVersion();
   inh String Expr.hostVersion();

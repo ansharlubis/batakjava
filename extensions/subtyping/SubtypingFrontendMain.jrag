@@ -256,10 +256,41 @@ aspect BatakjavaBackendMain {
         LinkedList<CompilationUnit> generated = new LinkedList<CompilationUnit>();
         while (generateIter.hasNext()) {
           CompilationUnit unit = generateIter.next();
-          unit.addToGenerated(generated, program.solutions);
+          generated.add(unit.generateJava(program.solutions));
+          generated.add(unit.generateOverview());
         }
         program.javaGenTime += System.nanoTime() - genStart;
 
+        // adding generated compilation unit into the new program
+        program.setCompilationUnitList(new List());
+        for (CompilationUnit generatedUnit: generated) {
+          program.addCompilationUnit(generatedUnit);
+        }
+        program.reinitializeSourceTypeMap();
+
+        // java type check
+        Iterator<CompilationUnit> generatedIter = program.compilationUnitIterator();
+        while (generatedIter.hasNext()) {
+          CompilationUnit unit = generatedIter.next();
+          work.add(unit);
+          int result = processCompilationUnit(unit);
+          switch (result) {
+            case EXIT_SUCCESS:
+              break;
+            case EXIT_UNHANDLED_ERROR:
+              return result;
+            default:
+              compileResult = result;
+          }
+        }
+
+        for (CompilationUnit unit : work) {
+          if (unit != null && unit.fromSource()) {
+            long start = System.nanoTime();
+            processNoErrors(unit);
+            program.codeGenTime += System.nanoTime() - start;
+          }
+        }
       } catch (Throwable t) {
         System.err.println("Fatal exception:");
         t.printStackTrace(System.err);
@@ -273,22 +304,6 @@ aspect BatakjavaBackendMain {
     }
 
 
-  }
-
-  public void CompilationUnit.addToGenerated(LinkedList<CompilationUnit> generated, Set<Map<String,Integer>> solutions) {
-    generated.add(this);
-  }
-
-  public void BatakjavaCompilationUnit.addToGenerated(LinkedList<CompilationUnit> generated, Set<Map<String,Integer>> solutions) {
-    CompilationUnit generatedJava = generateJava(solutions);
-    System.err.println(generatedJava.prettyPrint());
-    CompilationUnit generatedOverview = generateOverview();
-    generatedJava.setFromSource(true);
-    generatedJava.setClassSource(getClassSource());
-    generatedOverview.setFromSource(true);
-    generatedOverview.setClassSource(getClassSource());
-    generated.add(generatedJava);
-    generated.add(generatedOverview);
   }
 
 }
