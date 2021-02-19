@@ -60,6 +60,7 @@ aspect ConstraintClass {
     public abstract Constraint post(Model model, IntVar[] versions, IntVar[] types);
     public abstract void addTo(ConjunctionConstraint target);
     public abstract void addTo(DisjunctionConstraint target);
+    public int size() { return 0; }
     public boolean isUnknown() { return false; }
   }
 
@@ -198,6 +199,9 @@ aspect ConstraintClass {
     }
 
     public String toString() {
+      if (size() == 1) {
+        return iterator().next().toString();
+      }
       StringBuilder result = new StringBuilder();
       result.append("[");
       int i = 0;
@@ -266,6 +270,9 @@ aspect ConstraintClass {
     }
 
     public String toString() {
+      if (size() == 1) {
+        return iterator().next().toString();
+      }
       StringBuilder result = new StringBuilder();
       result.append("[");
       int i = 0;

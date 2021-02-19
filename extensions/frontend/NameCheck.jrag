@@ -65,9 +65,9 @@ aspect BatakjavaNameCheck {
 
   syn Collection<Problem> ClassDecl.batakjavaNameProblems() {
     if (hasSuperClass()) {
-      if (superclass().isOverview() && !getSuperClass().isVersioned()) {
+      if (!superclass().isOverview() && !superclass().isGenerated() && getSuperClass().isVersioned()) {
         return Collections.singletonList(
-          errorf("superclass %s's version is not specified", getSuperClass().prettyPrint()));
+          errorf("java class %s should not have a version specified", getSuperClass().prettyPrint()));
       }
     }
     return Collections.emptyList();

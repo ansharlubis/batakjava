@@ -12,7 +12,7 @@ aspect BatakjavaTypeAnalysis {
   eq ClassDecl.isVersioned() = isOverview() || !hostVersion().equals("0");
 
   syn boolean Access.isVersioned() = false;
-  eq VersionedAccess.isVersioned() = true;
+  eq VersionedTypeAccess.isVersioned() = true;
 
   syn boolean BodyDecl.versionDependent() = false;
   eq FieldDecl.versionDependent() = type().isVersioned();
@@ -56,6 +56,47 @@ aspect BatakjavaTypeAnalysis {
     return false;
   }
 
-  eq VersionedAccess.type() = decl();
+  eq VersionedTypeAccess.type() = decl();
+
+  // this is a specific class obtained from qualifier's constraint; target is a specific class of the destination type
+  syn LocalConstraint TypeDecl.traceAncestor(TypeDecl target)
+    = subtype(target) ? new DisjunctionConstraint() : new UnknownConstraint();
+
+  eq ClassDecl.traceAncestor(TypeDecl target) {
+    if (this == target) {
+      return new DisjunctionConstraint();
+    }
+    if (hasSuperclass()) {
+      TypeDecl superType = superclass();
+      if (superType.isOverview()) {
+        Access access = getSuperClass();
+        Iterator<TypeDecl> superTypeIter = lookupTypeSet(superType.packageName(), superType.name()).iterator();
+        DisjunctionConstraint result = new DisjunctionConstraint();
+        while (superTypeIter.hasNext()) {
+          TypeDecl currentSuperType = superTypeIter.next();
+          LocalConstraint subtrace = currentSuperType.traceAncestor(target);
+          if (!subtrace.isUnknown()) {
+            ConjunctionConstraint trace = access.add(new ConjunctionConstraint(), currentSuperType);
+            trace.add(subtrace);
+            result.add(trace);
+          }
+        }
+        if (result.size() > 0) {
+          return result;
+        }
+      } else {
+        LocalConstraint subtrace = superType.traceAncestor(target);
+        ConjunctionConstraint result = new ConjunctionConstraint();
+        if (!subtrace.isUnknown()) {
+          //result.add(access.add(new ConjunctionConstraint(), superType));
+          result.add(subtrace);
+        }
+        if (result.size() > 0) {
+          return result;
+        }
+      }
+    }
+    return new UnknownConstraint();
+  }
 
 }

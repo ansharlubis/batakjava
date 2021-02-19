@@ -20,22 +20,28 @@ public class ExtendedPoint extends Point {
 }
 */
 
-public class ExtendedPoint extends Point ver 1 {
+public class ExtendedPoint extends Point {
   public ExtendedPoint(float initX, float initY) {
     super(initX,initY);
   }
+
 
   public Point method() {
     return new ExtendedPoint(0,0);
   }
 
+
   public Point recursive() {
     return recursive();
   }
-
+  /*
   public static void main(String[] args) {
     Point p1 = new ExtendedPoint(0,1f);
-    double t = p1.distance(p1);
-    p1.y = 2;
+    p1 = new Point(0,0);
+
+    //double t = p1.distance(p1);
+    //p1.y = 2;
   }
+  */
+
 }

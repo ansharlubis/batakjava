@@ -88,9 +88,9 @@ aspect BatakJavaPrettyPrint {
     out.println();
   }
 
-  public void VersionedAccess.prettyPrint(PrettyPrinter out) {
+  public void VersionedTypeAccess.prettyPrint(PrettyPrinter out) {
     out.print(getTypeAccess());
-    out.print(" ver ");
+    out.print("#");
     out.print(getVersionNum());
   }
 

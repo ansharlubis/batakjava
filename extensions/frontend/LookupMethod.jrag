@@ -2,29 +2,24 @@ aspect BatakjavaMemberMethods {
 
   syn lazy Map<String,Collection<MethodDecl>> TypeDecl.versionedMethodsNameMap() = methodsNameMap();
 
-  /*
-  eq ClassDecl.versionedMethodsNameMap() {
-    if (isGenerated()) {
-      Map<String,Collection<MethodDecl>> map = new HashMap();
-      for (MethodDecl m: methods()) {
-        Collection<MethodDecl> methods = map.get(m.initialName());
-        if (methods == null) {
-          methods = new ArrayList<MethodDecl>();
-          map.put(m.initialName(), methods);
-        }
-        methods.add(m);
-      }
-      return map;
-    }
-    return methodsNameMap();
-  }
-  */
-
   eq ClassDecl.versionedMethodsNameMap() {
     Map<String,Collection<MethodDecl>> map = new HashMap();
     for (MethodDecl m: methods()) {
       Collection<MethodDecl> methods = map.get(m.initialName());
       if (methods == null) {
+        methods = new ArrayList<MethodDecl>();
+        map.put(m.initialName(), methods);
+      }
+      methods.add(m);
+    }
+    return map;
+  }
+
+  syn Map<String, Collection<MethodDecl>> ClassDecl.superMethodsNameMap() {
+    Map<String,Collection<MethodDecl>> map = new HashMap();
+    for (MethodDecl m: methods()) {
+      Collection<MethodDecl> methods = map.get(m.initialName());
+      if (methods == null && !m.isPrivate()) {
         methods = new ArrayList<MethodDecl>();
         map.put(m.initialName(), methods);
       }

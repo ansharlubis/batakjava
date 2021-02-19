@@ -39,6 +39,26 @@ aspect VariableAssignment {
   eq ClassInstanceExpr.versionVariable() = getAccess().versionVariable();
   eq ClassInstanceExpr.typeVariable() = getAccess().typeVariable();
 
+  eq SuperAccess.versionVariable() {
+    if (hostType() instanceof ClassDecl) {
+      ClassDecl host = (ClassDecl) hostType();
+      if (host.hasSuperClass()) {
+        return host.getSuperClass().versionVariable();
+      }
+    }
+    return super.versionVariable();
+  }
+
+  eq SuperAccess.typeVariable() {
+    if (hostType() instanceof ClassDecl) {
+      ClassDecl host = (ClassDecl) hostType();
+      if (host.hasSuperClass()) {
+        return host.getSuperClass().typeVariable();
+      }
+    }
+    return super.typeVariable();
+  }
+
   syn lazy Integer Variable.variableNum() = program().freshVariable();
 
   syn String Variable.versionVariable();
@@ -89,10 +109,24 @@ aspect ConstraintGeneration {
 
   eq SuperConstructorAccess.constraints() {
     TypeDecl hostType = hostType();
-    if (hostType instanceof ClassDecl) {
-      TypeDecl superType = ((ClassDecl) hostType).superclass();
+    if (hostType instanceof ClassDecl && ((ClassDecl) hostType).hasSuperClass()) {
+      Access access = ((ClassDecl) hostType).getSuperClass();
+      TypeDecl superType = access.type();
       DisjunctionConstraint result = new DisjunctionConstraint();
-      generateConstructorConstraints(superType, result);
+      if (superType.isOverview()) {
+        Iterator<TypeDecl> superTypesIter = lookupTypeSet(superType.packageName(), superType.name()).iterator();
+        while (superTypesIter.hasNext()) {
+          TypeDecl currentSuperType = superTypesIter.next();
+          LocalConstraint subresult = generateConstructorConstraints(currentSuperType, new DisjunctionConstraint());
+          if (subresult.size() > 0) {
+            ConjunctionConstraint superTypeConstraint = access.add(new ConjunctionConstraint(), currentSuperType);
+            superTypeConstraint.add(subresult);
+            result.add(superTypeConstraint);
+          }
+        }
+      } else {
+        generateConstructorConstraints(superType, result);
+      }
       if (result.size() > 0) {
         return result;
       }

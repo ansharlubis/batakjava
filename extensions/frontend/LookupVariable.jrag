@@ -14,7 +14,7 @@ aspect BatakjavaFields {
 
   syn lazy Map<String,SimpleSet<Variable>> TypeDecl.versionedMemberFieldsMap() = memberFieldsMap();
 
-  // This follows better with the idea of specified superclass
+  // †his works with versioned superclass and generated superclass
   eq ClassDecl.versionedMemberFieldsMap() {
     Map<String,SimpleSet<Variable>> map = new HashMap(versionedLocalFieldsMap());
     if (hasSuperclass()) {
@@ -29,6 +29,19 @@ aspect BatakjavaFields {
     }
 
     // Ignore interface for now
+    return map;
+  }
+
+  // in case this class is a generated class whose fields are searched from below
+  syn Map<String,SimpleSet<Variable>> ClassDecl.superMemberFieldsMap() {
+    Map<String,SimpleSet<Variable>> map = new HashMap();
+    Iterator<Variable> iter = fieldsIterator();
+    while (iter.hasNext()) {
+      FieldDeclarator decl = (FieldDeclarator) iter.next();
+      if (!decl.isPrivate() && decl.accessibleFrom(this)) {
+        putSimpleSetElement(map, decl.initialName(), decl);
+      }
+    }
     return map;
   }
 

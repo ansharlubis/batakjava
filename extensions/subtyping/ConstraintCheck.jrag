@@ -16,40 +16,40 @@ aspect BatakjavaErrorCheck {
 
   syn Collection<Problem> Expr.constraintProblems() = Collections.emptyList();
 
-  eq ClassInstanceExpr.constraintProblems() =
-    constraints().isUnknown()
+  eq ClassInstanceExpr.constraintProblems()
+    = constraints().isUnknown()
     ? Collections.singletonList(errorf("no candidate constructor found for %s", prettyPrint()))
     : Collections.emptyList();
 
-  eq SuperConstructorAccess.constraintProblems() =
-    constraints().isUnknown()
+  eq SuperConstructorAccess.constraintProblems()
+    = constraints().isUnknown()
     ? Collections.singletonList(errorf("no applicable constructor found for %s", prettyPrint()))
     : Collections.emptyList();
 
-  eq VarAccess.constraintProblems() =
-    constraints().isUnknown()
+  eq VarAccess.constraintProblems()
+    = constraints().isUnknown()
     ? Collections.singletonList(errorf("no variable %s found", prettyPrint()))
     : Collections.emptyList();
 
-  eq MethodAccess.constraintProblems() =
-    constraints().isUnknown()
+  eq MethodAccess.constraintProblems()
+    = constraints().isUnknown()
     ? Collections.singletonList(errorf("no candidate method %s found", prettyPrint()))
     : Collections.emptyList();
 
-  eq AssignExpr.constraintProblems() =
-    constraints().isUnknown()
+  eq AssignExpr.constraintProblems()
+    = constraints().isUnknown()
     ? Collections.singletonList(errorf("can not assign %s to %s", getSource().prettyPrint(), getDest().prettyPrint()))
     : Collections.emptyList();
 
-  eq AddExpr.constraintProblems() =
-    constraints().isUnknown()
+  eq AddExpr.constraintProblems()
+    = constraints().isUnknown()
     ? Collections.singletonList(errorf("incompatible types for %s", prettyPrint()))
     : Collections.emptyList();
 
   Declarator contributes each constraintProblems() to CompilationUnit.constraintProblems();
 
-  syn Collection<Problem> Declarator.constraintProblems() =
-    hasInit() && constraints().isUnknown()
+  syn Collection<Problem> Declarator.constraintProblems()
+    = hasInit() && constraints().isUnknown()
     ? Collections.singletonList(errorf("can not assign %s to variable %s of type %s",
         getInit().prettyPrint(), getID(), getTypeAccess().prettyPrint()))
     : Collections.emptyList();
@@ -58,10 +58,9 @@ aspect BatakjavaErrorCheck {
 
   syn Collection<Problem> Stmt.constraintProblems() = Collections.emptyList();
 
-  eq ReturnStmt.constraintProblems() =
-    hasResult() && constraints().isUnknown()
+  eq ReturnStmt.constraintProblems()
+    = hasResult() && constraints().isUnknown()
     ? Collections.singletonList(errorf("return value %s must be an instance of %s",
         getResult().prettyPrint(), returnTypeAccess().prettyPrint()))
     : Collections.emptyList();
-
 }

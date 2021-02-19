@@ -57,7 +57,7 @@ aspect ConstraintGeneration {
           }
         }
         if (applicableArg == getNumArg()) {
-          result.add(add(sub, type));
+          result.add(sub);
         }
       }
     }
@@ -79,15 +79,20 @@ aspect ConstraintGeneration {
           Iterator<TypeDecl> parameterTypesIter = lookupTypeSet(parameterType.packageName(), parameterType.name()).iterator();
           while (parameterTypesIter.hasNext()) {
             TypeDecl currentParameterType = parameterTypesIter.next();
-            if (argType.subtype(currentParameterType)) {
-              result.add(parameter.getTypeAccess().add(
-                add(new ConjunctionConstraint(), argType),
-                currentParameterType));
+            LocalConstraint trace = argType.traceAncestor(currentParameterType);
+            if (!trace.isUnknown()) {
+              ConjunctionConstraint subconstraint
+                = parameter.getTypeAccess().add(add(new ConjunctionConstraint(), argType), currentParameterType);
+              subconstraint.add(trace);
+              result.add(subconstraint);
             }
           }
         } else {
-          if (argType.subtype(parameterType)) {
-            result.add(add(new ConjunctionConstraint(), argType));
+          LocalConstraint trace = argType.traceAncestor(parameterType);
+          if (!trace.isUnknown()) {
+            ConjunctionConstraint subconstraint = add(new ConjunctionConstraint(), argType);
+            subconstraint.add(trace);
+            result.add(subconstraint);
           }
         }
       }
@@ -128,13 +133,19 @@ aspect ConstraintGeneration {
           Iterator<TypeDecl> destinationTypesIter = lookupTypeSet(destinationType.packageName(), destinationType.name()).iterator();
           while (destinationTypesIter.hasNext()) {
             TypeDecl currentDestinationType = destinationTypesIter.next();
-            if (initType.subtype(currentDestinationType)) {
-              result.add(destination.add(add(new ConjunctionConstraint(), initType), currentDestinationType));
+            LocalConstraint trace = initType.traceAncestor(currentDestinationType);
+            if (!trace.isUnknown()) {
+              ConjunctionConstraint subconstraint = destination.add(add(new ConjunctionConstraint(), initType), currentDestinationType);
+              subconstraint.add(trace);
+              result.add(subconstraint);
             }
           }
         } else {
-          if (initType.subtype(destinationType)) {
-            result.add(add(new ConjunctionConstraint(), initType));
+          LocalConstraint trace = initType.traceAncestor(destinationType);
+          if (!trace.isUnknown()) {
+            ConjunctionConstraint subconstraint = add(new ConjunctionConstraint(), initType);
+            subconstraint.add(trace);
+            result.add(subconstraint);
           }
         }
       }
@@ -146,7 +157,7 @@ aspect ConstraintGeneration {
         ? intToType(andInitConstraints.getTypeInt(typeVariable()).get()) : unknownType();
       TypeDecl destinationType = destination.type();
       if (!destinationType.isOverview()) {
-        if (initType.subtype(destinationType)) {
+        if (!initType.traceAncestor(destinationType).isUnknown()) {
           result.add(add(new ConjunctionConstraint(), initType));
         }
       }
@@ -185,6 +196,9 @@ aspect ConstraintGeneration {
             }
           }
         }
+        if (qualifierType instanceof ClassDecl && result.size() == 0) {
+          generateSuperConstraints(qualifierType, result);
+        }
       }
     }
 
@@ -212,17 +226,54 @@ aspect ConstraintGeneration {
       return result;
     }
 
-    if (!hostType().versionedMemberFieldsMap().containsKey(name())) {
-      Map<String,SimpleSet<Variable>> fieldMap = hostType().versionedMemberFieldsMap();
+    TypeDecl host = hostType();
+    if (!host.versionedMemberFieldsMap().containsKey(name())) {
+      Map<String,SimpleSet<Variable>> fieldMap = host.versionedMemberFieldsMap();
       if (fieldMap.containsKey(name())) {
         for (Variable field: fieldMap.get(name())) {
           generateTypeConstraints(field.type(), result);
         }
       }
+      if (host instanceof ClassDecl && result.size() == 0) {
+        generateSuperConstraints(host, result);
+      }
       return result;
     }
 
     return new UnknownConstraint();
+  }
+
+  // this is the var access; type is the qualifier type, in case of non-qualified then the host type;
+  // result is the resulting constraint;
+  private LocalConstraint VarAccess.generateSuperConstraints(TypeDecl type, DisjunctionConstraint result) {
+    SimpleSet<Access> accessSet = type.generatedAncestorAccess();
+    if (accessSet.isSingleton()) {
+      Access access = accessSet.singletonValue();
+      TypeDecl superType = access.type();
+      Iterator<TypeDecl> superTypesIter = lookupTypeSet(superType.packageName(), superType.name()).iterator();
+      while (superTypesIter.hasNext()) {
+        TypeDecl currentSuperType = superTypesIter.next();
+        Map<String,SimpleSet<Variable>> superFieldMap = ((ClassDecl) currentSuperType).superMemberFieldsMap();
+        if (superFieldMap.containsKey(name())) {
+          for (Variable field: superFieldMap.get(name())) {
+            // field type must be a generated class here
+            TypeDecl fieldType = field.type();
+            if (isQualified()) {
+              result.add(qualifier().add(
+                access.add(
+                  add(new ConjunctionConstraint(), fieldType),
+                  currentSuperType),
+                type));
+            } else {
+              result.add(access.add(
+                add(new ConjunctionConstraint(), fieldType),
+                currentSuperType));
+            }
+          }
+        }
+      }
+    }
+    return result;
   }
 
   /**
@@ -237,7 +288,10 @@ aspect ConstraintGeneration {
       for (LocalConstraint qualifierConstraint: orQualifierConstraints) {
         TypeDecl qualifierType = qualifierConstraint.getTypeInt(qualifier.typeVariable()).isPresent()
           ? intToType(qualifierConstraint.getTypeInt(qualifier.typeVariable()).get()) : unknownType();
-        generateConstraints(qualifierType, result, true);
+        generateConstraints(qualifierType, result);
+        if (qualifierType instanceof ClassDecl) {
+          generateSuperConstraints(qualifierType, result);
+        }
       }
     }
 
@@ -245,7 +299,10 @@ aspect ConstraintGeneration {
       ConjunctionConstraint andQualifierConstraints = (ConjunctionConstraint) qualifierConstraints;
       TypeDecl qualifierType = andQualifierConstraints.getTypeInt(qualifier.typeVariable()).isPresent()
         ? intToType(andQualifierConstraints.getTypeInt(qualifier.typeVariable()).get()) : unknownType();
-      generateConstraints(qualifierType, result, true);
+      generateConstraints(qualifierType, result);
+      if (qualifierType instanceof ClassDecl) {
+        generateSuperConstraints(qualifierType, result);
+      }
     }
 
     return result;
@@ -253,7 +310,8 @@ aspect ConstraintGeneration {
 
   // this is the method access; result is the resulting constraint
   private LocalConstraint MethodAccess.generateNonQualifiedConstraints(DisjunctionConstraint result) {
-    return generateConstraints(hostType(), result, false);
+    generateConstraints(hostType(), result);
+    return generateSuperConstraints(hostType(), result);
   }
 
   /**
@@ -262,7 +320,7 @@ aspect ConstraintGeneration {
    */
   // this is the method access; type is the type of the qualifier/host; result is the resulting constraint;
   // qualified is whether the access is qualified or not
-  private LocalConstraint MethodAccess.generateConstraints(TypeDecl type, DisjunctionConstraint result, boolean qualified) {
+  private LocalConstraint MethodAccess.generateConstraints(TypeDecl type, DisjunctionConstraint result) {
     Map<String,Collection<MethodDecl>> methodMap = type.versionedMethodsNameMap();
     if (methodMap.containsKey(name())) {
       for (MethodDecl method: methodMap.get(name())) {
@@ -281,7 +339,7 @@ aspect ConstraintGeneration {
                 }
               }
               if (applicableArg == getNumArg()) {
-                if (qualified) {
+                if (isQualified()) {
                   result.add(qualifier().add(
                     add(sub, returnTypesIter.next()),
                     type));
@@ -301,12 +359,58 @@ aspect ConstraintGeneration {
               }
             }
             if (applicableArg == getNumArg()) {
-              if (qualified) {
+              if (isQualified()) {
                 result.add(qualifier().add(
                   add(sub, returnType),
                   type));
               } else {
                 result.add(add(sub, returnType));
+              }
+            }
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  // this is the method access; type is the qualifier type, in case of non-qualified then the host type;
+  // result is the resulting constraint;
+  private LocalConstraint MethodAccess.generateSuperConstraints(TypeDecl type, DisjunctionConstraint result) {
+    SimpleSet<Access> accessSet = type.generatedAncestorAccess();
+    if (accessSet.isSingleton()) {
+      Access access = accessSet.singletonValue();
+      TypeDecl superType = access.type();
+      Iterator<TypeDecl> superTypesIter = lookupTypeSet(superType.packageName(), superType.name()).iterator();
+      while (superTypesIter.hasNext()) {
+        TypeDecl currentSuperType = superTypesIter.next();
+        Map<String, Collection<MethodDecl>> superMethodMap = ((ClassDecl) currentSuperType).superMethodsNameMap();
+        if (superMethodMap.containsKey(name())) {
+          for (MethodDecl method: superMethodMap.get(name())) {
+            if (getNumArg() == method.getNumParameter()) {
+              // the method decl belongs to a generated class, so it can't be an overview
+              TypeDecl returnType = method.type();
+              ConjunctionConstraint sub = new ConjunctionConstraint();
+              int applicableArg = 0;
+              for (int i = 0; i< getNumArg(); i++) {
+                LocalConstraint arg = getArg(i).generateArgConstraints(method.getParameter(i));
+                if (!arg.isUnknown()) {
+                  applicableArg++;
+                  sub.add(arg);
+                }
+              }
+              if (applicableArg == getNumArg()) {
+                if (isQualified()) {
+                  result.add(qualifier().add(
+                    access.add(
+                      add(sub, returnType),
+                      currentSuperType),
+                    type));
+                } else {
+                  result.add(access.add(
+                    add(sub, returnType),
+                    currentSuperType));
+                }
               }
             }
           }
@@ -336,10 +440,11 @@ aspect ConstraintGeneration {
         for (LocalConstraint destConstraint: orDestConstraints) {
           TypeDecl destType = destConstraint.getTypeInt(destination.typeVariable()).isPresent()
             ? intToType(destConstraint.getTypeInt(destination.typeVariable()).get()) : unknownType();
-          if (sourceType.subtype(destType)) {
-            result.add(destination.add(
-              add(new ConjunctionConstraint(), sourceType),
-              destType));
+          LocalConstraint trace = sourceType.traceAncestor(destType);
+          if (!trace.isUnknown()) {
+            ConjunctionConstraint subconstraint = destination.add(add(new ConjunctionConstraint(), sourceType), destType);
+            subconstraint.add(trace);
+            result.add(subconstraint);
           }
         }
       }
@@ -352,10 +457,11 @@ aspect ConstraintGeneration {
       for (LocalConstraint destConstraint: orDestConstraints) {
         TypeDecl destType = destConstraint.getTypeInt(destination.typeVariable()).isPresent()
           ? intToType(destConstraint.getTypeInt(destination.typeVariable()).get()) : unknownType();
-        if (sourceType.subtype(destType)) {
-          result.add(destination.add(
-            add(new ConjunctionConstraint(), sourceType),
-            destType));
+        LocalConstraint trace = sourceType.traceAncestor(destType);
+        if (!trace.isUnknown()) {
+          ConjunctionConstraint subconstraint = destination.add(add(new ConjunctionConstraint(), sourceType), destType);
+          subconstraint.add(trace);
+          result.add(subconstraint);
         }
       }
     }
@@ -561,6 +667,25 @@ aspect BinaryConstraintGeneration {
           getRightOperand().add(getLeftOperand().add(new ConjunctionConstraint(), leftType), rightType), rightType));
       }
     }
+  }
+
+  syn SimpleSet<Access> TypeDecl.generatedAncestorAccess() = emptySet();
+
+  eq ClassDecl.generatedAncestorAccess() {
+    if (hasSuperClass()) {
+      TypeDecl superclass = getSuperClass().type();
+      if (superclass.isGenerated()) {
+        return emptySet();
+      }
+      if (superclass.isOverview()) {
+        SimpleSet<Access> set = emptySet();
+        return set.add(getSuperClass());
+      }
+      if (superclass.isVersioned()) {
+        return superclass.generatedAncestorAccess();
+      }
+    }
+    return emptySet();
   }
 
 }

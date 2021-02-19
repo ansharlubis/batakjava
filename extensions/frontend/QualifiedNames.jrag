@@ -1,7 +1,7 @@
 aspect Names {
 
-  eq VersionedAccess.packageName() = ((TypeAccess) getTypeAccess()).packageName();
-  syn String VersionedAccess.name() = ((TypeAccess) getTypeAccess()).name();
+  eq VersionedTypeAccess.packageName() = ((TypeAccess) getTypeAccess()).packageName();
+  syn String VersionedTypeAccess.name() = ((TypeAccess) getTypeAccess()).name();
 
 }
 

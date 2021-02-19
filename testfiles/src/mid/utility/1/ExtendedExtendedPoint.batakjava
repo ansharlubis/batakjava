@@ -1,0 +1,19 @@
+package mid.utility ver 1;
+import up.*;
+import java.util.*;
+
+public class ExtendedExtendedPoint extends ExtendedPoint {
+
+  public ExtendedExtendedPoint(float initX, float initY) {
+    super(initX, initY);
+  }
+
+  public Point method() {
+    float f = y;
+    return new ExtendedExtendedPoint(0,1);
+  }
+
+  public static void main(String[] args) {
+  }
+
+}

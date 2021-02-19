@@ -45,9 +45,9 @@ TypeDecl batakjava_class_declaration =
     modifiers.m? CLASS IDENTIFIER super.s? batakjava_class_body.b
     {: return new ClassDecl(new Modifiers(m), IDENTIFIER, s, new List(), b); :}
   ;
-Opt super =
-    EXTENDS class_type.c VER version_number.v
-    {: return new Opt(new VersionedAccess(c, v)); :}
+Access class_or_interface_type =
+    name.n SHARP version_number.v
+    {: return new VersionedTypeAccess(n, v); :}
   ;
 List batakjava_class_body =
     LBRACE batakjava_body_declarations.c? doc_comment_list? RBRACE    {: return c; :}

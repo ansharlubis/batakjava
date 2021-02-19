@@ -5,8 +5,8 @@ BatakjavaCompilationUnit : CompilationUnit ::= <PackageDecl:String> <VersionNum:
 TypeImportOnDemandPriorityDecl : TypeImportOnDemandDecl ::= Version;
 TypeImportOnDemandExemptDecl : TypeImportOnDemandDecl ::= Version;
 
-/* Versioned Access */
-VersionedAccess : Access ::= TypeAccess:Access <VersionNum:String>;
+/* Versioned Type Access */
+VersionedTypeAccess : Access ::= TypeAccess:Access <VersionNum:String>;
 
 /* Version Number */
 Version ::= <VersionNum:String> ;

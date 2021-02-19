@@ -1,6 +1,6 @@
 aspect TypeScopePropagation {
 
-  syn TypeDecl VersionedAccess.decl() {
+  syn TypeDecl VersionedTypeAccess.decl() {
     SimpleSet<TypeDecl> decls = decls();
     if (decls.isSingleton()) {
       return decls.singletonValue();
@@ -8,7 +8,7 @@ aspect TypeScopePropagation {
     return unknownType();
   }
 
-  syn SimpleSet<TypeDecl> VersionedAccess.decls() =
+  syn SimpleSet<TypeDecl> VersionedTypeAccess.decls() =
       packageName().equals("")
       ? lookupType(name()+"_ver_"+getVersionNum())
       : toSet(lookupType(packageName(), name()+"_ver_"+getVersionNum()));
