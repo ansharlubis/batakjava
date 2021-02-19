@@ -84,7 +84,7 @@ aspect VariableAssignment {
 aspect ConstraintGeneration {
 
   // The conjunction constraint here is just a placeholder
-  syn LocalConstraint Expr.constraints() = new ConjunctionConstraint();
+  syn LocalConstraint Expr.constraints() = new UnknownConstraint();
 
   /**
    * Literals
@@ -224,6 +224,8 @@ aspect ConstraintGeneration {
   }
 
   syn LocalConstraint Stmt.constraints() = new UnknownConstraint();
+
+  eq IfStmt.constraints() = getCondition().add(new ConjunctionConstraint(), getCondition().typeBoolean());
 
   eq ReturnStmt.constraints() {
     if (hasResult()) {

@@ -20,7 +20,7 @@ public class ExtendedPoint extends Point {
 }
 */
 
-public class ExtendedPoint extends Point {
+public class ExtendedPoint extends Point#1 {
   public ExtendedPoint(float initX, float initY) {
     super(initX,initY);
   }

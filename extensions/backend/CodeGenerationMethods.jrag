@@ -11,7 +11,7 @@ aspect JavaGeneration {
         int currentMap = 0;
         for (String solutionKey: solution.keySet()) {
           if (solutionKey.substring(0,1).equals("t") && solution.get(solutionKey) != 0) {
-            String packageName = packageNameFromQualifiedName(intToTypeName(solution.get(solutionKey)));
+            String packageName = intToType(solution.get(solutionKey)).packageName();
             if (versionMap.containsKey(packageName)) {
               if (versionMap.get(packageName) == solution.get("v" + solutionKey.substring(1))) {
                 currentMap++;

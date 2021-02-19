@@ -5,6 +5,22 @@ import com.google.common.primitives.Ints;
 
 aspect BatakjavaFrontendMain {
 
+  public long Program.constraintGenTime;
+  public long Program.solvingTime;
+  public long Program.javaGenTime;
+
+  refine FrontendMain public void Program.resetStatistics() {
+    javaParseTime = 0;
+    bytecodeParseTime = 0;
+    codeGenTime = 0;
+    errorCheckTime = 0;
+    numJavaFiles = 0;
+    numClassFiles = 0;
+    constraintGenTime = 0;
+    solvingTime = 0;
+    javaGenTime = 0;
+  }
+
   abstract public class SubtypingFrontend extends Frontend {
 
     protected SubtypingFrontend(String name, String version) { super(name, version); }
@@ -69,7 +85,7 @@ aspect BatakjavaFrontendMain {
           return compileResult;
         }
 
-        // Initialize for constraint generation
+        // initialize for constraint generation
         program.initializeTypeCount();
         program.initializeVariable();
 
@@ -90,6 +106,12 @@ aspect BatakjavaFrontendMain {
         System.err.println(program.typeToIntMap);
 
         if (compileResult != EXIT_SUCCESS) {
+          return compileResult;
+        }
+
+        // inference
+        if (program.solve() != EXIT_SUCCESS) {
+          System.err.println("No solution found for the program.");
           return compileResult;
         }
 
@@ -131,4 +153,142 @@ aspect BatakjavaFrontendMain {
       return EXIT_SUCCESS;
     }
   }
+}
+
+aspect BatakjavaBackendMain {
+
+  abstract public class BatakjavaFrontend extends SubtypingFrontend {
+
+    protected BatakjavaFrontend(String name, String version) { super(name, version); }
+
+    @Override
+    public int run(String[] args, BytecodeReader reader, JavaParser parser) {
+
+      program.resetStatistics();
+      program.initBytecodeReader(reader);
+      program.initJavaParser(parser);
+
+      initOptions();
+      int argResult = processArgs(args);
+      if (argResult != 0) {
+        return argResult;
+      }
+
+      Collection<String> files = program.options().files();
+
+      if (program.options().hasOption("-version")) {
+        printVersion();
+        return EXIT_SUCCESS;
+      }
+
+      if (program.options().hasOption("-help") || files.isEmpty()) {
+        printUsage();
+        return EXIT_SUCCESS;
+      }
+
+      Collection<CompilationUnit> work = new LinkedList<CompilationUnit>();
+
+      try {
+        for (String file: files) {
+          program.addSourceFile(file);
+        }
+
+        TypeDecl object = program.lookupType("java.lang", "Object");
+        if (object.isUnknown()) {
+          System.err.println("Error: java.lang.Object is missing."
+            + " The Java standard library was not found.");
+          return EXIT_UNHANDLED_ERROR;
+        }
+
+        int compileResult = EXIT_SUCCESS;
+
+        // Ba†akJava well-definedness checks
+        Iterator<CompilationUnit> checkIter = program.compilationUnitIterator();
+        while (checkIter.hasNext()) {
+          CompilationUnit unit = checkIter.next();
+          int result = processBatakjavaCompilationUnit(unit);
+          switch (result) {
+            case EXIT_SUCCESS:
+              break;
+            case EXIT_UNHANDLED_ERROR:
+              return result;
+            default:
+              compileResult = result;
+          }
+        }
+
+        if (compileResult != EXIT_SUCCESS) {
+          return compileResult;
+        }
+
+        // initialize for constraint generation
+        program.initializeTypeCount();
+        program.initializeVariable();
+
+        Iterator<CompilationUnit> constraintIter = program.compilationUnitIterator();
+        while (constraintIter.hasNext()) {
+          CompilationUnit unit = constraintIter.next();
+          int result = processConstraintCompilationUnit(unit);
+          switch (result) {
+            case EXIT_SUCCESS:
+              break;
+            case EXIT_UNHANDLED_ERROR:
+              return result;
+            default:
+              compileResult = result;
+          }
+        }
+
+        System.err.println(program.typeToIntMap);
+
+        if (compileResult != EXIT_SUCCESS) {
+          return compileResult;
+        }
+
+        // inference
+        if (program.solve() != EXIT_SUCCESS) {
+          System.err.println("No solution found for the program.");
+          return compileResult;
+        }
+
+        long genStart = System.nanoTime();
+        Iterator<CompilationUnit> generateIter = program.compilationUnitIterator();
+        LinkedList<CompilationUnit> generated = new LinkedList<CompilationUnit>();
+        while (generateIter.hasNext()) {
+          CompilationUnit unit = generateIter.next();
+          unit.addToGenerated(generated, program.solutions);
+        }
+        program.javaGenTime += System.nanoTime() - genStart;
+
+      } catch (Throwable t) {
+        System.err.println("Fatal exception:");
+        t.printStackTrace(System.err);
+        return EXIT_UNHANDLED_ERROR;
+      } finally {
+        if (program.options().hasOption("-profile")) {
+          program.printStatistics(System.out);
+        }
+      }
+      return EXIT_SUCCESS;
+    }
+
+
+  }
+
+  public void CompilationUnit.addToGenerated(LinkedList<CompilationUnit> generated, Set<Map<String,Integer>> solutions) {
+    generated.add(this);
+  }
+
+  public void BatakjavaCompilationUnit.addToGenerated(LinkedList<CompilationUnit> generated, Set<Map<String,Integer>> solutions) {
+    CompilationUnit generatedJava = generateJava(solutions);
+    System.err.println(generatedJava.prettyPrint());
+    CompilationUnit generatedOverview = generateOverview();
+    generatedJava.setFromSource(true);
+    generatedJava.setClassSource(getClassSource());
+    generatedOverview.setFromSource(true);
+    generatedOverview.setClassSource(getClassSource());
+    generated.add(generatedJava);
+    generated.add(generatedOverview);
+  }
+
 }

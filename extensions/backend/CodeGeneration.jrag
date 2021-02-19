@@ -302,9 +302,6 @@ aspect JavaGeneration {
     return treeCopy();
   }
 
-  eq VersionedTypeAccess.generateJavaAccess(Map<String,Integer> solution)
-    = getTypeAccess().attachVersion(Integer.valueOf(getVersionNum()));
-
   eq TypeAccess.generateJavaAccess(Map<String,Integer> solution)
     = type().isVersioned()
       ? attachVersion(solution.get(versionVariable()))
@@ -388,8 +385,9 @@ aspect JavaGeneration {
   eq TypeAccess.attachVersion(Integer version)
     = version != 0 ? new TypeAccess(getPackage(), getID() + "_ver_" + version.toString()) : treeCopy();
 
+  eq VersionedTypeAccess.attachVersion(Integer version) = getTypeAccess().attachVersion(version);
+
   eq PrimitiveTypeAccess.attachVersion(Integer version) = treeCopy();
 
   eq ArrayTypeAccess.attachVersion(Integer version) = new ArrayTypeAccess(getAccess().attachVersion(version));
-
 }

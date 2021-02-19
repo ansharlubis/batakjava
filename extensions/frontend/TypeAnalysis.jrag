@@ -68,8 +68,8 @@ aspect BatakjavaTypeAnalysis {
     }
     if (hasSuperclass()) {
       TypeDecl superType = superclass();
+      Access access = getSuperClass();
       if (superType.isOverview()) {
-        Access access = getSuperClass();
         Iterator<TypeDecl> superTypeIter = lookupTypeSet(superType.packageName(), superType.name()).iterator();
         DisjunctionConstraint result = new DisjunctionConstraint();
         while (superTypeIter.hasNext()) {
@@ -88,7 +88,7 @@ aspect BatakjavaTypeAnalysis {
         LocalConstraint subtrace = superType.traceAncestor(target);
         ConjunctionConstraint result = new ConjunctionConstraint();
         if (!subtrace.isUnknown()) {
-          //result.add(access.add(new ConjunctionConstraint(), superType));
+          result.add(access.add(new ConjunctionConstraint(), superType));
           result.add(subtrace);
         }
         if (result.size() > 0) {

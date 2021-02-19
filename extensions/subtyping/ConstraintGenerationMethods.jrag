@@ -122,7 +122,6 @@ aspect ConstraintGeneration {
   //             result is the resulting constraint
   public LocalConstraint Expr.generateSubtypeConstraints(Expr destination, DisjunctionConstraint result) {
     LocalConstraint initConstraints = constraints();
-
     if (initConstraints instanceof DisjunctionConstraint) {
       DisjunctionConstraint orInitConstraints = (DisjunctionConstraint) initConstraints;
       for (LocalConstraint initConstraint: orInitConstraints) {

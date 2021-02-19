@@ -60,6 +60,7 @@ aspect ConstraintClass {
     public abstract Constraint post(Model model, IntVar[] versions, IntVar[] types);
     public abstract void addTo(ConjunctionConstraint target);
     public abstract void addTo(DisjunctionConstraint target);
+    public abstract Collection<LocalConstraint> putIntoList();
     public int size() { return 0; }
     public boolean isUnknown() { return false; }
   }
@@ -91,6 +92,14 @@ aspect ConstraintClass {
 
     public void addTo(DisjunctionConstraint target) {
       target.constraints.add(this);
+    }
+
+    public Collection<LocalConstraint> putIntoList() {
+      Collection<LocalConstraint> result = new LinkedList();
+      ConjunctionConstraint sub = new ConjunctionConstraint();
+      sub.add(this);
+      result.add(sub);
+      return result;
     }
 
     public Constraint post(Model model, IntVar[] versions, IntVar[] types) {
@@ -126,6 +135,14 @@ aspect ConstraintClass {
 
     public void addTo(DisjunctionConstraint target) {
       target.constraints.add(this);
+    }
+
+    public Collection<LocalConstraint> putIntoList() {
+      Collection<LocalConstraint> result = new LinkedList();
+      ConjunctionConstraint sub = new ConjunctionConstraint();
+      sub.add(this);
+      result.add(sub);
+      return result;
     }
 
     public Constraint post(Model model, IntVar[] versions, IntVar[] types) {
@@ -214,6 +231,14 @@ aspect ConstraintClass {
       return result.toString();
     }
 
+    public Collection<LocalConstraint> putIntoList() {
+      Collection<LocalConstraint> result = new LinkedList();
+      if (size() > 0) {
+        result.add(this);
+      }
+      return result;
+    }
+
     public Constraint post(Model model, IntVar[] versions, IntVar[] types) {
       Constraint[] toPost = new Constraint[size()];
       for (int i = 0; i < size(); i++) {
@@ -285,6 +310,14 @@ aspect ConstraintClass {
       return result.toString();
     }
 
+    public Collection<LocalConstraint> putIntoList() {
+      Collection<LocalConstraint> result = new LinkedList();
+      if (size() > 0) {
+        result.add(this);
+      }
+      return result;
+    }
+
     public Constraint post(Model model, IntVar[] versions, IntVar[] types) {
       Constraint[] toPost = new Constraint[size()];
       for (int i = 0; i < size(); i++) {
@@ -297,6 +330,7 @@ aspect ConstraintClass {
   public class UnknownConstraint extends LocalConstraint {
     public Optional<Integer> getVersion(String arg) { return Optional.empty(); }
     public Optional<Integer> getTypeInt(String arg) { return Optional.empty(); }
+    public Collection<LocalConstraint> putIntoList() { return Collections.emptyList(); }
     public Constraint post(Model model, IntVar[] versions, IntVar[] types) { return null; }
     public void addTo(ConjunctionConstraint target) { return; }
     public void addTo(DisjunctionConstraint target) { return; }
