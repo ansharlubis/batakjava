@@ -26,7 +26,7 @@ jastadd {
         include "**/frontend/*.jrag"
         //include "**/inference/*.jrag"
         include "**/subtyping/*.jrag"
-        //include "**/backend/*.jrag"
+        include "**/backend/*.jrag"
       }
 
       scanner {
@@ -54,9 +54,8 @@ sourceSets.main {
   java {
     srcDir 'extendj/src/frontend-main'
     srcDir 'extendj/src/backend-main'
-    srcDir 'src/subtyping-main'
-    //srcDir 'src/frontend-main'
-    //srcDir 'src/backend-main'
+    srcDir 'src/frontend-main'
+    srcDir 'src/backend-main'
   }
   resources {
     srcDir 'extendj/src/res'
@@ -80,8 +79,7 @@ jar {
 //jar.manifest.attributes 'Main-Class': 'org.extendj.JavaPrettyPrinter'
 //jar.manifest.attributes 'Main-Class': 'org.extendj.JavaCompiler'
 //jar.manifest.attributes 'Main-Class': 'org.extendj.BatakjavaCompiler'
-//jar.manifest.attributes 'Main-Class': 'org.extendj.SolverPrinter'
-jar.manifest.attributes 'Main-Class': 'org.extendj.SubtypingChecker'
+jar.manifest.attributes 'Main-Class': 'org.extendj.BatakjavaChecker'
 
 
 

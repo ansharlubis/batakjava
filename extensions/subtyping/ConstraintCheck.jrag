@@ -46,13 +46,41 @@ aspect BatakjavaErrorCheck {
     ? Collections.singletonList(errorf("incompatible types for %s", prettyPrint()))
     : Collections.emptyList();
 
+  eq ArrayAccess.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    if (isQualified() && qualifier().arrayConstraints().isUnknown()) {
+      problems.add(errorf("no array type candidate for %s", qualifier().prettyPrint()));
+    }
+    if (arrayAccessConstraints().isUnknown()) {
+      problems.add(errorf("array index must be int after unary numeric promotion which %s does not have any candidate for",
+        getExpr().prettyPrint()));
+    }
+    return problems;
+  }
+
+  eq ArrayInit.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    for (int i = 0; i < getNumInit(); i++) {
+      Expr e = getInit(i);
+      if (e.arrayInitConstraints(declAccess()).isUnknown()) {
+        problems.add(errorf("no applicable type candidate for %s compatible with %s",
+          e.prettyPrint(), declAccess().prettyPrint()));
+      }
+    }
+    return problems;
+  }
+
   Declarator contributes each constraintProblems() to CompilationUnit.constraintProblems();
 
-  syn Collection<Problem> Declarator.constraintProblems()
-    = hasInit() && constraints().isUnknown()
-    ? Collections.singletonList(errorf("can not assign %s to variable %s of type %s",
-        getInit().prettyPrint(), getID(), getTypeAccess().prettyPrint()))
-    : Collections.emptyList();
+  syn Collection<Problem> Declarator.constraintProblems() {
+    if (hasInit() && !(getInit() instanceof ArrayInit)) {
+      if (constraints().isUnknown()) {
+        return Collections.singletonList(errorf("can not assign %s to variable %s of type %s",
+         getInit().prettyPrint(), getID(), getTypeAccess().prettyPrint()));
+      }
+    }
+    return Collections.emptyList();
+  }
 
   Stmt contributes each constraintProblems() to CompilationUnit.constraintProblems();
 

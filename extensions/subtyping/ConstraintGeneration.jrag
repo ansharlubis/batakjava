@@ -161,10 +161,19 @@ aspect ConstraintGeneration {
   }
 
   eq Dot.constraints() = lastAccess().constraints();
-
   eq ThisAccess.constraints() = add(new ConjunctionConstraint(), type());
-
   eq SuperAccess.constraints() = add(new ConjunctionConstraint(), type());
+
+  eq ArrayAccess.constraints() {
+    if (isQualified()) {
+      DisjunctionConstraint result = new DisjunctionConstraint();
+      generateConstraints(result);
+      if (result.size() > 0) {
+        return result;
+      }
+    }
+    return new UnknownConstraint();
+  }
 
   eq AssignExpr.constraints() {
     if (!getDest().constraints().isUnknown() && !getSource().constraints().isUnknown()) {

@@ -99,4 +99,11 @@ aspect BatakjavaTypeAnalysis {
     return new UnknownConstraint();
   }
 
+  inh lazy Access ArrayInit.declAccess();
+  eq Program.getChild(int i).declAccess() = null;
+  eq VarDeclStmt.getDeclarator().declAccess() = null;
+
+  eq Declarator.getInit().declAccess() = getTypeAccess();
+  eq ArrayCreationExpr.getArrayInit().declAccess() = getTypeAccess();
+
 }

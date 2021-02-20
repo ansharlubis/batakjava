@@ -468,6 +468,187 @@ aspect ConstraintGeneration {
     return result.size() > 0 ? result : new UnknownConstraint();
   }
 
+  /**
+   * Auxillary methods used for ArrayAccess.constraints()
+   */
+  public LocalConstraint Expr.arrayConstraints() {
+    LocalConstraint constraints = constraints();
+    if (!constraints.isUnknown()) {
+      DisjunctionConstraint result = new DisjunctionConstraint();
+
+      if (constraints instanceof DisjunctionConstraint) {
+        DisjunctionConstraint orConstraints = (DisjunctionConstraint) constraints;
+        for (LocalConstraint constraint: orConstraints) {
+          TypeDecl exprType = constraint.getTypeInt(typeVariable()).isPresent()
+            ? intToType(constraint.getTypeInt(typeVariable()).get()) : unknownType();
+          if (exprType.isArrayDecl()) {
+            result.add(constraint);
+          }
+        }
+      }
+
+      if (constraints instanceof ConjunctionConstraint) {
+        ConjunctionConstraint andConstraints = (ConjunctionConstraint) constraints;
+        TypeDecl exprType = andConstraints.getTypeInt(typeVariable()).isPresent()
+          ? intToType(andConstraints.getTypeInt(typeVariable()).get()) : unknownType();
+        if (exprType.isArrayDecl()) {
+          result.add(andConstraints);
+        }
+      }
+
+      if (result.size() > 0) {
+        return result;
+      }
+    }
+
+    return new UnknownConstraint();
+  }
+
+  public LocalConstraint Expr.arrayAccessConstraints() {
+    LocalConstraint constraints = constraints();
+    if (!constraints.isUnknown()) {
+      DisjunctionConstraint result = new DisjunctionConstraint();
+
+      if (constraints instanceof DisjunctionConstraint) {
+        DisjunctionConstraint orConstraints = (DisjunctionConstraint) constraints;
+        for (LocalConstraint constraint: orConstraints) {
+          TypeDecl exprType = constraint.getTypeInt(typeVariable()).isPresent()
+            ? intToType(constraint.getTypeInt(typeVariable()).get()) : unknownType();
+          if (exprType.unaryNumericPromotion().isInt() && exprType.isIntegralType()) {
+            result.add(constraint);
+          }
+        }
+      }
+
+      if (constraints instanceof ConjunctionConstraint) {
+        ConjunctionConstraint andConstraints = (ConjunctionConstraint) constraints;
+        TypeDecl exprType = andConstraints.getTypeInt(typeVariable()).isPresent()
+          ? intToType(andConstraints.getTypeInt(typeVariable()).get()) : unknownType();
+        if (exprType.unaryNumericPromotion().isInt() && exprType.isIntegralType()) {
+          result.add(andConstraints);
+        }
+      }
+
+      if (result.size() > 0) {
+        return result;
+      }
+    }
+
+    return new UnknownConstraint();
+  }
+
+  public LocalConstraint ArrayAccess.arrayAccessConstraints() {
+    return getExpr().arrayAccessConstraints();
+  }
+
+  public LocalConstraint Expr.arrayInitConstraints(Access declAccess) {
+    LocalConstraint constraints = constraints();
+    LocalConstraint accessConstraints = declAccess.arrayConstraints();
+    if (!constraints.isUnknown() && !accessConstraints.isUnknown()) {
+      DisjunctionConstraint result = new DisjunctionConstraint();
+
+      if (constraints instanceof DisjunctionConstraint) {
+        if (accessConstraints instanceof DisjunctionConstraint) {
+          DisjunctionConstraint orConstraints = (DisjunctionConstraint) constraints;
+          DisjunctionConstraint orAccessConstraints = (DisjunctionConstraint) accessConstraints;
+          for (LocalConstraint constraint: orConstraints) {
+            for (LocalConstraint accessConstraint: orAccessConstraints) {
+              TypeDecl exprType = constraint.getTypeInt(typeVariable()).isPresent()
+                ? intToType(constraint.getTypeInt(typeVariable()).get()) : unknownType();
+              TypeDecl accessType = accessConstraint.getTypeInt(declAccess.typeVariable()).isPresent()
+                ? intToType(accessConstraint.getTypeInt(declAccess.typeVariable()).get()) : unknownType();
+              LocalConstraint trace = exprType.traceAncestor(accessType.elementType());
+              if (!trace.isUnknown()) {
+                ConjunctionConstraint subconstraint = declAccess.add(add(new ConjunctionConstraint(), exprType), accessType);
+                subconstraint.add(trace);
+                result.add(subconstraint);
+              }
+            }
+          }
+        }
+      }
+
+      if (constraints instanceof DisjunctionConstraint) {
+        if (accessConstraints instanceof ConjunctionConstraint) {
+          DisjunctionConstraint orConstraints = (DisjunctionConstraint) constraints;
+          ConjunctionConstraint andAccessConstraints = (ConjunctionConstraint) accessConstraints;
+          TypeDecl accessType = andAccessConstraints.getTypeInt(declAccess.typeVariable()).isPresent()
+            ? intToType(andAccessConstraints.getTypeInt(declAccess.typeVariable()).get()) : unknownType();
+          for (LocalConstraint constraint: orConstraints) {
+            TypeDecl exprType = constraint.getTypeInt(typeVariable()).isPresent()
+              ? intToType(constraint.getTypeInt(typeVariable()).get()) : unknownType();
+            LocalConstraint trace = exprType.traceAncestor(accessType.elementType());
+            if (!trace.isUnknown()) {
+              ConjunctionConstraint subconstraint = declAccess.add(add(new ConjunctionConstraint(), exprType), accessType);
+              subconstraint.add(trace);
+              result.add(subconstraint);
+            }
+          }
+        }
+      }
+
+      if (constraints instanceof ConjunctionConstraint) {
+        if (accessConstraints instanceof DisjunctionConstraint) {
+          ConjunctionConstraint andConstraints = (ConjunctionConstraint) constraints;
+          DisjunctionConstraint orAccessConstraints = (DisjunctionConstraint) accessConstraints;
+          TypeDecl exprType = andConstraints.getTypeInt(typeVariable()).isPresent()
+            ? intToType(andConstraints.getTypeInt(typeVariable()).get()) : unknownType();
+          for (LocalConstraint accessConstraint: orAccessConstraints) {
+            TypeDecl accessType = accessConstraint.getTypeInt(declAccess.typeVariable()).isPresent()
+              ? intToType(accessConstraint.getTypeInt(declAccess.typeVariable()).get()) : unknownType();
+            LocalConstraint trace = exprType.traceAncestor(accessType.elementType());
+            if (!trace.isUnknown()) {
+              ConjunctionConstraint subconstraint = declAccess.add(add(new ConjunctionConstraint(), exprType), accessType);
+              subconstraint.add(trace);
+              result.add(subconstraint);
+            }
+          }
+        }
+      }
+
+      if (constraints instanceof ConjunctionConstraint) {
+        if (accessConstraints instanceof ConjunctionConstraint) {
+          ConjunctionConstraint andConstraints = (ConjunctionConstraint) constraints;
+          ConjunctionConstraint andAccessConstraints = (ConjunctionConstraint) accessConstraints;
+          TypeDecl exprType = andConstraints.getTypeInt(typeVariable()).isPresent()
+            ? intToType(andConstraints.getTypeInt(typeVariable()).get()) : unknownType();
+          TypeDecl accessType = andAccessConstraints.getTypeInt(declAccess.typeVariable()).isPresent()
+            ? intToType(andAccessConstraints.getTypeInt(declAccess.typeVariable()).get()) : unknownType();
+          LocalConstraint trace = exprType.traceAncestor(accessType.elementType());
+          if (!trace.isUnknown()) {
+            ConjunctionConstraint subconstraint = declAccess.add(add(new ConjunctionConstraint(), exprType), accessType);
+            subconstraint.add(trace);
+            result.add(subconstraint);
+          }
+        }
+      }
+
+      if (result.size() > 0) {
+        return result;
+      }
+    }
+
+    return new UnknownConstraint();
+  }
+
+  public LocalConstraint ArrayAccess.generateConstraints(DisjunctionConstraint result) {
+    if (isQualified()) {
+      LocalConstraint qualifierConstraints = qualifier().arrayConstraints();
+      if (qualifierConstraints instanceof DisjunctionConstraint) {
+        DisjunctionConstraint orQualifierConstraints = (DisjunctionConstraint) qualifierConstraints;
+        for (LocalConstraint qualifierConstraint: orQualifierConstraints) {
+          TypeDecl qualifierType = qualifierConstraint.getTypeInt(qualifier().typeVariable()).isPresent()
+            ? intToType(qualifierConstraint.getTypeInt(qualifier().typeVariable()).get()) : unknownType();
+          result.add(qualifier().add(
+            add(new ConjunctionConstraint(), qualifierType.elementType()),
+            qualifierType));
+        }
+      }
+      return result;
+    }
+    return new UnknownConstraint();
+  }
+
   syn SimpleSet<Access> TypeDecl.generatedAncestorAccess() = emptySet();
 
   eq ClassDecl.generatedAncestorAccess() {
