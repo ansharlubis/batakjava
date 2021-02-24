@@ -1,29 +1,20 @@
 package org.extendj;
 
+import org.extendj.ast.SubtypingFrontend;
 import org.extendj.ast.Program;
-import org.extendj.ast.CompilationUnit;
-import org.extendj.ast.SolverFrontend;
 
-
-public class SolverPrinter extends SolverFrontend {
+public class BatakjavaChecker extends SubtypingFrontend {
   public static void main(String[] args) {
-    SolverPrinter printer = new SolverPrinter();
-    int exitCode = printer.run(args);
-    printer.program.lookupLibraryTypeSet("upstream.collection", "Point");
+    int exitCode = new BatakjavaChecker().run(args);
     if (exitCode != 0) {
       System.exit(exitCode);
     }
   }
 
-  public SolverPrinter() {
-    super("Batakjava Constraint Generator", ExtendJVersion.getVersion());
-  }
+  public BatakjavaChecker() { super("Batakjava Checker", ExtendJVersion.getVersion()); }
 
-  public int run(String[] args) {
-    return this.run(args, Program.defaultBytecodeReader(), Program.defaultJavaParser());
+  public int run(String args[]) {
+    return run(args, Program.defaultBytecodeReader(), Program.defaultJavaParser());
   }
-
-  @Override
-  protected void processNoErrors(CompilationUnit unit) { }
 
 }
