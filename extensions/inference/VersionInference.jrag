@@ -3,31 +3,47 @@ import org.chocosolver.solver.Solution;
 import org.chocosolver.solver.variables.IntVar;
 import com.google.common.primitives.Ints;
 
-aspect VersionInference {
+aspect ConstraintGeneration {
+
+  coll LinkedList<LocalConstraint> Program.getConstraints() root Program;
+
+  Expr contributes each getConstraints() to Program.getConstraints();
+
+  syn Collection<LocalConstraint> Expr.getConstraints() = constraints().putIntoList();
+
+  Stmt contributes each getConstraints() to Program.getConstraints();
+
+  syn Collection<LocalConstraint> Stmt.getConstraints() = constraints().putIntoList();
+
+  eq ReturnStmt.getConstraints()
+    = hasResult() ? constraints().putIntoList() : Collections.emptyList();
+
+  Declarator contributes each getConstraints() to Program.getConstraints();
+
+  syn Collection<LocalConstraint> Declarator.getConstraints()
+    = hasInit() ? constraints().putIntoList() : Collections.emptyList();
+
+}
+
+aspect ConstraintSolving {
 
   public final Set<Map<String,Integer>> Program.solutions = new HashSet();
 
   public int Program.solve() {
+
     long start = System.nanoTime();
-    LinkedList<InferenceConstraint> constraints = getConstraints();
+    LinkedList<LocalConstraint> constraints = getConstraints();
     constraintGenTime += System.nanoTime() - start;
 
     Model model = new Model("Version inference");
-    IntVar[] versions = new IntVar[variableCount];
-    IntVar[] types = new IntVar[variableCount];
+    IntVar[] vars = new IntVar[variableCount];
 
     for (int i = 0; i < variableCount; i++) {
-      if (variableToDomainMap.containsKey("v"+i)) {
-        int[] domain = Ints.toArray(variableToDomainMap.get("v"+i));
-        versions[i] = model.intVar("v"+i, domain);
-      } else {
-        versions[i] = model.intVar("v"+i, 0);
-      }
-      types[i] = model.intVar("t"+i, 0, typeNameToIntMap.size()-1);
+      vars[i] = typeToIntMap.size() > 1 ? model.intVar("v"+i, 0, typeToIntMap.size()-1) : model.intVar("v"+i, 0);
     }
 
-    for (InferenceConstraint constraint: constraints) {
-      constraint.post(model, versions, types).post();
+    for (LocalConstraint constraint: constraints) {
+      constraint.post(model, vars).post();
     }
 
     start = System.nanoTime();
@@ -37,16 +53,13 @@ aspect VersionInference {
     for (Solution solverSolution: solverSolutions) {
       Map<String,Integer> solution = new HashMap();
       for (int i = 0; i < variableCount; i++) {
-        solution.put("v"+i, solverSolution.getIntVal(versions[i]));
-        solution.put("t"+i, solverSolution.getIntVal(types[i]));
+        solution.put("v"+i, solverSolution.getIntVal(vars[i]));
       }
       solutions.add(solution);
     }
 
-    //System.err.println(solutions);
-    System.err.println(typeNameToIntMap);
-
     return solutions.size() > 0 ? 0 : 4;
+
   }
 
 }

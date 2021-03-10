@@ -1,13 +1,11 @@
-import java.util.Optional;
-
-aspect InferenceVariable {
+aspect VariableAssignment {
 
   /**
-   * The number of version/type variable in the program
+   * The number of type variable in the program
    */
   private Integer Program.variableCount = 0;
 
-  private void Program.initializeVariable() { variableCount = 0; }
+  public void Program.initializeVariable() { variableCount = 0; }
 
   public Integer Program.freshVariable() {
     Integer count = variableCount;
@@ -15,715 +13,216 @@ aspect InferenceVariable {
     return count;
   }
 
-  syn lazy Integer Expr.versionNum() = program().freshVariable();
+  syn lazy String Expr.variable() = "v" + program().freshVariable().toString();
 
-  syn String Expr.versionVariable() = "v" + versionNum().toString();
-  syn String Expr.typeVariable() = "t" + versionNum().toString();
+  eq VarAccess.variable() = decl().variable();
 
-  eq Unary.versionVariable() = getOperand().versionVariable();
-  eq Unary.typeVariable() = getOperand().typeVariable();
+  eq ClassInstanceExpr.variable() = getAccess().variable();
 
-  eq AssignExpr.versionVariable() = getDest().versionVariable();
-  eq AssignExpr.typeVariable() = getDest().typeVariable();
-
-  eq ParExpr.versionVariable() = getExpr().versionVariable();
-  eq ParExpr.typeVariable() = getExpr().typeVariable();
-
-  eq VarAccess.versionVariable() = decl().versionVariable();
-  eq VarAccess.typeVariable() = decl().typeVariable();
-
-  eq Dot.versionVariable() = lastAccess().versionVariable();
-  eq Dot.typeVariable() = lastAccess().typeVariable();
-
-  eq ClassInstanceExpr.versionVariable() = getAccess().versionVariable();
-  eq ClassInstanceExpr.typeVariable() = getAccess().typeVariable();
-
-  /*
-  eq ArrayAccess.versionVariable() = getExpr().versionVariable();
-  eq ArrayAccess.typeVariable() = getExpr().typeVariable();
-  */
-
-  // TODO: Add checks for super class existence
-  // TODO: Careful about the null value
-  eq SuperAccess.versionVariable() {
+  eq SuperAccess.variable() {
     if (hostType() instanceof ClassDecl) {
       ClassDecl host = (ClassDecl) hostType();
-      if (host.hasSuperClass()) { return host.getSuperClass().versionVariable(); }
+      if (host.hasSuperClass()) {
+        return host.getSuperClass().variable();
+      }
     }
-    return null;
+    return super.variable();
   }
 
-  eq SuperAccess.typeVariable() {
-    if (hostType() instanceof ClassDecl) {
-      ClassDecl host = (ClassDecl) hostType();
-      if (host.hasSuperClass()) { return host.getSuperClass().typeVariable(); }
-    }
-    return null;
-  }
+  eq Dot.variable() = lastAccess().variable();
 
-  eq SuperConstructorAccess.versionVariable() {
-    if (hostType() instanceof ClassDecl) {
-      ClassDecl host = (ClassDecl) hostType();
-      if (host.hasSuperClass()) { return host.getSuperClass().versionVariable(); }
-    }
-    return null;
-  }
+  eq AssignExpr.variable() = getDest().variable();
 
-  eq SuperConstructorAccess.typeVariable() {
-    if (hostType() instanceof ClassDecl) {
-      ClassDecl host = (ClassDecl) hostType();
-      if (host.hasSuperClass()) { return host.getSuperClass().typeVariable(); }
-    }
-    return null;
-  }
+  eq ParExpr.variable() = getExpr().variable();
 
-  syn lazy Integer Variable.versionNum() = program().freshVariable();
+  syn lazy String Variable.variable();
 
-  syn String Variable.versionVariable();
-  syn String Variable.typeVariable();
+  eq ParameterDeclaration.variable() = getTypeAccess().variable();
 
-  eq ParameterDeclaration.versionVariable() = getTypeAccess().versionVariable();
-  eq ParameterDeclaration.typeVariable() = getTypeAccess().typeVariable();
+  eq Declarator.variable() = declarationType().variable();
 
-  eq Declarator.versionVariable() = declarationType().versionVariable();
-  eq Declarator.typeVariable() = declarationType().typeVariable();
+  // Don't care yet about the following three
+  eq EnumConstant.variable() = "v" + program().freshVariable().toString();
 
-  // TODO: No EnumConstant support yet
-  eq EnumConstant.versionVariable() = null;
-  eq EnumConstant.typeVariable() = null;
+  eq CatchParameterDeclaration.variable() = "v" + program().freshVariable().toString();
+  
+  eq InferredParameterDeclaration.variable() = "v" + program().freshVariable().toString();
 
-  // TODO: No exception support yet
-  eq CatchParameterDeclaration.versionVariable() = null;
-  eq CatchParameterDeclaration.typeVariable() = null;
-
-  // TODO: No LambdaExpr support
-  eq InferredParameterDeclaration.versionVariable() = null;
-  eq InferredParameterDeclaration.typeVariable() = null;
 }
 
 aspect ConstraintGeneration {
 
-  coll LinkedList<InferenceConstraint> Program.getConstraints() root Program;
+  // Expr
+  syn SetConstraint Expr.constraints() = new UnknownConstraint();
+  
+  eq Literal.constraints() = build(new ConjunctionConstraint(), type());
 
-  Expr contributes each getConstraints() to Program.getConstraints();
-
-  syn Collection<InferenceConstraint> Expr.getConstraints() {
-    Collection<InferenceConstraint> result = new LinkedList();
-    InferenceConstraint constraints = constraints();
-    if (constraints instanceof OrConstraint) {
-      OrConstraint orConstraints = (OrConstraint) constraints;
-      if (orConstraints.size() > 0) {
-        result.add(orConstraints);
-      }
-      System.err.println(prettyPrint());
-      System.err.println(orConstraints);
-      return result;
+  eq Access.constraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl type: typeSet()) {
+      result = result.add(build(new ConjunctionConstraint(), type));
     }
-    if (constraints instanceof AndConstraint) {
-      AndConstraint andConstraints = (AndConstraint) constraints;
-      if (andConstraints.size() > 0) {
-        result.add(andConstraints);
-      }
-      System.err.println(prettyPrint());
-      System.err.println(andConstraints);
-      return result;
-    }
-    System.err.println(prettyPrint());
-    System.err.println(constraints);
-    return Collections.singletonList(constraints);
+    return result.size() > 0 ? result : new UnknownConstraint();    
   }
 
-  Stmt contributes each getConstraints() to Program.getConstraints();
+  eq ClassInstanceExpr.constraints() = generateConstraints();
 
-  syn Collection<InferenceConstraint> Stmt.getConstraints() {
-    Collection<InferenceConstraint> result = new LinkedList();
-    InferenceConstraint constraints = constraints();
-    if (constraints instanceof OrConstraint) {
-      OrConstraint orConstraints = (OrConstraint) constraints;
-      if (orConstraints.size() > 0) {
-        result.add(orConstraints);
-      }
-      System.err.println(prettyPrint());
-      System.err.println(orConstraints);
-      return result;
-    }
-    if (constraints instanceof AndConstraint) {
-      AndConstraint andConstraints = (AndConstraint) constraints;
-      if (andConstraints.size() > 0) {
-        result.add(andConstraints);
-      }
-      System.err.println(prettyPrint());
-      System.err.println(andConstraints);
-      return result;
-    }
-    System.err.println(prettyPrint());
-    System.err.println(constraints);
-    return Collections.singletonList(constraints);
-  }
+  eq SuperConstructorAccess.constraints() = generateConstraints();
 
-  Declarator contributes each getConstraints() to Program.getConstraints();
+  eq VarAccess.constraints() = generateConstraints();
 
-  syn Collection<InferenceConstraint> Declarator.getConstraints() {
-    Collection<InferenceConstraint> result = new LinkedList();
-    InferenceConstraint constraints = constraints();
-    if (constraints instanceof OrConstraint) {
-      OrConstraint orConstraints = (OrConstraint) constraints;
-      if (orConstraints.size() > 0) {
-        result.add(orConstraints);
-      }
-      System.err.println(prettyPrint());
-      System.err.println(orConstraints);
-      return result;
-    }
-    if (constraints instanceof AndConstraint) {
-      AndConstraint andConstraints = (AndConstraint) constraints;
-      if (andConstraints.size() > 0) {
-        result.add(andConstraints);
-      }
-      System.err.println(prettyPrint());
-      System.err.println(andConstraints);
-      return result;
-    }
-    System.err.println(prettyPrint());
-    System.err.println(constraints);
-    return Collections.singletonList(constraints);
-  }
+  eq MethodAccess.constraints() = generateConstraints();
 
-  syn InferenceConstraint Expr.constraints() = new AndConstraint();
+  eq ThisAccess.constraints() = build(new ConjunctionConstraint(), type());
 
-  eq AssignExpr.constraints() {
-    AndConstraint and = new AndConstraint();
-    and.add(new EqualConstraint(getDest().versionVariable(), getSource().versionVariable(), false));
-    and.add(new EqualConstraint(getDest().typeVariable(), getSource().typeVariable(), true));
-    return and;
-  }
+  eq Dot.constraints() = lastAccess().constraints();
 
-  eq Binary.constraints() {
-    AndConstraint and = new AndConstraint();
-    and.add(new EqualConstraint(versionVariable(), getLeftOperand().versionVariable(), false));
-    and.add(new EqualConstraint(typeVariable(), getLeftOperand().typeVariable(), true));
-    and.add(new EqualConstraint(versionVariable(), getRightOperand().versionVariable(), false));
-    and.add(new EqualConstraint(typeVariable(), getRightOperand().typeVariable(), true));
-    return and;
-  }
+  eq ArrayInit.constraints() = generateConstraints();
 
-  eq LogicalExpr.constraints() {
-    AndConstraint and = new AndConstraint();
-    and.add(getLeftOperand(), typeBoolean());
-    and.add(getRightOperand(), typeBoolean());
-    and.add(this, typeBoolean());
-    return and;
-  }
+  eq ArrayAccess.constraints() = generateConstraints();
+  
+  eq AssignExpr.constraints() = generateConstraints();
 
-  eq RelationalExpr.constraints() {
-    AndConstraint and = new AndConstraint();
-    and.add(new EqualConstraint(getLeftOperand().versionVariable(), getRightOperand().versionVariable(), false));
-    and.add(new EqualConstraint(getLeftOperand().typeVariable(), getRightOperand().typeVariable(), true));
-    and.add(this, typeBoolean());
-    return and;
-  }
+  eq ParExpr.constraints() = getExpr().constraints();
 
-  eq ShiftExpr.constraints() {
-    AndConstraint and = new AndConstraint();
-    and.add(getLeftOperand(), typeByte());
-    and.add(getRightOperand(), typeByte());
-    and.add(this, typeByte());
-    return and;
-  }
+  eq InstanceOfExpr.constraints() = generateConstraints();
 
-  eq Unary.constraints() = new AndConstraint();
+  eq CastExpr.constraints() = getTypeAccess().constraints();
 
-  eq ArrayInit.constraints() {
-    AndConstraint and = new AndConstraint();
-    if (getNumInit() > 1) {
-      for (int i = 1; i < getNumInit(); i++) {
-        and.add(new EqualConstraint(getInit(0).versionVariable(), getInit(i).versionVariable(), false));
-        and.add(new EqualConstraint(getInit(0).typeVariable(), getInit(i).typeVariable(), true));
-      }
-    }
-    return and;
-  }
+  eq Unary.constraints() = getOperand().constraints();
 
-  eq InstanceOfExpr.constraints() {
-    AndConstraint and = new AndConstraint();
-    and.add(new EqualConstraint(getExpr().versionVariable(), getTypeAccess().versionVariable(), false));
-    and.add(new EqualConstraint(getExpr().typeVariable(), getTypeAccess().typeVariable(), true));
-    and.add(this, typeBoolean());
-    return and;
-  }
-
-  eq ArrayCreationExpr.constraints() {
-    AndConstraint and = new AndConstraint();
-    if (hasArrayInit()) {
-      and.add(new EqualConstraint(getTypeAccess().versionVariable(), getArrayInit().versionVariable(), false));
-      and.add(new EqualConstraint(getTypeAccess().typeVariable(), getArrayInit().typeVariable(), true));
-    }
-    return and;
-  }
-
-  eq ParExpr.constraints() = new AndConstraint();
-
-  /**
-   * Literals
-   */
-  eq Literal.constraints() {
-    AndConstraint and = new AndConstraint();
-    if (type().isFloat() || type().isInt()) {
-      OrConstraint or = new OrConstraint();
-      or.addType(this, program().typeDouble());
-      or.addType(this, program().typeFloat());
-      if (type().isInt()) {
-        or.addType(this, program().typeInt());
-      }
-      and.add(or);
-    } else if (!type().isNull()) {
-      and.addType(this, type());
-    }
-    return and;
-  }
-
-  /**
-   * Access and its subclasses.
-   */
-  eq Access.constraints() = new OrConstraint();
-
-  eq TypeAccess.constraints() {
-    OrConstraint or = new OrConstraint();
-    if (!type().isUnknown()) {
-      if ((enclosingStmt() instanceof VarDeclStmt || getParent() instanceof FieldDecl)
-          && (type().isPrimitiveType())) {
-        AndConstraint and = new AndConstraint();
-        and.addExact(this, type());
-        or.add(and);
-      } else {
-        generateVarConstraints(type(), or);
-      }
-
-      if (or.size() == 0) {
-        return new EmptyConstraint();
-      }
-    }
-    return or;
-  }
-
-  eq ThisAccess.constraints() {
-    OrConstraint or = new OrConstraint();
-    AndConstraint and = new AndConstraint();
-    and.add(this, hostType());
-    or.add(and);
-    return or;
-  }
-
-  eq VarAccess.constraints() {
-    OrConstraint or = new OrConstraint();
-    if (!hasParentDot()) {
-      if (!decls().isEmpty()) {
-        generateVarConstraints(type(), or);
-      } else {
-        generateFieldConstraints(hostType(), or);
-      }
-
-      if (or.size() == 0) {
-       return new EmptyConstraint();
-      }
-    }
-
-    return or;
-  }
-
-  eq MethodAccess.constraints() {
-    OrConstraint or = new OrConstraint();
-    if (!hasParentDot()) {
-      TypeDecl type = hostType();
-      generateMethodConstraints(type, or);
-
-      // This means that the method is not found in this class
-      if (or.size() == 0) {
-        return new EmptyConstraint();
-      }
-    }
-    return or;
-  }
-
-  eq ClassInstanceExpr.constraints() {
-    OrConstraint or = new OrConstraint();
-    if (!hasParentDot()) {
-      // The class of the object that needs to be instantiated
-      TypeDecl type = type();
-
-      if (type.isOverview()) {
-        // Get the set of versioned types CLASSNAME_ver_VERSIONNUM
-        SimpleSet<TypeDecl> types = lookupTypeSet(type.packageName(), type.name());
-        Iterator<TypeDecl> iter = types.iterator();
-
-        // Iterate through the each available version of the class
-        while (iter.hasNext()) {
-          generateConstructorConstraints(iter.next(), or);
-        }
-      } else {
-        generateConstructorConstraints(type, or);
-      }
-
-      // This means that a corresponding constructor is not found
-      if (or.size() == 0) {
-        return new EmptyConstraint();
-      }
-    }
-
-    return or;
-  }
-
-  eq Dot.constraints()
-    = !hasParentDot()
-      ? getRight().incrementConstraints(getLeft().initializeConstraints())
-      : new OrConstraint();
-
-  eq SuperConstructorAccess.constraints() {
-    OrConstraint or = new OrConstraint();
-    if (hostType() instanceof ClassDecl) {
-      ClassDecl host = (ClassDecl) hostType();
-      if (host.hasSuperClass()) {
-        TypeDecl type = host.getSuperClass().type();
-        if (type.isOverview()) {
-          SimpleSet<TypeDecl> types = lookupTypeSet(type.packageName(), type.name());
-          Iterator<TypeDecl> iter = types.iterator();
-          while (iter.hasNext()) {
-            generateConstructorConstraints(iter.next(), or);
-          }
-        } else {
-          generateConstructorConstraints(type, or);
-        }
-      }
-    }
-
-    // This means that a corresponding super constructor is not found
-    if (or.size() == 0) {
-      return new EmptyConstraint();
-    }
-
-    return or;
-  }
-
-  /*
-  syn InferenceConstraint Declarator.constraints() {
-    AndConstraint and = new AndConstraint();
-    if (hasInit()) {
-      and.add(new EqualConstraint(versionVariable(), getInit().versionVariable(), false));
-      and.add(new EqualConstraint(typeVariable(), getInit().typeVariable(), true));
-    }
-    return and;
-  }
-  */
-
-  syn InferenceConstraint Declarator.constraints() {
-    OrConstraint result = new OrConstraint();
-    if (hasInit()) {
-      TypeDecl destType = getTypeAccess().type();
-      InferenceConstraint initConstraints = getInit().constraints();
-
-      if (initConstraints instanceof OrConstraint) {
-        OrConstraint initOrConstraints = (OrConstraint) initConstraints;
-
-        for (InferenceConstraint initConstraint: initOrConstraints) {
-          TypeDecl initType = initConstraint.getTypeInt(getInit().typeVariable()).isPresent()
-            ? lookupType("", intToTypeName(initConstraint.getTypeInt(getInit().typeVariable()).get())) : destType.unknownType();
-
-          if (!initType.isUnknown()) {
-            if (initType.isOverview()) {
-              TypeDecl specificInitType = initConstraint.getVersion(getInit().versionVariable()).isPresent()
-                ? lookupTypeVersion(initType.packageName(), initType.name(), initConstraint.getVersion(getInit().versionVariable()).get().toString())
-                : destType.unknownType();
-              if (!specificInitType.isUnknown()) {
-                if (destType.isOverview()) {
-                  SimpleSet<TypeDecl> destTypes = lookupTypeSet(destType.packageName(), destType.name());
-                  Iterator<TypeDecl> destTypesIter = destTypes.iterator();
-                  while (destTypesIter.hasNext()) {
-                    TypeDecl currentDestType = destTypesIter.next();
-                    if (specificInitType.subtype(currentDestType)) {
-                      AndConstraint sub = new AndConstraint();
-                      sub.add(declarationType(), currentDestType);
-                      sub.add(getInit(), specificInitType);
-                      result.add(sub);
-                    }
-                  }
-                } else {
-                  if (specificInitType.subtype(destType)) {
-                    AndConstraint sub = new AndConstraint();
-                    sub.add(declarationType(), destType);
-                    sub.add(getInit(), specificInitType);
-                    result.add(sub);
-                  }
-                }
-              }
-            } else {
-              if (destType.isOverview()) {
-                SimpleSet<TypeDecl> destTypes = lookupTypeSet(destType.packageName(), destType.name());
-                Iterator<TypeDecl> destTypesIter = destTypes.iterator();
-                while (destTypesIter.hasNext()) {
-                  TypeDecl currentDestType = destTypesIter.next();
-                  if (initType.subtype(currentDestType)) {
-                    AndConstraint sub = new AndConstraint();
-                    sub.add(declarationType(), currentDestType);
-                    sub.add(getInit(), initType);
-                    result.add(sub);
-                  }
-                }
-              } else {
-                if (initType.subtype(destType)) {
-                  AndConstraint sub = new AndConstraint();
-                  sub.add(declarationType(), destType);
-                  sub.add(getInit(), initType);
-                  result.add(sub);
-                }
-              }
-            }
-          }
-        }
-      }
+  eq PlusExpr.constraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl type: getOperand().constraintToTypeSet()) {
+      result = result.add(getOperand().build(
+        build(new ConjunctionConstraint(), type.unaryNumericPromotion()), type));
     }
     return result;
   }
 
-  syn InferenceConstraint Stmt.constraints() = new AndConstraint();
-
-  eq IfStmt.constraints() {
-    AndConstraint and = new AndConstraint();
-    and.add(getCondition(), getCondition().typeBoolean());
-    return and;
-  }
-
-  eq ReturnStmt.constraints() {
-    AndConstraint and = new AndConstraint();
-    if (hasResult() && returnTypeAccess() != null) {
-      and.add(new EqualConstraint(returnTypeAccess().versionVariable(), getResult().versionVariable(), false));
-      and.add(new EqualConstraint(returnTypeAccess().typeVariable(), getResult().typeVariable(), true));
+  eq MinusExpr.constraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl type: getOperand().constraintToTypeSet()) {
+      result = result.add(getOperand().build(
+        build(new ConjunctionConstraint(), type.unaryNumericPromotion()), type));
     }
-    return and;
+    return result;
   }
 
-  /**
-   * initializeConstraints() and incrementConstraints(OrConstraint)
-   * are still limited to OrConstraint
-   */
-  protected InferenceConstraint Expr.initializeConstraints() {
-    return new AndConstraint();
+  eq BitNotExpr.constraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl type: getOperand().constraintToTypeSet()) {
+      result = result.add(getOperand().build(
+        build(new ConjunctionConstraint(), type.unaryNumericPromotion()), type));
+    }
+    return result;
   }
 
-  protected InferenceConstraint ClassInstanceExpr.initializeConstraints() {
-    TypeDecl type = type();
-    OrConstraint or = new OrConstraint();
-    if (type.isOverview()) {
-      SimpleSet<TypeDecl> types = lookupTypeSet(type.packageName(), type.name());
-      Iterator<TypeDecl> iter = types.iterator();
-      while (iter.hasNext()) {
-        generateConstructorConstraints(iter.next(), or);
+  eq LogNotExpr.constraints() = build(new ConjunctionConstraint(), typeBoolean());
+
+  eq MultiplicativeExpr.constraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl left: getLeftOperand().constraintToTypeSet()) {
+      for (TypeDecl right: getRightOperand().constraintToTypeSet()) {
+        if (!left.binaryNumericPromotion(right).isUnknown()) {
+          result = result.add(getLeftOperand().build(
+            getRightOperand().build(
+              build(new ConjunctionConstraint(), left.binaryNumericPromotion(right)),
+              right),
+            left));
+        }
       }
-    } else {
-      generateConstructorConstraints(type, or);
     }
-
-    // This means that the corresponding constructor is not found
-    if (or.size() == 0) {
-      return new EmptyConstraint();
-    }
-
-    return or;
+    return result.size() > 0 ? result : new UnknownConstraint();
   }
 
-  protected InferenceConstraint VarAccess.initializeConstraints() {
-    OrConstraint or = new OrConstraint();
-    if (!decls().isEmpty()) {
-      generateVarConstraints(type(), or);
-    } else {
-      generateFieldConstraints(hostType(), or);
+  eq AdditiveExpr.constraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl left: getLeftOperand().constraintToTypeSet()) {
+      for (TypeDecl right: getRightOperand().constraintToTypeSet()) {
+        if (!left.binaryNumericPromotion(right).isUnknown()) {
+          result = result.add(getLeftOperand().build(
+            getRightOperand().build(
+              build(new ConjunctionConstraint(), left.binaryNumericPromotion(right)),
+              right),
+            left));
+        }
+      }
     }
-
-    // This means that this variable is not found
-    if (or.size() == 0) {
-      return new EmptyConstraint();
-    }
-
-    return or;
+    return result.size() > 0 ? result : new UnknownConstraint();
   }
 
-  protected InferenceConstraint MethodAccess.initializeConstraints() {
-    OrConstraint or = new OrConstraint();
-    generateMethodConstraints(hostType(), or);
-
-    if (or.size() == 0) {
-      return new EmptyConstraint();
-    }
-
-    return or;
-  }
-
-  protected InferenceConstraint ThisAccess.initializeConstraints() {
-    OrConstraint or = new OrConstraint();
-    generateVarConstraints(hostType(), or);
-    return or;
-  }
-
-  // Assumption: SuperAccess is only used for super.METHODNAME(ARGS) pattern
-  protected InferenceConstraint SuperAccess.initializeConstraints() {
-    OrConstraint or = new OrConstraint();
-    if (!type().isUnknown()) {
-      generateVarConstraints(type(), or);
-    }
-    return or;
-  }
-
-  protected InferenceConstraint Access.incrementConstraints(InferenceConstraint args) {
-    return args;
-  }
-
-  protected InferenceConstraint MethodAccess.incrementConstraints(InferenceConstraint args) {
-    if (args instanceof OrConstraint) {
-      // Unsafe operation, but incrementConstraints(Constraint)
-      // is only invoked in a Dot
-      Expr prev = prevExpr();
-
-      if (prev instanceof ThisAccess) { return initializeConstraints(); }
-
-      // OrConstraint for this Access
-      OrConstraint or = new OrConstraint();
-      OrConstraint orArgs = (OrConstraint) args;
-
-      // Iterate through previous Expr's constraints
-      for (InferenceConstraint constraint: orArgs) {
-        TypeDecl type = constraint.getTypeInt(prev.typeVariable()).isPresent()
-          ? lookupType("", intToTypeName(constraint.getTypeInt(prev.typeVariable()).get())) : unknownType();
-        if (!type.isUnknown()) {
-          if (type.isOverview()) {
-            TypeDecl specific = constraint.getVersion(prev.versionVariable()).isPresent()
-              ? lookupTypeVersion(type.packageName(), type.name(), constraint.getVersion(prev.versionVariable()).get().toString())
-              : unknownType();
-            if (!specific.isUnknown()) {
-              generateMethodConstraints(specific, or, constraint);
-            } else {
-              or.add(constraint);
-            }
-          } else {
-            generateMethodConstraints(type, or, constraint);
+  eq AddExpr.constraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl left: getLeftOperand().constraintToTypeSet()) {
+      for (TypeDecl right: getRightOperand().constraintToTypeSet()) {
+        if (!left.isString() && !right.isString()) {
+          if (!left.binaryNumericPromotion(right).isUnknown()) {
+            result = result.add(getLeftOperand().build(
+              getRightOperand().build(
+                build(new ConjunctionConstraint(), left.binaryNumericPromotion(right)),
+                right), 
+              left));
           }
         } else {
-          // If no type is found, then just add the constraint
-          or.add(constraint);
-        }
-      }
-
-      // This means that a corresponding method can not be found based on the available constraints
-      if (or.size() == 0) {
-        return new EmptyConstraint();
-      }
-
-      return or;
-    }
-
-    if (args instanceof AndConstraint) {
-      TypeDecl type = prevExpr().type();
-
-      AndConstraint and = new AndConstraint();
-      OrConstraint or = new OrConstraint();
-
-      // In case of AndConstraint, it shouldn't be a versioned class
-      if (!type.isUnknown() && !type.isOverview()) {
-        generateMethodConstraints(type, or);
-        and.add(args);
-        and.add(or);
-      }
-
-      // This means that a corresponding method can not be found based on the available constraints
-      if (or.size() == 0) {
-        return new EmptyConstraint();
-      }
-
-      return and;
-    }
-
-    return args;
-  }
-
-  protected InferenceConstraint VarAccess.incrementConstraints(InferenceConstraint args) {
-    if (args instanceof OrConstraint) {
-      Expr prev = prevExpr();
-
-      OrConstraint or = new OrConstraint();
-      OrConstraint orArgs = (OrConstraint) args;
-
-      for (InferenceConstraint constraint: orArgs) {
-        TypeDecl type = constraint.getTypeInt(prev.typeVariable()).isPresent()
-          ? lookupType("", intToTypeName(constraint.getTypeInt(prev.typeVariable()).get())) : unknownType();
-        if (!type.isUnknown()) {
-          if (type.isOverview()) {
-            TypeDecl specific = constraint.getVersion(prev.versionVariable()).isPresent()
-              ? lookupTypeVersion(type.packageName(), type.name(), constraint.getVersion(prev.versionVariable()).get().toString())
-              : unknownType();
-            if (!specific.isUnknown()) {
-              generateFieldConstraints(specific, or, constraint);
-            } else {
-              or.add(constraint);
-            }
-          } else {
-            generateFieldConstraints(type, or, constraint);
-          }
-        } else {
-          or.add(constraint);
-        }
-      }
-
-      // This means that a corresponding variable (field) can not be found based on the available constraints
-      if (or.size() == 0) {
-        return new EmptyConstraint();
-      }
-      return or;
-    }
-
-    if (args instanceof AndConstraint) {
-      TypeDecl type = prevExpr().type();
-
-      AndConstraint and = new AndConstraint();
-      OrConstraint or = new OrConstraint();
-
-      // In case of AndConstraint, it shouldn't be a versioned class
-      if (!type.isUnknown() && !type.isOverview()) {
-        Map<String,SimpleSet<Variable>> fieldMap = type.versionedMemberFieldsMap();
-        if (fieldMap.containsKey(name())) {
-          for (Variable field: fieldMap.get(name())) {
-            AndConstraint sub = new AndConstraint();
-            sub.add(this, field.type());
-            or.add(sub);
+          if (!left.isVoid() && !right.isVoid()) {
+            TypeDecl type = left.isString() ? left : right;
+            result = result.add(getLeftOperand().build(
+              getRightOperand().build(
+                build(new ConjunctionConstraint(), type), right), 
+              left));
           }
         }
-        and.add(args);
-        and.add(or);
-      }
-
-      if (or.size() == 0) {
-        return new EmptyConstraint();
-      }
-
-      return and;
+      } 
     }
-    return args;
+    return result.size() > 0 ? result : new UnknownConstraint();
   }
 
-  protected InferenceConstraint Dot.incrementConstraints(InferenceConstraint args) {
-    if (args instanceof OrConstraint) {
-      Expr prev = prevExpr();
-      return getRight().incrementConstraints(((Access) getLeft()).incrementConstraints(args));
+  eq ShiftExpr.constraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl left: getLeftOperand().constraintToTypeSet()) {
+      result = result.add(getLeftOperand().build(build(new ConjunctionConstraint(), left.unaryNumericPromotion()), left));
     }
+    return result;
+  }
 
-    if (args instanceof AndConstraint) {
-      TypeDecl type = prevExpr().type();
-      AndConstraint and = new AndConstraint();
-      AndConstraint andArgs = (AndConstraint) args;
-      if (!type.isUnknown() && !type.isOverview()) {
-        and.add(andArgs);
-        and.add(constraints());
-        return and;
+  eq RelationalExpr.constraints() = build(new ConjunctionConstraint(), typeBoolean());
+
+  eq LogicalExpr.constraints() = build(new ConjunctionConstraint(), typeBoolean());
+
+  eq BitwiseExpr.constraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl left: getLeftOperand().constraintToTypeSet()) {
+      for (TypeDecl right: getRightOperand().constraintToTypeSet()) {
+        if (left.isIntegralType() && right.isIntegralType()) {
+          if (!left.binaryNumericPromotion(right).isUnknown()) {
+            result = result.add(getLeftOperand().build(
+              getRightOperand().build(
+                build(new ConjunctionConstraint(), left.binaryNumericPromotion(right)),
+                right),
+              left));
+          }
+        }
+        if (left.isBoolean() && right.isBoolean()) {
+          result = result.add(getLeftOperand().build(
+            getRightOperand().build(
+              build(new ConjunctionConstraint(), typeBoolean()),
+              right),
+            left));
+        }
       }
     }
-
-    return args;
+    return result.size() > 0 ? result : new UnknownConstraint();
   }
+
+  // Stmt
+  syn SetConstraint Stmt.constraints() = new UnknownConstraint();
+
+  eq ReturnStmt.constraints() = hasResult() ? getResult().generateSubtypeConstraints(returnTypeAccess()) : new UnknownConstraint();
+
+  eq IfStmt.constraints() = getCondition().build(new ConjunctionConstraint(), getCondition().typeBoolean());
+
+  // Declarator
+  syn SetConstraint Declarator.constraints() = hasInit() ? getInit().generateSubtypeConstraints(getTypeAccess()) : new UnknownConstraint();
+
 }

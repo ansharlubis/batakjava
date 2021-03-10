@@ -59,7 +59,7 @@ aspect BinaryConstraintGeneration {
           ? intToType(andRightConstraints.getTypeInt(getRightOperand().typeVariable()).get()) : unknownType();
         for (LocalConstraint leftConstraint: orLeftConstraints) {
           TypeDecl leftType = leftConstraint.getTypeInt(getLeftOperand().typeVariable()).isPresent()
-            ? intToType(leftConstraint.getTypeInt(getLeftOperand().typeVariable()).get()) : unknownType();
+            ? intToType(leftConstraint.getTypeInt(getLeftOperand().typeVariable()).get()) : unknownType();          
           checkBinaryPromotion(leftType, rightType, result);
         }
       }

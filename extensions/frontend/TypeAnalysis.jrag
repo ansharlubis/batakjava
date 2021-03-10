@@ -1,4 +1,119 @@
-aspect BatakjavaTypeAnalysis {
+aspect TypeAnalysis {
+
+  /**
+   * Check if the ClassDecl is a generated overview
+   * which contains FieldDeclarator BATAKJAVACLASS
+   */
+  syn boolean TypeDecl.isOverview() = false;
+
+  eq ClassDecl.isOverview() {
+    for (BodyDecl bodyDecl: getBodyDeclList()) {
+      if (bodyDecl instanceof FieldDecl) {
+        FieldDecl decl = (FieldDecl) bodyDecl;
+        if (decl.getNumDeclarator() == 1 &&
+            decl.getDeclarator(0).getID().equals("BATAKJAVACLASS")) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Create the set of TypeDecl from an Expr
+   */
+  syn SimpleSet<TypeDecl> TypeDecl.typeSet() {
+    if (isOverview()) {
+      return lookupTypeSet(packageName(), name());
+    }
+    SimpleSet<TypeDecl> result = emptySet();
+    return result.add(this);
+  }
+
+  syn SimpleSet<TypeDecl> Expr.typeSet() = type().typeSet();
+
+  eq ArrayTypeAccess.typeSet() {
+    SimpleSet<TypeDecl> result = emptySet();
+    for (TypeDecl type: getAccess().typeSet()) {
+      result = result.add(type.arrayType());
+    }
+    return result;
+  }
+
+  eq ClassInstanceExpr.typeSet() {
+    SimpleSet<TypeDecl> typeSet = emptySet();
+    return hasTypeDecl() ? typeSet.add(getTypeDecl()) : super.typeSet();
+  }
+
+  syn SimpleSet<TypeDecl> Variable.typeSet() {
+    TypeDecl type = type();
+    if (type.isOverview()) {
+      return lookupTypeSet(type.packageName(), type.name());
+    }
+    SimpleSet<TypeDecl> result = emptySet();
+    return result.add(type);
+  }
+
+  syn SimpleSet<TypeDecl> Expr.constraintToTypeSet() {
+    SimpleSet<TypeDecl> typeSet = emptySet();
+    for (Integer typeInt: constraints().getTypeInt(variable())) {
+      typeSet = typeSet.add(intToType(typeInt));
+    }
+    return typeSet;
+  }
+
+  /**
+   * TypeDecl.constraintApplicable(TypeDecl) takes over for 
+   * TypeDecl.instanceOf(TypeDecl)
+   */
+  syn SetConstraint TypeDecl.constraintApplicable(TypeDecl target)
+    = methodInvocationConversionTo(target) ? new ConjunctionConstraint() : new UnknownConstraint();
+
+  eq ClassDecl.constraintApplicable(TypeDecl target) {
+    if (target.isPrimitiveType()) {
+      return methodInvocationConversionTo(target) ? new ConjunctionConstraint() : new UnknownConstraint();
+    }
+    if (this == target) {
+      return new ConjunctionConstraint();
+    }
+    SetConstraint result = new DisjunctionConstraint();
+    if (hasSuperclass()) {
+      Access access = getSuperClass();
+      Iterator<TypeDecl> typeIter = superclass().typeSet().iterator();
+      while (typeIter.hasNext()) {
+        TypeDecl currentSuperType = typeIter.next();
+        SetConstraint subtrace = currentSuperType.constraintApplicable(target);
+        if (!subtrace.isUnknown()) {
+          SetConstraint trace = access.build(new ConjunctionConstraint(), currentSuperType).add(subtrace);
+          result = result.add(trace);
+        }
+      }
+    }
+    if (hasImplements()) {
+      for (int i = 0; i < getNumImplements(); i++) {
+        Access access = getImplements(i);
+        TypeDecl superInterface = access.type();
+        if (superInterface.methodInvocationConversionTo(target)) {
+          result = result.add(access.build(new ConjunctionConstraint(), superInterface));
+        }
+      }
+    }
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
+  inh lazy Access ArrayInit.declAccess();
+  eq Program.getChild(int i).declAccess() = null;
+  eq VarDeclStmt.getDeclarator().declAccess() = null;
+
+  eq Declarator.getInit().declAccess() = getTypeAccess();
+  eq ArrayCreationExpr.getArrayInit().declAccess() = getTypeAccess();
+
+
+}
+
+aspect TypeAnalysis {
+
+  eq VersionedTypeAccess.type() = decl();
 
   syn boolean TypeDecl.isGenerated() = false;
 
@@ -36,74 +151,5 @@ aspect BatakjavaTypeAnalysis {
    */
   syn boolean CompilationUnit.isOverviewUnit()
     = getNumTypeDecl() == 1 && getTypeDecl(0).isOverview();
-
-  /**
-   * Check if the ClassDecl is a generated overview
-   * which contains FieldDeclarator BATAKJAVACLASS
-   */
-  syn boolean TypeDecl.isOverview() = false;
-
-  eq ClassDecl.isOverview() {
-    for (BodyDecl bodyDecl: getBodyDeclList()) {
-      if (bodyDecl instanceof FieldDecl) {
-        FieldDecl decl = (FieldDecl) bodyDecl;
-        if (decl.getNumDeclarator() == 1 &&
-            decl.getDeclarator(0).getID().equals("BATAKJAVACLASS")) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  eq VersionedTypeAccess.type() = decl();
-
-  // this is a specific class obtained from qualifier's constraint; target is a specific class of the destination type
-  syn LocalConstraint TypeDecl.traceAncestor(TypeDecl target)
-    = subtype(target) ? new DisjunctionConstraint() : new UnknownConstraint();
-
-  eq ClassDecl.traceAncestor(TypeDecl target) {
-    if (this == target) {
-      return new DisjunctionConstraint();
-    }
-    if (hasSuperclass()) {
-      TypeDecl superType = superclass();
-      Access access = getSuperClass();
-      if (superType.isOverview()) {
-        Iterator<TypeDecl> superTypeIter = lookupTypeSet(superType.packageName(), superType.name()).iterator();
-        DisjunctionConstraint result = new DisjunctionConstraint();
-        while (superTypeIter.hasNext()) {
-          TypeDecl currentSuperType = superTypeIter.next();
-          LocalConstraint subtrace = currentSuperType.traceAncestor(target);
-          if (!subtrace.isUnknown()) {
-            ConjunctionConstraint trace = access.add(new ConjunctionConstraint(), currentSuperType);
-            trace.add(subtrace);
-            result.add(trace);
-          }
-        }
-        if (result.size() > 0) {
-          return result;
-        }
-      } else {
-        LocalConstraint subtrace = superType.traceAncestor(target);
-        ConjunctionConstraint result = new ConjunctionConstraint();
-        if (!subtrace.isUnknown()) {
-          result.add(access.add(new ConjunctionConstraint(), superType));
-          result.add(subtrace);
-        }
-        if (result.size() > 0) {
-          return result;
-        }
-      }
-    }
-    return new UnknownConstraint();
-  }
-
-  inh lazy Access ArrayInit.declAccess();
-  eq Program.getChild(int i).declAccess() = null;
-  eq VarDeclStmt.getDeclarator().declAccess() = null;
-
-  eq Declarator.getInit().declAccess() = getTypeAccess();
-  eq ArrayCreationExpr.getArrayInit().declAccess() = getTypeAccess();
 
 }

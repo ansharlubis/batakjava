@@ -1,37 +1,7 @@
-aspect TypeScopePropagation {
+aspect LookupFullyQualifiedTypes {
 
-  syn TypeDecl VersionedTypeAccess.decl() {
-    SimpleSet<TypeDecl> decls = decls();
-    if (decls.isSingleton()) {
-      return decls.singletonValue();
-    }
-    return unknownType();
-  }
-
-  syn SimpleSet<TypeDecl> VersionedTypeAccess.decls() =
-      packageName().equals("")
-      ? lookupType(name()+"_ver_"+getVersionNum())
-      : toSet(lookupType(packageName(), name()+"_ver_"+getVersionNum()));
-
-}
-
-aspect BatakjavaLookupFullyQualifiedTypes {
-
-  // Get the qualifier type without checking the decl
-  syn TypeDecl MethodAccess.qualifierType() {
-    if (hasPrevExpr()) {
-      return prevExpr().type();
-    }
-    TypeDecl typeDecl = hostType();
-    while (typeDecl != null) {
-      if (typeDecl.hasMethod(decl())) {
-        return typeDecl;
-      } else {
-        typeDecl = typeDecl.enclosingType();
-      }
-    }
-    return decl().hostType();
-  }
+  syn nta List<CompilationUnit> Program.getLibCompilationUnitList(String typeName, Integer ver)
+    = getCompilationUnitList(typeName, ver);
 
   public void Program.reinitializeSourceTypeMap() {
     for (int i = 0; i < getNumCompilationUnit(); i++) {
@@ -91,12 +61,49 @@ aspect BatakjavaLookupFullyQualifiedTypes {
     return typeSet;
   }
 
-  syn nta List<CompilationUnit> Program.getLibCompilationUnitList(String typeName, Integer ver)
-    = getCompilationUnitList(typeName, ver);
+  inh Access ReturnStmt.returnTypeAccess();
+  eq TypeDecl.getBodyDecl().returnTypeAccess() = null;
+  eq MethodDecl.getBlock().returnTypeAccess() = !isVoid() ? getTypeAccess() : null;
+  eq Program.getChild().returnTypeAccess() = null;
 
-  /**
-   * Get the TypeDecl from a SimpleSet<TypeDecl> based on the version
-   */
+}
+
+aspect TypeScopePropagation {
+
+  syn TypeDecl VersionedTypeAccess.decl() {
+    SimpleSet<TypeDecl> decls = decls();
+    if (decls.isSingleton()) {
+      return decls.singletonValue();
+    }
+    return unknownType();
+  }
+
+  syn SimpleSet<TypeDecl> VersionedTypeAccess.decls() =
+    packageName().equals("")
+    ? lookupType(name()+"_ver_"+getVersionNum())
+    : toSet(lookupType(packageName(), name()+"_ver_"+getVersionNum()));
+
+}
+
+/*
+aspect BatakjavaLookupFullyQualifiedTypes {
+
+  // Get the qualifier type without checking the decl
+  syn TypeDecl MethodAccess.qualifierType() {
+    if (hasPrevExpr()) {
+      return prevExpr().type();
+    }
+    TypeDecl typeDecl = hostType();
+    while (typeDecl != null) {
+      if (typeDecl.hasMethod(decl())) {
+        return typeDecl;
+      } else {
+        typeDecl = typeDecl.enclosingType();
+      }
+    }
+    return decl().hostType();
+  }
+
   inh TypeDecl Expr.lookupTypeVersion(String packageName, String typeName, String version);
   inh TypeDecl Stmt.lookupTypeVersion(String packageName, String typeName, String version);
   inh TypeDecl BodyDecl.lookupTypeVersion(String packageName, String typeName, String version);
@@ -116,9 +123,5 @@ aspect BatakjavaLookupFullyQualifiedTypes {
     return unknownType();
   }
 
-  inh Access ReturnStmt.returnTypeAccess();
-  eq TypeDecl.getBodyDecl().returnTypeAccess() = null;
-  eq MethodDecl.getBlock().returnTypeAccess() = !isVoid() ? getTypeAccess() : null;
-  eq Program.getChild().returnTypeAccess() = null;
-
 }
+*/

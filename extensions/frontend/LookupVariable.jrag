@@ -1,7 +1,199 @@
-aspect BatakjavaFields {
+aspect VariableScope {
+
+  inh Map<TypeDecl,SimpleSet<Variable>> TypeDecl.versionedLookupVariable(String name);
+  inh Map<TypeDecl,SimpleSet<Variable>> BodyDecl.versionedLookupVariable(String name);  
+  inh Map<TypeDecl,SimpleSet<Variable>> Stmt.versionedLookupVariable(String name);
+  inh Map<TypeDecl,SimpleSet<Variable>> Block.versionedLookupVariable(String name);
+  inh Map<TypeDecl,SimpleSet<Variable>> ForStmt.versionedLookupVariable(String name);
+  inh Map<TypeDecl,SimpleSet<Variable>> Expr.versionedLookupVariable(String name);
+  inh Map<TypeDecl,SimpleSet<Variable>> Declarator.versionedLookupVariable(String name);
+  inh Map<TypeDecl,SimpleSet<Variable>> ParameterDeclaration.versionedLookupVariable(String name);            
+
+  eq Program.getChild().versionedLookupVariable(String name) = new HashMap();
+
+  eq TypeDecl.getBodyDecl(int i).versionedLookupVariable(String name) {
+    SimpleSet<Variable> list = versionedMemberFields(name);
+    TypeDecl thisType = this;
+    if (!list.isEmpty()) {
+      return new HashMap<TypeDecl,SimpleSet<Variable>>() {{
+        put(thisType, list);
+      }};
+    }
+    Map<TypeDecl,SimpleSet<Variable>> map = versionedLookupVariable(name);
+    for (TypeDecl type: map.keySet()) {
+      map.replace(type, removeInstanceVariables(map.get(type)));
+    }
+    return map;
+  }
+
+  eq MethodDecl.getBlock().versionedLookupVariable(String name) {
+    SimpleSet<Variable> result = parameterDeclaration(name);
+    TypeDecl type = hostType();
+    if (!result.isEmpty()) {
+      return new HashMap<TypeDecl,SimpleSet<Variable>>() {{
+        put(type, result);
+      }};
+    }
+    return versionedLookupVariable(name);
+  }
+
+  eq MethodDecl.getParameter().versionedLookupVariable(String name) 
+    = new HashMap<TypeDecl,SimpleSet<Variable>>() {{ put(hostType(), parameterDeclaration(name)); }};
+  
+  eq ConstructorDecl.getBlock().versionedLookupVariable(String name) {
+    SimpleSet<Variable> result = parameterDeclaration(name);
+    TypeDecl type = hostType();
+    if (!result.isEmpty()) {
+      return new HashMap<TypeDecl,SimpleSet<Variable>>() {{
+        put(type, result);
+      }};
+    }
+    return versionedLookupVariable(name);
+  }
+
+  eq ConstructorDecl.getParsedConstructorInvocation().versionedLookupVariable(String name) {
+    SimpleSet<Variable> result = parameterDeclaration(name);
+    TypeDecl type = hostType();
+    if (!result.isEmpty()) {
+      return new HashMap<TypeDecl,SimpleSet<Variable>>() {{
+        put(type, result);
+      }};
+    }
+    return versionedLookupVariable(name);
+  }
+
+  eq ConstructorDecl.getImplicitConstructorInvocation().versionedLookupVariable(String name) {
+    SimpleSet<Variable> result = parameterDeclaration(name);
+    TypeDecl hostType = hostType();
+    if (!result.isEmpty()) {
+      return new HashMap<TypeDecl,SimpleSet<Variable>>() {{
+        put(hostType, result);
+      }};
+    }
+    Map<TypeDecl,SimpleSet<Variable>> map = versionedLookupVariable(name);
+    for (TypeDecl type: map.keySet()) {
+      SimpleSet<Variable> newSet = emptySet();
+      for (Variable v: map.get(type)) {
+        if (!hostType().versionedMemberFields(name).contains(v) || v.isStatic()) {
+          newSet = newSet.add(v);
+        }
+      }
+      map.replace(type, newSet);
+    }
+    return map;
+  }
+
+  eq ConstructorDecl.getParameter().versionedLookupVariable(String name)
+    = new HashMap<TypeDecl,SimpleSet<Variable>>() {{ put(hostType(), parameterDeclaration(name)); }};
+  
+  eq VarDeclStmt.getDeclarator(int index).versionedLookupVariable(String name) {
+    for (int i = index - 1; i >= 0; i -= 1) {
+      if (getDeclarator(i).declaresVariable(name)) {
+        Map<TypeDecl,SimpleSet<Variable>> map = new HashMap();
+        map.put(hostType(), ASTNode.<Variable>emptySet().add(getDeclarator(i)));
+        return map;
+      }
+    }
+    return versionedLookupVariable(name);
+  }
+
+  eq Block.getStmt(int index).versionedLookupVariable(String name) {
+    VariableDeclarator v = localVariableDeclaration(name);
+    TypeDecl type = hostType();
+    if (v != null && declaredBeforeUse(v, index)) {
+      return new HashMap<TypeDecl, SimpleSet<Variable>>() {{
+        put(type, ASTNode.<Variable>emptySet().add(v));
+      }};
+    }
+    return versionedLookupVariable(name);
+  }
+
+  eq ForStmt.getInitStmt(int index).versionedLookupVariable(String name) {
+    for (int i = index - 1; i >= 0; i -= 1) {
+      VariableDeclarator decl = getInitStmt(i).variableDeclaration(name);
+      if (decl != null) {
+        return new HashMap<TypeDecl,SimpleSet<Variable>>() {{
+          put(hostType(), ASTNode.<Variable>emptySet().add(decl));
+        }};
+      }
+    }
+    return versionedLookupVariable(name);
+  }
+
+  eq ForStmt.getCondition().versionedLookupVariable(String name) = versionedLocalLookup(name);
+
+  eq ForStmt.getUpdateStmt().versionedLookupVariable(String name) = versionedLocalLookup(name);
+
+  eq ForStmt.getStmt().versionedLookupVariable(String name) = versionedLocalLookup(name);
+
+  syn lazy Map<TypeDecl,SimpleSet<Variable>> ForStmt.versionedLocalLookup(String name) {
+    VariableDeclarator v = localVariableDeclaration(name);
+    if (v != null) {
+      return new HashMap<TypeDecl,SimpleSet<Variable>>() {{
+        put(hostType(), ASTNode.<Variable>emptySet().add(v));
+      }};
+    }
+    return versionedLookupVariable(name);
+  }
+
+  eq MethodAccess.getChild().versionedLookupVariable(String name) = unqualifiedScope().versionedLookupVariable(name);
+
+  eq ConstructorAccess.getArg().versionedLookupVariable(String name) = unqualifiedScope().versionedLookupVariable(name);
+
+  eq SuperConstructorAccess.getArg().versionedLookupVariable(String name) = unqualifiedScope().versionedLookupVariable(name);
+
+  eq ArrayAccess.getExpr().versionedLookupVariable(String name) = unqualifiedScope().versionedLookupVariable(name);
+
+  eq ArrayTypeWithSizeAccess.getExpr().versionedLookupVariable(String name) = unqualifiedScope().versionedLookupVariable(name);
+
+  eq ClassInstanceExpr.getArg().versionedLookupVariable(String name) = unqualifiedScope().versionedLookupVariable(name);
+
+  eq Dot.getRight().versionedLookupVariable(String name) = getLeft().versionedQualifiedLookupVariable(name);
+
+  eq ParseName.versionedQualifiedLookupVariable(String name) = new HashMap<TypeDecl,SimpleSet<Variable>>();
+
+  syn Map<TypeDecl,SimpleSet<Variable>> Expr.versionedQualifiedLookupVariable(String name) {
+    Map<TypeDecl,SimpleSet<Variable>> map = new HashMap();
+    Iterator<TypeDecl> iter = constraintToTypeSet().iterator();
+    while (iter.hasNext()) {
+      TypeDecl type = iter.next();
+      if (type.accessibleFrom(hostType())) {
+        map.put(type, keepAccessibleFields(type.versionedMemberFields(name)));
+      }
+    }
+    return map;
+  }
+
+  eq PackageAccess.versionedQualifiedLookupVariable(String name) = new HashMap();
+
+  eq TypeAccess.versionedQualifiedLookupVariable(String name) {
+    Map<TypeDecl,SimpleSet<Variable>> map = new HashMap();
+    Iterator<TypeDecl> iter = typeSet().iterator();
+    while (iter.hasNext()) {
+      TypeDecl type = iter.next();
+      if (type.accessibleFrom(hostType())) {
+        SimpleSet<Variable> c = type.versionedMemberFields(name);
+        c = keepAccessibleFields(c);
+        if (type.isClassDecl()) {
+          c = removeInstanceVariables(c);
+        }
+        map.put(type, c);
+      }
+    }
+    return map;
+  }
+
+}
+
+aspect Fields {
+
+  syn lazy SimpleSet<Variable> TypeDecl.versionedLocalFields(String name) =
+    versionedLocalFieldsMap().containsKey(name)
+    ? versionedLocalFieldsMap().get(name)
+    : ASTNode.<Variable>emptySet();
 
   syn lazy Map<String,SimpleSet<Variable>> TypeDecl.versionedLocalFieldsMap() {
-    Map<String,SimpleSet<Variable>> map = new HashMap();
+    Map<String,SimpleSet<Variable>> map = new HashMap<String,SimpleSet<Variable>>();
     for (BodyDecl decl: getBodyDeclList()) {
       if (decl instanceof FieldDecl) {
         for (FieldDeclarator field: ((FieldDecl) decl).getDeclaratorList()) {
@@ -12,37 +204,55 @@ aspect BatakjavaFields {
     return map;
   }
 
-  syn lazy Map<String,SimpleSet<Variable>> TypeDecl.versionedMemberFieldsMap() = memberFieldsMap();
+  syn lazy SimpleSet<Variable> TypeDecl.versionedMemberFields(String name) = versionedLocalFields(name);
 
-  // †his works with versioned superclass and generated superclass
-  eq ClassDecl.versionedMemberFieldsMap() {
-    Map<String,SimpleSet<Variable>> map = new HashMap(versionedLocalFieldsMap());
+  eq ClassDecl.versionedMemberFields(String name) {
+    SimpleSet<Variable> fields = versionedLocalFields(name);
+    if (!fields.isEmpty()) {
+      return fields;
+    }
     if (hasSuperclass()) {
-      Iterator<Variable> iter = superclass().fieldsIterator();
-      while (iter.hasNext()) {
-        FieldDeclarator decl = (FieldDeclarator) iter.next();
-        if (!decl.isPrivate() && decl.accessibleFrom(this)
-            && !versionedLocalFieldsMap().containsKey(decl.initialName())) {
-          putSimpleSetElement(map, decl.initialName(), decl);
+      Iterator<TypeDecl> typeIter = superclass().typeSet().iterator();
+      while (typeIter.hasNext()) {
+        TypeDecl superType = typeIter.next();
+        Iterator<Variable> iter = superType.versionedMemberFields(name).iterator();
+        while (iter.hasNext()) {
+          Variable decl = iter.next();
+          if (!decl.isPrivate() && decl.accessibleFrom(this)) {
+            fields = fields.add(decl);
+          }
         }
       }
     }
-
-    // Ignore interface for now
-    return map;
-  }
-
-  // in case this class is a generated class whose fields are searched from below
-  syn Map<String,SimpleSet<Variable>> ClassDecl.superMemberFieldsMap() {
-    Map<String,SimpleSet<Variable>> map = new HashMap();
-    Iterator<Variable> iter = fieldsIterator();
-    while (iter.hasNext()) {
-      FieldDeclarator decl = (FieldDeclarator) iter.next();
-      if (!decl.isPrivate() && decl.accessibleFrom(this)) {
-        putSimpleSetElement(map, decl.initialName(), decl);
+    for (InterfaceDecl iface: superInterfaces()) {
+      Iterator<Variable> iter = iface.memberFields(name).iterator();
+      while (iter.hasNext()) {
+        Variable decl = iter.next();
+        if (!decl.isPrivate() && decl.accessibleFrom(this)) {
+          fields = fields.add(decl);
+        }
       }
     }
-    return map;
+    return fields;
+  }
+
+}
+
+aspect Variables {
+
+  syn String Declarator.initialName() {
+    if (hostType().isGenerated()) {
+      String[] splitName = getID().split("_");
+      if (splitName.length > 2 && splitName[splitName.length-2].equals("ver")) {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < splitName.length-2; i++) {
+          if (i != 0) result.append("_");
+          result.append(splitName[i]);
+        }
+        return result.toString();
+      }
+    }
+    return getID();
   }
 
 }

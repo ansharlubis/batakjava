@@ -1,0 +1,258 @@
+import org.chocosolver.solver.constraints.Constraint;
+
+aspect Constraint {
+
+  private Integer Program.typeCount = 0;
+
+  public void Program.initializeTypeCount() { typeCount = 0; }
+
+  public Integer Program.freshTypeCount() {
+    Integer count = typeCount;
+    typeCount++;
+    return count;
+  } 
+
+  public final Map<TypeDecl,Integer> Program.typeToIntMap = new HashMap();
+
+  public TypeDecl ASTNode.intToType(Integer typeInt) {
+    for (TypeDecl type: program().typeToIntMap.keySet()) {
+      if (program().typeToIntMap.get(type) == typeInt) {
+        return type;
+      }
+    }
+    return program().unknownType();
+  }
+
+  public SetConstraint Expr.build(SetConstraint constraint, TypeDecl type) {
+    Integer typeInt = program().typeToIntMap.containsKey(type) ? program().typeToIntMap.get(type) : program().freshTypeCount();
+    program().typeToIntMap.put(type, typeInt);
+    return constraint.add(new TypeConstraint(variable(), typeInt));
+  }
+
+}
+
+aspect ConstraintClass {
+
+  public interface LocalConstraint {
+    public java.util.Set<Integer> getTypeInt(String arg);
+    public SetConstraint addTo(DisjunctionConstraint target);
+    public SetConstraint addTo(ConjunctionConstraint target);
+    public Constraint post(Model model, IntVar[] vars);
+    public boolean isUnknown();
+  }
+
+  public class TypeConstraint implements LocalConstraint {
+    private final String variable;
+    private final Integer typeInt;
+
+    public TypeConstraint(String variable, Integer typeInt) {
+      this.variable = variable;
+      this.typeInt = typeInt;
+    }
+
+    public java.util.Set<Integer> getTypeInt(String arg) {
+      java.util.Set<Integer> result = variable.equals(arg) ? new HashSet<Integer>() {{ add(typeInt); }} : Collections.emptySet();
+      return result;
+    }
+
+    public SetConstraint addTo(ConjunctionConstraint target) {
+      target.constraints.add(this);
+      return target;
+    }
+
+    public SetConstraint addTo(DisjunctionConstraint target) {
+      target.constraints.add(this);
+      return target;
+    }
+
+    @Override
+    public String toString() {
+      return variable + ": " + typeInt.toString();
+    }
+
+    public Constraint post(Model model, IntVar[] vars) {
+      Integer num = Integer.valueOf(variable.substring(1));
+      return model.arithm(vars[num], "=", typeInt);
+    }
+
+    public boolean isUnknown() { return true; }
+  }
+
+  public interface SetConstraint extends LocalConstraint, Iterable<LocalConstraint> {
+    public int size();
+    public SetConstraint add(LocalConstraint arg);
+    public Collection<LocalConstraint> putIntoList();
+  }
+
+  public class DisjunctionConstraint implements SetConstraint {
+    public java.util.List<LocalConstraint> constraints = new LinkedList();
+
+    public DisjunctionConstraint() { }
+
+    public int size() { return constraints.size(); }
+
+    public java.util.Set<Integer> getTypeInt(String arg) {
+      java.util.Set<Integer> result = new HashSet();
+      for (LocalConstraint thisConstraint: constraints) {
+        result.addAll(thisConstraint.getTypeInt(arg));
+      }
+      return result;
+    }
+
+    public SetConstraint add(LocalConstraint arg) {
+      return arg.addTo(this);
+    }
+
+    public SetConstraint addTo(ConjunctionConstraint target) {
+      if (size() == 1) {
+        target.constraints.add(iterator().next());
+      } else if (size() > 1) {
+        target.constraints.add(this);
+      } 
+      return target;
+    }
+
+    public SetConstraint addTo(DisjunctionConstraint target) {
+      for (LocalConstraint thisConstraint: constraints) {
+        target.constraints.add(thisConstraint);
+      }
+      return target;
+    }
+
+    public Iterator<LocalConstraint> iterator() { return constraints.iterator(); }
+
+    public String toString() {
+      if (size() == 1) {
+        return iterator().next().toString();
+      }
+      StringBuilder result = new StringBuilder();
+      result.append("[");
+      int i = 0;
+      for (LocalConstraint constraint: constraints) {
+        if (i != 0) result.append(" || ");
+        result.append(constraint.toString());
+        i++;
+      }
+      result.append("]");
+      return result.toString();
+    }
+
+    public Constraint post(Model model, IntVar[] vars) {
+      Constraint[] toPost = new Constraint[size()];
+      for (int i = 0; i < size(); i++) {
+        toPost[i] = constraints.get(i).post(model, vars);
+      }
+      return model.or(toPost);
+    }
+
+    public boolean isUnknown() { return false; } 
+
+    public Collection<LocalConstraint> putIntoList() {
+      Collection<LocalConstraint> result = new LinkedList();
+      if (size() > 0) { result.add(this); }
+      return result;
+    }
+
+  }
+
+  public class ConjunctionConstraint implements SetConstraint {
+    public java.util.List<LocalConstraint> constraints = new LinkedList();
+
+    public ConjunctionConstraint() { }
+
+    public int size() { return constraints.size(); }
+
+    public java.util.Set<Integer> getTypeInt(String arg) {
+      java.util.List<java.util.Set<Integer>> result = new ArrayList();
+      for (LocalConstraint thisConstraint: constraints) {
+        java.util.Set<Integer> typeInts = thisConstraint.getTypeInt(arg);
+        if (typeInts.size() > 0) {
+          result.add(typeInts);
+        }
+      }
+      return result.size() == 1 ? result.iterator().next() : Collections.emptySet();
+    }
+
+    public SetConstraint add(LocalConstraint arg) {
+      return arg.addTo(this);
+    }
+
+    public SetConstraint addTo(DisjunctionConstraint target) {
+      if (size() == 1) {
+        target.constraints.add(iterator().next());
+      } else if (size() > 1) {
+        target.constraints.add(this);
+      }
+      return target;
+    }
+
+    public SetConstraint addTo(ConjunctionConstraint target) {
+      for (LocalConstraint thisConstraint: constraints) {
+        target.constraints.add(thisConstraint);
+      }
+      return target;
+    }
+
+    public Iterator<LocalConstraint> iterator() { return constraints.iterator(); }
+
+    public String toString() {
+      if (size() == 1) {
+        return iterator().next().toString();
+      }
+      StringBuilder result = new StringBuilder();
+      result.append("[");
+      int i = 0;
+      for (LocalConstraint constraint: constraints) {
+        if (i != 0) result.append(" && ");
+        result.append(constraint.toString());
+        i++;
+      }
+      result.append("]");
+      return result.toString();
+    }
+
+    public Constraint post(Model model, IntVar[] vars) {
+      Constraint[] toPost = new Constraint[size()];
+      for (int i = 0; i < size(); i++) {
+        toPost[i] = constraints.get(i).post(model, vars);
+      }
+      return model.and(toPost);
+    }
+
+    public boolean isUnknown() { return false; } 
+
+    public Collection<LocalConstraint> putIntoList() {
+      Collection<LocalConstraint> result = new LinkedList();
+      if (size() > 0) { result.add(this); }
+      return result;
+    }
+
+  }
+
+  public class UnknownConstraint implements SetConstraint {
+    public int size() { return 0; }
+    
+    public java.util.Set<Integer> getTypeInt(String arg) { return Collections.emptySet(); }
+    
+    public SetConstraint add(LocalConstraint arg) { return this; }
+
+    public SetConstraint addTo(DisjunctionConstraint target) { return target; }
+
+    public SetConstraint addTo(ConjunctionConstraint target) { return target; }
+
+    public Constraint post(Model model, IntVar[] vars) { return null; }
+
+    public boolean isUnknown() { return true; }
+
+    public Iterator<LocalConstraint> iterator() { 
+      return new java.util.ArrayList<LocalConstraint>().iterator(); 
+    }
+
+    @Override public String toString() { return "<unknown>"; }
+
+    public Collection<LocalConstraint> putIntoList() { return Collections.emptyList(); }
+  }
+  
+
+}
+

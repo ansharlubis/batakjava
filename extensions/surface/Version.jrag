@@ -15,6 +15,7 @@ aspect BatakjavaVersion {
    * Get version from the CompilationUnit
    */
   eq BatakjavaCompilationUnit.version() = getVersionNum();
+
   syn String CompilationUnit.version() {
     // Generated overview's version depends on FieldDeclaarator VER_?
     if (isOverviewUnit()) {
@@ -38,6 +39,7 @@ aspect BatakjavaVersion {
    * Checks the initial version and name of the ClassDecl before generated as Java classes.
    */
   syn String TypeDecl.version() = "0";
+  
   eq ClassDecl.version() {
     if (!hostVersion().equals("0")) {
       return hostVersion();
@@ -45,6 +47,9 @@ aspect BatakjavaVersion {
     String[] splitName = name().split("_");
     return isGenerated() ? splitName[splitName.length-1] : "0";
   }
+
+  syn Integer TypeDecl.versionNumber() = Integer.valueOf(version());
+  syn Integer Access.versionNumber() = Integer.valueOf(version());
 
   syn String Access.version() = "0";
   eq VersionedTypeAccess.version() = getVersionNum();

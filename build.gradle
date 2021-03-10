@@ -24,8 +24,8 @@ jastadd {
         include "**/surface/*.jrag"
         include "**/surface/*.jadd"
         include "**/frontend/*.jrag"
-        //include "**/inference/*.jrag"
-        include "**/subtyping/*.jrag"
+        include "**/inference/*.jrag"
+        //include "**/subtyping/*.jrag"
         include "**/backend/*.jrag"
       }
 
@@ -78,8 +78,8 @@ jar {
 // Use JavaCompiler if you need bytecode generation.
 //jar.manifest.attributes 'Main-Class': 'org.extendj.JavaPrettyPrinter'
 //jar.manifest.attributes 'Main-Class': 'org.extendj.JavaCompiler'
-//jar.manifest.attributes 'Main-Class': 'org.extendj.BatakjavaCompiler'
-jar.manifest.attributes 'Main-Class': 'org.extendj.BatakjavaChecker'
+jar.manifest.attributes 'Main-Class': 'org.extendj.BatakjavaCompiler'
+//jar.manifest.attributes 'Main-Class': 'org.extendj.BatakjavaChecker'
 
 
 

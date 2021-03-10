@@ -1,0 +1,413 @@
+aspect BatakjavaErrorCheck {
+
+  coll LinkedList<Problem> CompilationUnit.constraintProblems() root CompilationUnit;
+
+  syn Collection<Problem> CompilationUnit.constraintErrors() {
+    Collection<Problem> errors = new LinkedList();
+    for (Problem problem: constraintProblems()) {
+      if (problem.severity() == Problem.Severity.ERROR) {
+        errors.add(problem);
+      }
+    }
+    return errors;
+  }
+
+  ClassInstanceExpr contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> ClassInstanceExpr.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    if (!type().isClassDecl()) {
+      problems.add(errorf("*** Can only instantiate classes, which %s is not", type().typeName()));
+    }
+    if (constraints().isUnknown()) {
+      problems.add(errorf("no candidate constructor found for %s", prettyPrint()));
+    }
+    return problems;
+  }
+
+  SuperConstructorAccess contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> SuperConstructorAccess.constraintProblems() = constraints().isUnknown()
+    ? Collections.singletonList(errorf("no applicable constructor found for %s", prettyPrint())) : Collections.emptyList();
+
+  VarAccess contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> VarAccess.constraintProblems() = constraints().isUnknown()
+    ? Collections.singletonList(errorf("no variable %s found", prettyPrint())) : Collections.emptyList();
+
+  MethodAccess contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> MethodAccess.constraintProblems() = constraints().isUnknown()
+    ? Collections.singletonList(errorf("no candidate method %s found", prettyPrint())) : Collections.emptyList();  
+
+  InstanceOfExpr contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> InstanceOfExpr.constraintProblems() = constraints().isUnknown()
+    ? Collections.singletonList(errorf("%s cannot be cast to any candidate type %s", 
+    getExpr().prettyPrint(), getTypeAccess().prettyPrint())) : Collections.emptyList();
+
+
+  ArrayInit contributes each constraintProblems() to CompilationUnit.constraintProblems();
+  
+  syn Collection<Problem> ArrayInit.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    for (int i = 0; i < getNumInit(); i++) {
+      boolean flag = true;
+      for (TypeDecl initializerType: declAccess().typeSet()) {
+        TypeDecl componentType = initializerType.componentType();
+        for (TypeDecl initType: getInit(i).constraintToTypeSet()) {
+          if (!initType.constraintApplicable(componentType).isUnknown()) {
+            flag = false;
+          }
+        }
+      }
+      if (flag) {
+        problems.add(errorf("the initializer %s is not compatible with %s",
+          getInit(i).prettyPrint(), declAccess().prettyPrint()));
+      }
+    }
+    return problems;
+  }
+
+  ArrayAccess contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> ArrayAccess.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+
+    // qualifier must be array type
+    if (isQualified()) {
+      boolean flag = true;
+      for (TypeDecl qualifierType: qualifier().constraintToTypeSet()) {
+        if (qualifierType.isArrayDecl() || qualifierType.isUnknown()) {
+          flag = false;
+        }
+      }
+      if (flag) {
+        problems.add(errorf("no candidate type for %s that is an array", qualifier().prettyPrint()));
+      }
+    }
+    
+    // array index
+    boolean flag = true;
+    for (TypeDecl exprType: getExpr().constraintToTypeSet()) {
+      if (exprType.unaryNumericPromotion().isInt() && exprType.isIntegralType()) {
+        flag = false;
+      }
+    }
+    if (flag) {
+      problems.add(errorf("no candidate type for the index which is int after unary numeric promotion"));
+    }
+
+    return problems;
+  }
+
+  /**
+   * AssignExpr checks
+   */
+  AssignExpr contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  eq AssignSimpleExpr.constraintProblems() {
+    Collection<Problem> problems = new LinkedList<Problem>();
+    if (!getDest().isVariable()) {
+      problems.add(error("left hand side is not a variable"));
+    } else {
+      boolean flag = true;
+      for (TypeDecl source: getSource().constraintToTypeSet()) {
+        for (TypeDecl dest: getDest().constraintToTypeSet()) {
+          if (!source.constraintApplicable(dest).isUnknown() || source.isUnknown()) {
+            flag = false;
+          }
+        }
+      }
+      if (flag) {
+        problems.add(errorf("can not assign %s with %s", getDest().prettyPrint(), getSource().prettyPrint()));
+      }
+    }
+    return problems;
+  }
+
+  syn Collection<Problem> AssignExpr.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    if (!getDest().isVariable()) {
+      return Collections.singletonList((error("left hand side is not a variable")));
+    } else {
+      for (TypeDecl source: getSource().constraintToTypeSet()) {
+        for (TypeDecl dest: getDest().constraintToTypeSet()) {
+          if (source.isPrimitive() && dest.isPrimitive()) {
+            return Collections.emptyList();
+          }
+        }
+      }
+      return Collections.singletonList(errorf("no candidate type to assign %s with %s",
+        getDest().prettyPrint(), getSource().prettyPrint()));
+    }
+  }
+
+  eq AssignMultiplicativeExpr.constraintProblems() {
+    Collection<Problem> problems = new LinkedList(super.constraintProblems());
+    boolean flag = true;
+    for (TypeDecl source: getSource().constraintToTypeSet()) {
+      for (TypeDecl dest: getDest().constraintToTypeSet()) {
+        if (!source.isBoolean() && !dest.isBoolean()) {
+          flag = false;
+        }
+      }
+    }
+
+    if (flag) { problems.add(error("multiplicative operators do not operate on boolean types")); }
+    return problems;
+  }
+  
+
+  eq AssignPlusExpr.constraintProblems() {
+    if (!getDest().isVariable()) {
+      return Collections.singletonList(error("left hand side is not a variable"));
+    }
+
+    boolean flag = true;
+    for (TypeDecl source: getSource().constraintToTypeSet()) {
+      for (TypeDecl dest: getDest().constraintToTypeSet()) {
+        if (!source.isBoolean() && !dest.isBoolean()) {
+          flag = false;
+        }
+      }
+    }
+    if (flag) { return Collections.singletonList(error("operator plus does not operate on boolean types")); }
+
+    for (TypeDecl source: getSource().constraintToTypeSet()) {
+      for (TypeDecl dest: getDest().constraintToTypeSet()) {
+        if (source.isUnknown() || dest.isUnknown()) {
+          return Collections.emptyList();
+        } else if (dest.isString() && !(source.isVoid())) {
+          return Collections.emptyList();
+        } else if (dest.isPrimitive() && dest.isPrimitive()) {
+          return Collections.emptyList();
+        }
+      }
+    }
+
+    return Collections.singletonList(errorf("can not assign %s with %s", 
+      getDest().prettyPrint(), getSource().prettyPrint()));  
+  }
+
+  eq AssignMinusExpr.constraintProblems() {
+    Collection<Problem> problems = new LinkedList(super.constraintProblems());
+
+    boolean flag = true;
+    for (TypeDecl source: getSource().constraintToTypeSet()) {
+      for (TypeDecl dest: getDest().constraintToTypeSet()) {
+        if (!source.isBoolean() && !dest.isBoolean()) {
+          flag = false;
+        }
+      }
+    }
+
+    if (flag) { problems.add(error("minus operator does not operate on boolean types")); }
+    return problems;
+  }
+
+  eq AssignShiftExpr.constraintProblems() {
+    Collection<Problem> problems = new LinkedList(super.constraintProblems());
+    
+    boolean flag = true;
+    for (TypeDecl source: getSource().constraintToTypeSet()) {
+      for (TypeDecl dest: getDest().constraintToTypeSet()) {
+        if (source.isIntegralType() && dest.isIntegralType()) {
+          flag = false;
+        }
+      }
+    }
+
+    if (flag) { problems.add(error("shift operators only operate on integral types")); }
+    return problems;
+  }
+
+  syn Collection<Problem> AssignBitwiseExpr.constraintProblems() {
+    boolean flag = true;
+    for (TypeDecl source: getSource().constraintToTypeSet()) {
+      for (TypeDecl dest: getDest().constraintToTypeSet()) {
+        if (source.isIntegralType() && dest.isIntegralType()) {
+          flag = false;
+        } else if (source.isBoolean() && dest.isBoolean()) {
+          flag = false;
+        }
+      }
+    }
+    if (flag) {
+      return super.constraintProblems();
+    } else {
+      return Collections.singletonList(error("operator only operates on integral and boolean types"));
+    }
+  }
+
+  MultiplicativeExpr contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> MultiplicativeExpr.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    boolean flagLeft = true, flagRight = true;
+    for (TypeDecl left: getLeftOperand().constraintToTypeSet()) {
+      if (left.isNumericType()) { 
+        flagLeft = false; 
+      }
+    }
+    if (flagLeft) { problems.add(errorf("%s has no numeric type candidate", getLeftOperand().prettyPrint())); }
+    for (TypeDecl right: getRightOperand().constraintToTypeSet()) {
+      if (right.isNumericType()) { 
+        flagRight = false; 
+      }
+    }
+    if (flagRight) { problems.add(errorf("%s has no numeric type candidate", getRightOperand().prettyPrint())); }
+    return problems;
+  }
+
+  AdditiveExpr contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> AdditiveExpr.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    boolean flagLeft = true, flagRight = true;
+    for (TypeDecl left: getLeftOperand().constraintToTypeSet()) {
+      if (left.isNumericType()) { flagLeft = false; }
+    }
+    if (flagLeft) { problems.add(errorf("%s has no numeric type candidate", getLeftOperand().prettyPrint())); }
+    for (TypeDecl right: getRightOperand().constraintToTypeSet()) {
+      if (right.isNumericType()) { flagRight = false; }
+    }
+    if (flagRight) { problems.add(errorf("%s has no numeric type candidate", getRightOperand().prettyPrint())); }
+    return problems;
+  }
+
+  eq AddExpr.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    boolean leftVoid = true, rightVoid = true, stringFlag = true;
+    for (TypeDecl left: getLeftOperand().constraintToTypeSet()) {
+      for (TypeDecl right: getRightOperand().constraintToTypeSet()) {
+        if (!left.isVoid()) { leftVoid = false; }
+        if (!right.isVoid()) { rightVoid = false; }
+        if ((left.isString() || right.isString()) && stringFlag) {
+          stringFlag = false;
+          problems.addAll(super.constraintProblems());
+        }
+      }
+    }
+    if (leftVoid) { problems.add(error("The type void of the left hand side is not numeric")); }
+    if (rightVoid) { problems.add(error("The type void of the right hand side is not numeric")); }
+    return problems;
+  }
+
+  ShiftExpr contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> ShiftExpr.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    boolean flagLeft = true, flagRight = true;
+    for (TypeDecl left: getLeftOperand().constraintToTypeSet()) {
+      if (left.isIntegralType()) {
+        problems.add(errorf("%s is not integral", getLeftOperand().prettyPrint()));        
+      }
+    }
+    for (TypeDecl right: getRightOperand().constraintToTypeSet()) {
+      if (right.isIntegralType()) {
+        problems.add(errorf("%s is not integral", getRightOperand().prettyPrint()));
+      }
+    }
+    return problems;
+  }
+
+  BitwiseExpr contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> BitwiseExpr.constraintProblems() {
+    for (TypeDecl left: getLeftOperand().constraintToTypeSet()) {
+      for (TypeDecl right: getRightOperand().constraintToTypeSet()) {
+        if (left.isIntegralType() && right.isIntegralType()) {
+          return Collections.emptyList();
+        }
+        if (left.isBoolean() && right.isBoolean()) {
+          return Collections.emptyList();
+        }
+      }
+    }
+    return Collections.singletonList(errorf("%s is not compatible with %s",
+        getLeftOperand().prettyPrint(), getRightOperand().prettyPrint()));
+  }
+  
+  RelationalExpr contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> RelationalExpr.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    boolean flagLeft = true, flagRight = true;
+    for (TypeDecl left: getLeftOperand().constraintToTypeSet()) {
+      if (left.isNumericType()) { flagLeft = false; }
+    }
+    if (flagLeft) { problems.add(errorf("%s has no numeric type candidate", getLeftOperand().prettyPrint())); }
+    for (TypeDecl right: getRightOperand().constraintToTypeSet()) {
+      if (right.isNumericType()) { flagRight = false; }
+    }
+    if (flagRight) { problems.add(errorf("%s has no numeric type candidate", getRightOperand().prettyPrint())); }
+    return problems;    
+  }
+
+  LogicalExpr contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> LogicalExpr.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    boolean flagLeft = true, flagRight = true;
+    for (TypeDecl left: getLeftOperand().constraintToTypeSet()) {
+      if (left.isBoolean()) { flagLeft = false; }
+    }
+    if (flagLeft) { problems.add(errorf("%s has no boolean type candidate", getLeftOperand().prettyPrint())); }
+    for (TypeDecl right: getRightOperand().constraintToTypeSet()) {
+      if (right.isBoolean()) { flagRight = false; }
+    }
+    if (flagRight) { problems.add(errorf("%s has no boolean type candidate", getRightOperand().prettyPrint())); }
+    return problems;
+  }
+
+  eq EqualityExpr.constraintProblems() {
+    for (TypeDecl left: getLeftOperand().constraintToTypeSet()) {
+      for (TypeDecl right: getRightOperand().constraintToTypeSet()) {
+        if (left.isNumericType() && right.isNumericType()) {
+          return Collections.emptyList();
+        }
+        if (left.isBoolean() && right.isBoolean()) {
+          return Collections.emptyList();
+        }
+        if ((left.isReferenceType() || left.isNull()) && (right.isReferenceType() || right.isNull())) {
+          if (!left.constraintApplicable(right).isUnknown() || !right.constraintApplicable(left).isUnknown()) {
+            return Collections.emptyList();
+          }
+        }
+      }
+    }
+    return Collections.singletonList(errorf("%s can not be compared to %s",
+      getLeftOperand().prettyPrint(), getRightOperand().prettyPrint()));
+  }
+
+  ReturnStmt contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> ReturnStmt.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    if (hasResult() && constraints().isUnknown()) {
+      problems.add(errorf("return value %s must be an instance of %s",
+        getResult().prettyPrint(), returnTypeAccess().prettyPrint()));
+    }
+    if (returnType().isVoid() && hasResult()) {
+      problems.add(error("return statement may not have an expression in void methods"));
+    }
+    if (!returnType().isVoid() && !hasResult()) {
+      problems.add(error("return statement must have an expression in non void methods"));
+    }
+    return problems;
+  }
+
+  Declarator contributes each constraintProblems() to CompilationUnit.constraintProblems();
+
+  syn Collection<Problem> Declarator.constraintProblems() {
+    if (hasInit() && !(getInit() instanceof ArrayInit)) {
+      if (constraints().isUnknown()) {
+        return Collections.singletonList(errorf("can not assign %s to variable %s of type %s",
+         getInit().prettyPrint(), getID(), getTypeAccess().prettyPrint()));
+      }
+    }
+    return Collections.emptyList();
+  }
+
+}

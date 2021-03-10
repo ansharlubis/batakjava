@@ -1,16 +1,17 @@
 package down ver 1;
 import up.*;
-import mid.utility.*;
-import mid.empty.*;
 
-public class Main extends Test {
-
-  public Main(float x, int y) {
+public class Main extends Point {
+  private Main(float x, float y) {
     super(x,y);
   }
 
+  public Point create() {
+    return new Main(0,0);
+  }
+
   public static void main(String[] args) {
-    Main m = new Main(0,0).getX();
+    float f = new Main(0,0).getX();
   }
 
 }

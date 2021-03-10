@@ -1,3 +1,8 @@
+import org.chocosolver.solver.Model;
+import org.chocosolver.solver.Solution;
+import org.chocosolver.solver.variables.IntVar;
+import com.google.common.primitives.Ints;
+
 aspect BatakjavaFrontendMain {
 
   public long Program.constraintGenTime;
@@ -16,9 +21,9 @@ aspect BatakjavaFrontendMain {
     javaGenTime = 0;
   }
 
-  abstract public class SolverFrontend extends Frontend {
+  abstract public class SubtypingFrontend extends Frontend {
 
-    protected SolverFrontend(String name, String version) { super(name, version); }
+    protected SubtypingFrontend(String name, String version) { super(name, version); }
 
     @Override
     public int run(String[] args, BytecodeReader reader, JavaParser parser) {
@@ -48,7 +53,6 @@ aspect BatakjavaFrontendMain {
       Collection<CompilationUnit> work = new LinkedList<CompilationUnit>();
 
       try {
-
         for (String file: files) {
           program.addSourceFile(file);
         }
@@ -62,7 +66,7 @@ aspect BatakjavaFrontendMain {
 
         int compileResult = EXIT_SUCCESS;
 
-        // Name/error checking
+        // Ba†akJava well-definedness checks
         Iterator<CompilationUnit> checkIter = program.compilationUnitIterator();
         while (checkIter.hasNext()) {
           CompilationUnit unit = checkIter.next();
@@ -81,11 +85,14 @@ aspect BatakjavaFrontendMain {
           return compileResult;
         }
 
-        // Pre-inference checking
-        Iterator<CompilationUnit> preInferenceIter = program.compilationUnitIterator();
-        while (preInferenceIter.hasNext()) {
-          CompilationUnit unit = preInferenceIter.next();
-          int result = processPreInferenceCompilationUnit(unit);
+        // initialize for constraint generation
+        program.initializeTypeCount();
+        program.initializeVariable();
+
+        Iterator<CompilationUnit> constraintIter = program.compilationUnitIterator();
+        while (constraintIter.hasNext()) {
+          CompilationUnit unit = constraintIter.next();
+          int result = processConstraintCompilationUnit(unit);
           switch (result) {
             case EXIT_SUCCESS:
               break;
@@ -96,33 +103,18 @@ aspect BatakjavaFrontendMain {
           }
         }
 
+        System.err.println(program.typeToIntMap);
+
         if (compileResult != EXIT_SUCCESS) {
           return compileResult;
         }
 
-        // Inference
-        compileResult = program.solve();
-
-        if (compileResult != EXIT_SUCCESS) {
+        // inference
+        if (program.solve() != EXIT_SUCCESS) {
           System.err.println("No solution found for the program.");
           return compileResult;
         }
 
-        Iterator<CompilationUnit> generateIter = program.compilationUnitIterator();
-        LinkedList<CompilationUnit> generated = new LinkedList<CompilationUnit>();
-        while (generateIter.hasNext()) {
-          CompilationUnit unit = generateIter.next();
-          // TODO: Don't forget to remove this line
-          System.err.println(unit.generateJava(program.solutions).prettyPrint());
-        }
-
-        for (CompilationUnit unit: work) {
-          if (unit != null && unit.fromSource()) {
-            long start = System.nanoTime();
-            processNoErrors(unit);
-            program.codeGenTime += System.nanoTime() - start;
-          }
-        }
       } catch (Throwable t) {
         System.err.println("Fatal exception:");
         t.printStackTrace(System.err);
@@ -133,26 +125,13 @@ aspect BatakjavaFrontendMain {
         }
       }
       return EXIT_SUCCESS;
-
-    }
-
-    protected int processPreInferenceCompilationUnit(CompilationUnit unit) {
-      if (unit != null && unit.fromSource()) {
-        Collection<Problem> errors = unit.preInferenceErrors();
-        if (!errors.isEmpty()) {
-          processErrors(errors, unit);
-          return EXIT_ERROR;
-        }
-      }
-      return EXIT_SUCCESS;
     }
 
     protected int processBatakjavaCompilationUnit(CompilationUnit unit) {
       if (unit != null && unit.fromSource()) {
         Collection<Problem> errors = unit.parseErrors();
         Collection<Problem> warnings = Collections.emptyList();
-        if (errors.isEmpty() || program.options().hasOption("-recover")) {
-          long start = System.nanoTime();
+        if (errors.isEmpty()) {
           errors = unit.batakjavaErrors();
         }
         if (!errors.isEmpty()) {
@@ -163,9 +142,22 @@ aspect BatakjavaFrontendMain {
       return EXIT_SUCCESS;
     }
 
+    protected int processConstraintCompilationUnit(CompilationUnit unit) {
+      if (unit != null && unit.fromSource()) {
+        Collection<Problem> errors = unit.constraintErrors();
+        if (!errors.isEmpty()) {
+          processErrors(errors, unit);
+          return EXIT_ERROR;
+        }
+      }
+      return EXIT_SUCCESS;
+    }
   }
+}
 
-  abstract public class BatakjavaFrontend extends Frontend {
+aspect BatakjavaBackendMain {
+
+  abstract public class BatakjavaFrontend extends SubtypingFrontend {
 
     protected BatakjavaFrontend(String name, String version) { super(name, version); }
 
@@ -197,7 +189,6 @@ aspect BatakjavaFrontendMain {
       Collection<CompilationUnit> work = new LinkedList<CompilationUnit>();
 
       try {
-
         for (String file: files) {
           program.addSourceFile(file);
         }
@@ -211,7 +202,7 @@ aspect BatakjavaFrontendMain {
 
         int compileResult = EXIT_SUCCESS;
 
-        // Name/error checking
+        // Ba†akJava well-definedness checks
         Iterator<CompilationUnit> checkIter = program.compilationUnitIterator();
         while (checkIter.hasNext()) {
           CompilationUnit unit = checkIter.next();
@@ -230,11 +221,14 @@ aspect BatakjavaFrontendMain {
           return compileResult;
         }
 
-        // Pre-inference checking
-        Iterator<CompilationUnit> preInferenceIter = program.compilationUnitIterator();
-        while (preInferenceIter.hasNext()) {
-          CompilationUnit unit = preInferenceIter.next();
-          int result = processPreInferenceCompilationUnit(unit);
+        // initialize for constraint generation
+        program.initializeTypeCount();
+        program.initializeVariable();
+
+        Iterator<CompilationUnit> constraintIter = program.compilationUnitIterator();
+        while (constraintIter.hasNext()) {
+          CompilationUnit unit = constraintIter.next();
+          int result = processConstraintCompilationUnit(unit);
           switch (result) {
             case EXIT_SUCCESS:
               break;
@@ -245,34 +239,15 @@ aspect BatakjavaFrontendMain {
           }
         }
 
+        System.err.println(program.typeToIntMap);
+
         if (compileResult != EXIT_SUCCESS) {
           return compileResult;
         }
 
-        // Inference
-        compileResult = program.solve();
-
-        if (compileResult != EXIT_SUCCESS) {
+        // inference
+        if (program.solve() != EXIT_SUCCESS) {
           System.err.println("No solution found for the program.");
-          return compileResult;
-        }
-
-        // Post-inference checking
-        Iterator<CompilationUnit> postInferenceIter = program.compilationUnitIterator();
-        while (postInferenceIter.hasNext()) {
-          CompilationUnit unit = postInferenceIter.next();
-          int result = processPostInferenceCompilationUnit(unit);
-          switch (result) {
-            case EXIT_SUCCESS:
-              break;
-            case EXIT_UNHANDLED_ERROR:
-              return result;
-            default:
-              compileResult = result;
-          }
-        }
-
-        if (compileResult != EXIT_SUCCESS) {
           return compileResult;
         }
 
@@ -281,29 +256,19 @@ aspect BatakjavaFrontendMain {
         LinkedList<CompilationUnit> generated = new LinkedList<CompilationUnit>();
         while (generateIter.hasNext()) {
           CompilationUnit unit = generateIter.next();
-          if (unit instanceof BatakjavaCompilationUnit) {
-            CompilationUnit generatedJava = unit.generateJava(program.solutions);
-            CompilationUnit generatedOverview = unit.generateOverview();
-            generatedJava.setFromSource(true);
-            generatedJava.setClassSource(unit.getClassSource());
-            generatedOverview.setFromSource(true);
-            generatedOverview.setClassSource(unit.getClassSource());
-            generated.add(generatedJava);
-            generated.add(generatedOverview);
-          } else {
-            generated.add(unit);
-          }
+          generated.add(unit.generateJava(program.solutions));
+          generated.add(unit.generateOverview());
         }
         program.javaGenTime += System.nanoTime() - genStart;
 
+        // adding generated compilation unit into the new program
         program.setCompilationUnitList(new List());
         for (CompilationUnit generatedUnit: generated) {
           program.addCompilationUnit(generatedUnit);
         }
-
         program.reinitializeSourceTypeMap();
 
-        // Process source compilation units.
+        // java type check
         Iterator<CompilationUnit> generatedIter = program.compilationUnitIterator();
         while (generatedIter.hasNext()) {
           CompilationUnit unit = generatedIter.next();
@@ -326,9 +291,6 @@ aspect BatakjavaFrontendMain {
             program.codeGenTime += System.nanoTime() - start;
           }
         }
-      } catch (AbstractClassfileParser.ClassfileFormatError e) {
-        System.err.println(e.getMessage());
-        return EXIT_UNHANDLED_ERROR;
       } catch (Throwable t) {
         System.err.println("Fatal exception:");
         t.printStackTrace(System.err);
@@ -338,58 +300,9 @@ aspect BatakjavaFrontendMain {
           program.printStatistics(System.out);
         }
       }
-      //printTime();
       return EXIT_SUCCESS;
     }
 
-    protected int processBatakjavaCompilationUnit(CompilationUnit unit) {
-      if (unit != null && unit.fromSource()) {
-        Collection<Problem> errors = unit.parseErrors();
-        Collection<Problem> warnings = Collections.emptyList();
-        if (errors.isEmpty() || program.options().hasOption("-recover")) {
-          long start = System.nanoTime();
-          errors = unit.batakjavaErrors();
-        }
-        if (!errors.isEmpty()) {
-          processErrors(errors, unit);
-          return EXIT_ERROR;
-        } else {
-          if (!warnings.isEmpty() && !program.options().hasOption("-nowarn")) {
-            processWarnings(warnings, unit);
-          }
-        }
-      }
-      return EXIT_SUCCESS;
-    }
-
-    protected int processPreInferenceCompilationUnit(CompilationUnit unit) {
-      if (unit != null && unit.fromSource()) {
-        Collection<Problem> errors = unit.preInferenceErrors();
-        if (!errors.isEmpty()) {
-          processErrors(errors, unit);
-          return EXIT_ERROR;
-        }
-      }
-      return EXIT_SUCCESS;
-    }
-
-    protected int processPostInferenceCompilationUnit(CompilationUnit unit) {
-      if (unit != null && unit.fromSource()) {
-        Collection<Problem> warnings = unit.postInferenceWarnings();
-        if (!warnings.isEmpty()) {
-          processWarnings(warnings, unit);
-          return EXIT_ERROR;
-        }
-      }
-      return EXIT_SUCCESS;
-    }
-
-    private void printTime() {
-      System.err.println("Constraint generation: " + program.constraintGenTime);
-      System.err.println("Solving: " + program.solvingTime);
-      System.err.println("Java generation: " + program.javaGenTime);
-      System.err.println("Type checking: " + program.errorCheckTime);
-      System.err.println("Bytecode generation: " + program.codeGenTime);
-    }
   }
+
 }

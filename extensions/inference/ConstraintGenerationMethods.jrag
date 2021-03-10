@@ -1,406 +1,344 @@
 aspect ConstraintGeneration {
 
-  protected void Access.generateVarConstraints(TypeDecl type, OrConstraint or) {
-    if (type.isOverview()) {
-      SimpleSet<TypeDecl> types = lookupTypeSet(type.packageName(), type.name());
-      Iterator<TypeDecl> iter = types.iterator();
-      while (iter.hasNext()) {
-        AndConstraint and = new AndConstraint();
-        and.add(this, iter.next());
-        or.add(and);
-      }
-    } else {
-      AndConstraint and = new AndConstraint();
-      and.add(this, type);
-      or.add(and);
-    }
-  }
-
-  private void ClassInstanceExpr.generateConstructorConstraints(TypeDecl type, OrConstraint or) {
-    for (ConstructorDecl constructor: type.constructors()) {
-      if (getNumArg() == constructor.getNumParameter()) {
-        // Build AndConstraint for this specific constructor
-        AndConstraint and = new AndConstraint();
-
-        // Object created constraint
-        and.add(this, type);
-
-        // Parameter constraints
-        for (int i = 0; i < getNumArg(); i++) {
-          generateArgConstraints(i, constructor, and);
+  // this is the given argument; parameter is the parameter to be checked against
+  public SetConstraint Expr.generateArgConstraints(ParameterDeclaration parameter) {
+    Iterator<TypeDecl> argIter = constraintToTypeSet().iterator();
+    Iterator<TypeDecl> parameterIter = parameter.typeSet().iterator();
+    SetConstraint result = new DisjunctionConstraint();
+    while (argIter.hasNext()) {
+      TypeDecl argType = argIter.next();
+      while (parameterIter.hasNext()) {
+        TypeDecl parameterType = parameterIter.next();
+        SetConstraint trace = argType.constraintApplicable(parameterType);
+        if (!trace.isUnknown()) {
+          SetConstraint subconstraint
+            = parameter.getTypeAccess().build(build(new ConjunctionConstraint(), argType), parameterType);
+          result = result.add(subconstraint.add(trace));
         }
-
-        or.add(and);
       }
     }
+    return result.size() > 0 ? result : new UnknownConstraint();
   }
 
-  private void ClassInstanceExpr.generateArgConstraints(int i, ConstructorDecl constructor, AndConstraint and) {
-    TypeDecl type = constructor.getParameter(i).type();
-    if (type.isOverview()) {
-      OrConstraint subOr = new OrConstraint();
-      SimpleSet<TypeDecl> typeSet = lookupTypeSet(type.packageName(), type.name());
-      Iterator<TypeDecl> iter = typeSet.iterator();
-      while (iter.hasNext()) {
-        AndConstraint subAnd = new AndConstraint();
-        subAnd.addExact(getArg(i), iter.next());
-        subOr.add(subAnd);
-      }
-      and.add(subOr);
-    } else {
-      and.addExact(getArg(i), type);
-    }
-  }
-
-  private void SuperConstructorAccess.generateConstructorConstraints(TypeDecl type, OrConstraint or) {
-    for (ConstructorDecl constructor: type.constructors()) {
-      if (getNumArg() == constructor.getNumParameter()) {
-        AndConstraint and = new AndConstraint();
-
-        and.add(this, type);
-
-        for (int i = 0; i < getNumArg(); i++) {
-          generateArgConstraints(i, constructor, and);
+  /**
+   * Methods for ClassInstanceExpr.constraints()
+   */
+  // this is the object instantiation; type is the type that can be instantiated; result is the resulting constraint
+  private SetConstraint ClassInstanceExpr.generateConstraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    Iterator<TypeDecl> typeIter = typeSet().iterator();
+    while (typeIter.hasNext()) {
+      TypeDecl type = typeIter.next(); 
+      for (ConstructorDecl constructor: type.constructors()) {
+        if ((getNumArg() == constructor.getNumParameter()) && constructor.accessibleFrom(hostType())
+            && (!constructor.isProtected() || hasTypeDecl() || constructor.hostPackage().equals(hostPackage()))) {
+          SetConstraint sub = new ConjunctionConstraint();
+          int applicableArg = 0;
+          for (int i = 0; i < getNumArg(); i++) {
+            SetConstraint arg = getArg(i).generateArgConstraints(constructor.getParameter(i));
+            if (!arg.isUnknown()) {
+              applicableArg++;
+              sub.add(arg);
+            } 
+          }
+          if (applicableArg == getNumArg()) {
+            result = result.add(build(sub, type));
+          }
         }
-
-        or.add(and);
       }
     }
+    return result.size() > 0 ? result : new UnknownConstraint();
   }
 
-  private void SuperConstructorAccess.generateArgConstraints(int i, ConstructorDecl constructor, AndConstraint and) {
-    TypeDecl type = constructor.getParameter(i).type();
-    if (type.isOverview()) {
-      OrConstraint subOr = new OrConstraint();
-      SimpleSet<TypeDecl> typeSet = lookupTypeSet(type.packageName(), type.name());
-      Iterator<TypeDecl> iter = typeSet.iterator();
-      while (iter.hasNext()) {
-        AndConstraint subAnd = new AndConstraint();
-        subAnd.addExact(getArg(i), iter.next());
-        subOr.add(subAnd);
+  private SetConstraint SuperConstructorAccess.generateConstraints() {
+    TypeDecl hostType = hostType();
+    SetConstraint result = new DisjunctionConstraint();
+    if (hostType instanceof ClassDecl && ((ClassDecl) hostType).hasSuperClass()) {
+      Access access = ((ClassDecl) hostType).getSuperClass();
+      Iterator<TypeDecl> superTypeIter = access.typeSet().iterator();
+      while (superTypeIter.hasNext()) {
+        TypeDecl superType = superTypeIter.next();
+        SetConstraint subresult = new DisjunctionConstraint();
+        for (ConstructorDecl constructor: superType.constructors()) {
+          if ((getNumArg() == constructor.getNumParameter()) && constructor.accessibleFrom(hostType())) {
+            SetConstraint sub = new ConjunctionConstraint();
+            int applicableArg = 0;
+            for (int i = 0; i < getNumArg(); i++) {
+              SetConstraint arg = getArg(i).generateArgConstraints(constructor.getParameter(i));
+              if (!arg.isUnknown()) {
+                applicableArg++;
+                sub.add(arg);
+              }
+            }
+            if (applicableArg == getNumArg()) {
+              result.add(sub);
+            }
+          }
+        }        
+        if (subresult.size() > 0) {
+          SetConstraint constraint = access.build(new ConjunctionConstraint(), superType).add(subresult);
+          result = result.add(constraint);
+        }
       }
-      and.add(subOr);
-    } else {
-      and.addExact(getArg(i), type);
     }
+    return result.size() > 0 ? result : new UnknownConstraint();
   }
 
-  private void MethodAccess.generateMethodConstraints(TypeDecl type, OrConstraint or) {
-    Map<String,Collection<MethodDecl>> methodMap = type.versionedMethodsNameMap();
-    if (methodMap.containsKey(name())) {
-      for (MethodDecl method: methodMap.get(name())) {
+  /**
+   * Methods for VarAccess.constraints()
+   */
+  private SetConstraint VarAccess.generateConstraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    Map<TypeDecl,SimpleSet<Variable>> map = versionedLookupVariable(name());
+    for (TypeDecl qualifierType: map.keySet()) {
+      for (Variable variable: map.get(qualifierType)) {
+        SetConstraint trace = qualifierType.constraintApplicable(variable.hostType());
+        if (!trace.isUnknown()) {
+          Iterator<TypeDecl> variableTypeIter = variable.typeSet().iterator();
+          while (variableTypeIter.hasNext()) {
+            SetConstraint subconstraint = isQualified()
+              ? qualifier().build(build(new ConjunctionConstraint(), variableTypeIter.next()), qualifierType)
+              : build(new ConjunctionConstraint(), variableTypeIter.next());
+            subconstraint = subconstraint.add(trace);
+            result = result.add(subconstraint);
+          }
+        }
+      }
+    }
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
+  /**
+   * Methods for MethodAccess.constraints()
+   */
+  private SetConstraint MethodAccess.generateConstraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    Map<TypeDecl,Collection<MethodDecl>> map = versionedLookupMethod(name());
+    for (TypeDecl qualifierType: map.keySet()) {
+      for (MethodDecl method: map.get(qualifierType)) {
         if (getNumArg() == method.getNumParameter()) {
-          TypeDecl returnType = method.type();
-          if (returnType.isOverview()) {
-            SimpleSet<TypeDecl> returnTypeSet = lookupTypeSet(returnType.packageName(), returnType.name());
-            Iterator<TypeDecl> iter = returnTypeSet.iterator();
-            while (iter.hasNext()) {
-              AndConstraint and = new AndConstraint();
-              and.add(this, iter.next());
-              for (int i = 0; i < getNumArg(); i++) {
-                generateArgConstraints(i, method, and);
-              }
-              or.add(and);
-            }
-          } else {
-            AndConstraint and = new AndConstraint();
-            and.add(this, returnType);
-            for (int i = 0; i< getNumArg(); i++) {
-              generateArgConstraints(i, method, and);
-            }
-            or.add(and);
-          }
-        }
-      }
-    }
-    if (type instanceof ClassDecl) {
-      SimpleSet<Access> ancestorAccess = type.overviewAncestor();
-      if (ancestorAccess.isSingleton()) {
-        Access superAccess = ancestorAccess.singletonValue();
-        TypeDecl superClass = superAccess.type();
-        SimpleSet<TypeDecl> superTypes = lookupTypeSet(superClass.packageName(), superClass.name());
-        Iterator<TypeDecl> iter = superTypes.iterator();
-        while (iter.hasNext()) {
-          // This part may cause problems, because of overridden methods
-          TypeDecl superType = iter.next();
-          Map<String,Collection<MethodDecl>> superMethodMap = superType.versionedMethodsNameMap();
-          if (superMethodMap.containsKey(name())) {
-            for (MethodDecl method: superMethodMap.get(name())) {
-              if (getNumArg() == method.getNumParameter()) {
-                TypeDecl returnType = method.type();
-                if (returnType.isOverview()) {
-                  SimpleSet<TypeDecl> typeSetSuperMethod = lookupTypeSet(returnType.packageName(), returnType.name());
-                  Iterator<TypeDecl> iterSuperMethod = typeSetSuperMethod.iterator();
-                  while (iterSuperMethod.hasNext()) {
-                    AndConstraint and = new AndConstraint();
-                    and.add(this, iterSuperMethod.next());
-                    and.add(superAccess, superType);
-                    for (int i = 0; i< getNumArg(); i++) {
-                      generateArgConstraints(i, method, and);
-                    }
-                    or.add(and);
-                  }
-                } else {
-                  AndConstraint and = new AndConstraint();
-                  and.add(this, returnType);
-                  and.add(superAccess, superType);
-                  for (int i = 0; i< getNumArg(); i++) {
-                    generateArgConstraints(i, method, and);
-                  }
-                  or.add(and);
-                }
-              }
+          SetConstraint sub = new ConjunctionConstraint();
+          SetConstraint trace = qualifierType.constraintApplicable(method.hostType());
+          int applicableArg = 0;
+          for (int i = 0; i < getNumArg(); i++) {
+            SetConstraint arg = getArg(i).generateArgConstraints(method.getParameter(i));
+            if (!arg.isUnknown()) {
+              applicableArg++;
+              sub.add(arg);
             }
           }
-        }
-      }
-    }
-  }
-
-  private void MethodAccess.generateMethodConstraints(TypeDecl type, OrConstraint or, InferenceConstraint with) {
-    Map<String,Collection<MethodDecl>> methodMap = type.versionedMethodsNameMap();
-    if (methodMap.containsKey(name())) {
-      for (MethodDecl method: methodMap.get(name())) {
-        if (getNumArg() == method.getNumParameter()) {
-          TypeDecl returnType = method.type();
-          if (returnType.isOverview()) {
-            SimpleSet<TypeDecl> returnTypeSet = lookupTypeSet(returnType.packageName(), returnType.name());
-            Iterator<TypeDecl> iter = returnTypeSet.iterator();
-            while (iter.hasNext()) {
-              AndConstraint and = new AndConstraint();
-              and.add(with);
-              and.add(this, iter.next());
-              for (int i = 0; i< getNumArg(); i++) {
-                generateArgConstraints(i, method, and);
-              }
-              or.add(and);
-            }
-          } else {
-            AndConstraint and = new AndConstraint();
-            and.add(with);
-            and.add(this, returnType);
-            for (int i = 0; i< getNumArg(); i++) {
-              generateArgConstraints(i, method, and);
-            }
-            or.add(and);
-          }
-        }
-      }
-    }
-    if (type instanceof ClassDecl) {
-      SimpleSet<Access> ancestorAccess = type.overviewAncestor();
-      if (ancestorAccess.isSingleton()){
-        Access superAccess = ancestorAccess.singletonValue();
-        TypeDecl superClass = superAccess.type();
-        SimpleSet<TypeDecl> superTypes = lookupTypeSet(superClass.packageName(), superClass.name());
-        Iterator<TypeDecl> iter = superTypes.iterator();
-        while (iter.hasNext()) {
-          // This part may cause problems, because of overridden methods
-          TypeDecl superType = iter.next();
-          Map<String,Collection<MethodDecl>> superMethodMap = superType.versionedMethodsNameMap();
-          if (superMethodMap.containsKey(name())) {
-            for (MethodDecl method: superMethodMap.get(name())) {
-              if (getNumArg() == method.getNumParameter()) {
-                TypeDecl returnType = method.type();
-                if (returnType.isOverview()) {
-                  SimpleSet<TypeDecl> typeSetSuper = lookupTypeSet(returnType.packageName(), returnType.name());
-                  Iterator<TypeDecl> iterSuper = typeSetSuper.iterator();
-                  while (iterSuper.hasNext()) {
-                    AndConstraint and = new AndConstraint();
-                    and.add(with);
-                    and.add(this, iterSuper.next());
-                    and.add(superAccess, superType);
-                    for (int i = 0; i< getNumArg(); i++) {
-                      generateArgConstraints(i, method, and);
-                    }
-                    or.add(and);
-                  }
-                } else {
-                  AndConstraint and = new AndConstraint();
-                  and.add(with);
-                  and.add(this, returnType);
-                  and.add(superAccess, superType);
-                  for (int i = 0; i< getNumArg(); i++) {
-                    generateArgConstraints(i, method, and);
-                  }
-                  or.add(and);
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  private void MethodAccess.generateArgConstraints(int i, MethodDecl method, AndConstraint and) {
-    TypeDecl type = method.getParameter(i).type();
-    if (!type.isTypeVariable()) {
-      if (type.isOverview()) {
-        OrConstraint subOr = new OrConstraint();
-        SimpleSet<TypeDecl> typeSet = lookupTypeSet(type.packageName(), type.name());
-        Iterator<TypeDecl> iter = typeSet.iterator();
-        while (iter.hasNext()) {
-          AndConstraint subAnd = new AndConstraint();
-          subAnd.addExact(getArg(i), iter.next());
-          subOr.add(subAnd);
-        }
-        and.add(subOr);
-      } else {
-        if (!type.isObject()) {
-          and.addExact(getArg(i), type);
-        }
-      }
-    }
-  }
-
-  private void VarAccess.generateFieldConstraints(TypeDecl type, OrConstraint or) {
-    Map<String,SimpleSet<Variable>> fieldMap = type.versionedMemberFieldsMap();
-    if (fieldMap.containsKey(name())) {
-      for (Variable field: fieldMap.get(name())) {
-        TypeDecl fieldType = field.type();
-        if (fieldType.isOverview()) {
-          SimpleSet<TypeDecl> typeSet = lookupTypeSet(fieldType.packageName(), fieldType.name());
-          Iterator<TypeDecl> iter = typeSet.iterator();
-          while (iter.hasNext()) {
-            AndConstraint and = new AndConstraint();
-            and.addExact(this, iter.next());
-            or.add(and);
-          }
-        } else {
-          AndConstraint and = new AndConstraint();
-          and.addExact(this, fieldType);
-          or.add(and);
-        }
-      }
-    }
-    if (type instanceof ClassDecl && or.size() == 0) {
-      SimpleSet<Access> ancestorAccess = type.overviewAncestor();
-      if (ancestorAccess.isSingleton()) {
-        Access superAccess = ancestorAccess.singletonValue();
-        TypeDecl superClass = superAccess.type();
-        SimpleSet<TypeDecl> superTypes = lookupTypeSet(superClass.packageName(), superClass.name());
-        Iterator<TypeDecl> iter = superTypes.iterator();
-        while (iter.hasNext()) {
-          // This part may cause problems, because of overridden methods
-          TypeDecl superType = iter.next();
-          Map<String,SimpleSet<Variable>> superFieldMap = superType.versionedMemberFieldsMap();
-          if (superFieldMap.containsKey(name())) {
-            for (Variable field: superFieldMap.get(name())) {
-              TypeDecl fieldType = field.type();
-              if (fieldType.isOverview()) {
-                SimpleSet<TypeDecl> typeSetSuperField = lookupTypeSet(fieldType.packageName(), fieldType.name());
-                Iterator<TypeDecl> iterSuperField = typeSetSuperField.iterator();
-                while (iterSuperField.hasNext()) {
-                  AndConstraint and = new AndConstraint();
-                  and.add(superAccess, superType);
-                  and.addExact(this, iterSuperField.next());
-                  or.add(and);
-                }
+          if (applicableArg == getNumArg() && !trace.isUnknown()) {
+            Iterator<TypeDecl> returnTypeIter = method.type().typeSet().iterator();
+            while (returnTypeIter.hasNext()) {
+              sub = build(sub.add(trace), returnTypeIter.next());
+              if (isQualified()) {
+                result = result.add(qualifier().build(sub, qualifierType));
               } else {
-                AndConstraint and = new AndConstraint();
-                and.add(superAccess, superType);
-                and.addExact(this, fieldType);
-                or.add(and);
+                result = result.add(sub);
               }
             }
           }
         }
       }
     }
+    return result.size() > 0 ? result : new UnknownConstraint();
   }
 
-  private void VarAccess.generateFieldConstraints(TypeDecl type, OrConstraint or, InferenceConstraint with) {
-    Map<String,SimpleSet<Variable>> fieldMap = type.versionedMemberFieldsMap();
-    if (fieldMap.containsKey(name())) {
-      for (Variable field: fieldMap.get(name())) {
-        TypeDecl fieldType = field.type();
-        if (fieldType.isOverview()) {
-          SimpleSet<TypeDecl> typeSet = lookupTypeSet(fieldType.packageName(), fieldType.name());
-          Iterator<TypeDecl> iter = typeSet.iterator();
-          while (iter.hasNext()) {
-            AndConstraint and = new AndConstraint();
-            and.add(with);
-            and.addExact(this, iter.next());
-            or.add(and);
-          }
-        } else {
-          AndConstraint and = new AndConstraint();
-          and.add(with);
-          and.addExact(this, fieldType);
-          or.add(and);
+  private SetConstraint InstanceOfExpr.generateConstraints() {
+    SetConstraint result = getExpr().generateSubtypeConstraints(getTypeAccess());
+    return result.size() > 0
+      ? build(new ConjunctionConstraint(), typeBoolean()).add(result)
+      : new UnknownConstraint();
+  }
+
+  /**
+   * Used for both ReturnStmt, Declarator, InstanceOfExpr.constraints()
+   */
+  // this is the source expression; destination is the destination expression
+  public SetConstraint Expr.generateSubtypeConstraints(Expr destination) {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl sourceType: constraintToTypeSet()) {
+      for (TypeDecl destType: destination.constraintToTypeSet()) {
+        SetConstraint trace = sourceType.constraintApplicable(destType);
+        if (!trace.isUnknown()) {
+          SetConstraint subconstraint 
+            = destination.build(build(new ConjunctionConstraint(), sourceType), destType);
+          subconstraint = subconstraint.add(trace);
+          result.add(subconstraint);
         }
       }
     }
-    if (type instanceof ClassDecl && or.size() == 0) {
-      SimpleSet<Access> ancestorAccess = type.overviewAncestor();
-      if (ancestorAccess.isSingleton()) {
-        Access superAccess = ancestorAccess.singletonValue();
-        TypeDecl superClass = superAccess.type();
-        SimpleSet<TypeDecl> superTypes = lookupTypeSet(superClass.packageName(), superClass.name());
-        Iterator<TypeDecl> iter = superTypes.iterator();
-        while (iter.hasNext()) {
-          // This part may cause problems, because of overridden methods
-          TypeDecl superType = iter.next();
-          Map<String,SimpleSet<Variable>> superFieldMap = superType.versionedMemberFieldsMap();
-          if (superFieldMap.containsKey(name())) {
-            for (Variable field: superFieldMap.get(name())) {
-              TypeDecl fieldType = field.type();
-              if (fieldType.isOverview()) {
-                SimpleSet<TypeDecl> typeSetSuperField = lookupTypeSet(fieldType.packageName(), fieldType.name());
-                Iterator<TypeDecl> iterSuperField = typeSetSuperField.iterator();
-                while (iterSuperField.hasNext()) {
-                  AndConstraint and = new AndConstraint();
-                  and.add(with);
-                  and.add(superAccess, superType);
-                  and.addExact(this, iterSuperField.next());
-                  or.add(and);
-                }
-              } else {
-                AndConstraint and = new AndConstraint();
-                and.add(with);
-                and.add(superAccess, superType);
-                and.addExact(this, fieldType);
-                or.add(and);
-              }
-            }
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
+  private SetConstraint ArrayInit.generateConstraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl initializerType: declAccess().constraintToTypeSet()) {
+      int applicableInit = 0;
+      SetConstraint sub = new ConjunctionConstraint();
+      for (int i = 0; i < getNumInit(); i++) {
+        Expr e = getInit(i);
+        SetConstraint aux = new DisjunctionConstraint();
+        for (TypeDecl initType: e.constraintToTypeSet()) {
+          SetConstraint trace = initType.constraintApplicable(initializerType.componentType());
+          if (!trace.isUnknown()) {
+            aux = aux.add(e.build(new ConjunctionConstraint(), initType).add(trace));
+          }
+        }
+        if (aux.size() > 0) {
+          applicableInit++;
+          sub = sub.add(aux);
+        }
+      }
+      if (applicableInit == getNumInit()) {
+        result = result.add(declAccess().build(sub, initializerType));
+      }
+    }
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
+  private SetConstraint ArrayAccess.generateConstraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    if (isQualified()) {
+      for (TypeDecl qualifierType: qualifier().constraintToTypeSet()) {
+        for (TypeDecl accessType: getExpr().constraintToTypeSet()) {
+          if (qualifierType.isArrayDecl() && accessType.unaryNumericPromotion().isInt()
+              && accessType.isIntegralType()) {
+            result = result.add(
+              getExpr().build(
+                qualifier().build(
+                  build(new ConjunctionConstraint(), qualifierType.elementType()), 
+                  qualifierType),
+                accessType));
           }
         }
       }
     }
+    return result.size() > 0 ? result : new UnknownConstraint();
   }
-
-  syn boolean TypeDecl.hasOverviewAncestor() = false;
-
-  eq ClassDecl.hasOverviewAncestor() {
-    if (hasSuperClass()) {
-      TypeDecl superclass = getSuperClass().type();
-      if (superclass.isOverview()) {
-        return true;
-      }
-
-      if (superclass.isVersioned()) {
-        return superclass.hasOverviewAncestor();
+ 
+  /**
+   * Constraint generation for AssignExpr
+   */
+  protected SetConstraint AssignSimpleExpr.generateConstraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl source: getSource().constraintToTypeSet()) {
+      for (TypeDecl dest: getDest().constraintToTypeSet()) {
+        SetConstraint trace = source.constraintApplicable(dest);
+        if (!trace.isUnknown()) {
+          SetConstraint subconstraint 
+            = getDest().build(getSource().build(new ConjunctionConstraint(), source), dest).add(trace);
+          result = result.add(subconstraint);
+        }
       }
     }
-    return false;
+    return result.size() > 0 ? result : new UnknownConstraint();
   }
 
-  syn SimpleSet<Access> TypeDecl.overviewAncestor() = emptySet();
-
-  eq ClassDecl.overviewAncestor() {
-    if (hasSuperClass()) {
-      TypeDecl superclass = getSuperClass().type();
-      if (superclass.isOverview()) {
-        SimpleSet<Access> set = emptySet();
-        return set.add(getSuperClass());
-      }
-
-      if (superclass.isVersioned()) {
-        return superclass.overviewAncestor();
+  protected SetConstraint AssignExpr.generateConstraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl source: getSource().constraintToTypeSet()) {
+      for (TypeDecl dest: getDest().constraintToTypeSet()) {
+        if (source.isPrimitive() && dest.isPrimitive()) {
+          result = result.add(
+              getDest().build(
+                getSource().build(new ConjunctionConstraint(), source), 
+              dest));
+        }
       }
     }
-    return emptySet();
+    return result.size() > 0 ? result : new UnknownConstraint();
   }
+
+  protected SetConstraint AssignMultiplicativeExpr.generateConstraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl source: getSource().constraintToTypeSet()) {
+      for (TypeDecl dest: getDest().constraintToTypeSet()) {
+        if (!source.isBoolean() && !dest.isBoolean() && source.isPrimitive() && dest.isPrimitive()) {
+          result = result.add(
+            getDest().build(
+              getSource().build(new ConjunctionConstraint(), source),
+            dest));
+        }
+      }
+    }
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
+  protected SetConstraint AssignPlusExpr.generateConstraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl source: getSource().constraintToTypeSet()) {
+      for (TypeDecl dest: getDest().constraintToTypeSet()) {
+        if (dest.isString() && !(source.isVoid())) {
+          result = result.add(
+            getDest().build(
+              getSource().build(new ConjunctionConstraint(), source),
+            dest));
+        } else if (!source.isBoolean() && !dest.isBoolean() 
+            && source.isPrimitive() && dest.isPrimitive()) {
+          result = result.add(
+            getDest().build(
+              getSource().build(new ConjunctionConstraint(), source),
+            dest));
+        }
+      } 
+    }
+    return result.size() > 0 ? result : new UnknownConstraint(); 
+  }
+
+  protected SetConstraint AssignMinusExpr.generateConstraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl source: getSource().constraintToTypeSet()) {
+      for (TypeDecl dest: getDest().constraintToTypeSet()) {
+        if (!source.isBoolean() && !dest.isBoolean() 
+            && source.isPrimitive() && dest.isPrimitive()) {
+          result = result.add(
+            getDest().build(
+              getSource().build(new ConjunctionConstraint(), source),
+            dest));
+        }
+      }
+    }
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
+  protected SetConstraint AssignShiftExpr.generateConstraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl source: getSource().constraintToTypeSet()) {
+      for (TypeDecl dest: getDest().constraintToTypeSet()) {
+        if (source.isIntegralType() && dest.isIntegralType()
+            && source.isPrimitive() && dest.isPrimitive()) {
+          result = result.add(
+            getDest().build(
+              getSource().build(new ConjunctionConstraint(), source),
+            dest));
+        }
+      }
+    }    
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
+  protected SetConstraint AssignBitwiseExpr.generateConstraints() {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl source: getSource().constraintToTypeSet()) {
+      for (TypeDecl dest: getDest().constraintToTypeSet()) {
+        if ((source.isIntegralType() && dest.isIntegralType()) || 
+            (source.isBoolean() && dest.isBoolean())) {
+          if (source.isPrimitive() && dest.isPrimitive()) {
+            result = result.add(
+              getDest().build(
+                getSource().build(new ConjunctionConstraint(), source),
+              dest));
+          }
+        }
+      }
+    }    
+    return result.size() > 0 ? result : new UnknownConstraint();   
+  }
+
+  /**
+   * Constraint generation for Unary
+   */
+
 
 }
