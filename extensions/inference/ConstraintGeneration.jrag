@@ -223,6 +223,7 @@ aspect ConstraintGeneration {
   eq IfStmt.constraints() = getCondition().build(new ConjunctionConstraint(), getCondition().typeBoolean());
 
   // Declarator
-  syn SetConstraint Declarator.constraints() = hasInit() ? getInit().generateSubtypeConstraints(getTypeAccess()) : new UnknownConstraint();
-
+  syn SetConstraint Declarator.constraints() 
+    = hasInit() ? getInit().generateSubtypeConstraints(declarationType()) : new UnknownConstraint();
+  
 }

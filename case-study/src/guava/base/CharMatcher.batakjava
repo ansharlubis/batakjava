@@ -1,0 +1,14 @@
+package guava.base ver 1;
+
+public class CharMatcher {
+
+  public CharMatcher() {}
+
+  public static None none() {
+    return new None("CharMatcher.none()");
+  }
+
+  public boolean matches(char c) {
+    return false;
+  }
+}

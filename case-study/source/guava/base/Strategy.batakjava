@@ -1,0 +1,14 @@
+package guava.base ver 1;
+
+public class Strategy {
+  private JdkPattern separatorPattern;
+
+  public Strategy(JdkPattern sep) {
+    this.separatorPattern = sep;
+  }
+
+  public SplittingIterator iterator(Splitter splitter, String toSplit) {
+    JdkMatcher matcher = separatorPattern.matcher(toSplit);
+    return new SplittingIterator(splitter, toSplit, matcher);
+  }  
+}

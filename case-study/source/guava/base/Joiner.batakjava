@@ -1,0 +1,36 @@
+package guava.base ver 1;
+
+public class Joiner {
+  public static Joiner on(String separator) {
+    return new Joiner(separator);
+  }
+
+  public static Joiner on(char separator) {
+    return new Joiner(String.valueOf(separator));
+  }
+
+  private final String separator;
+
+  public Joiner(String s) {
+    this.separator = s;
+  }
+
+  public StringBuilder appendTo(StringBuilder appendable, SplittingIterable parts) {
+    return appendTo(appendable, parts.iterate());
+  }
+
+  public StringBuilder appendTo(StringBuilder appendable, SplittingIterator parts) {
+    if (parts.hasNext()) {
+      appendable.append(toString(parts.next()));
+      while (parts.hasNext()) {
+        appendable.append(this.separator);
+        appendable.append(toString(parts.next()));
+      }
+    }
+    return appendable;
+  }
+
+  public String toString(String part) {
+    return part.toString();
+  }
+}

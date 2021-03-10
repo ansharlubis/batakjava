@@ -1,0 +1,11 @@
+package guava.base ver 1;
+
+public class None extends NamedFastMatcher {
+
+  public static final None INSTANCE = new None();
+
+  private None() {
+    super("CharMatcher.none()");
+  }
+    
+}

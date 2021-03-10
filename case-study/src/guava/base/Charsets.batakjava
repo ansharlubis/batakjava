@@ -1,0 +1,11 @@
+package guava.base ver 1;
+
+import java.nio.charset.*;
+
+public class Charsets {
+  public Charsets() {}
+
+  public Charset UTF8() {
+    return Charset.forName("UTF_8");
+  }
+}

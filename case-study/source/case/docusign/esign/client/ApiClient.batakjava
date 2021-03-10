@@ -1,0 +1,12 @@
+package com.docusign.esign.client ver 1;
+import com.fasterxml.jackson.databind.*;
+
+public class ApiClient {
+
+  private ObjectMapper mapper;
+
+  public ApiClient() {
+    this.mapper = new ObjectMapper();
+    this.mapper.setFilters(new Object());
+  }
+}

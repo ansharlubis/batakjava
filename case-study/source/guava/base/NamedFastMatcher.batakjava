@@ -1,0 +1,11 @@
+package guava.base ver 1;
+
+public class NamedFastMatcher extends CharMatcher {
+
+  private final String description;
+
+  protected NamedFastMatcher(String d) {
+    this.description = d;
+  }
+
+}

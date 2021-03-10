@@ -1,0 +1,18 @@
+package thesis.downstream ver 2;
+import thesis.upstream.*;
+import thesis.midstream.*;
+
+public class Main {
+  public void before() {
+    ExtendedPoint e1 = new ExtendedPoint(1,0);
+    ExtendedPoint e2 = new ExtendedPoint(0,0);
+    double d = e1.reverse().distance(e2.reverse());
+  }
+
+  public void after() {
+    Point p1 = new Point(1,0);
+    Point p2 = new Point(1,90);
+    float f = p1.getR();
+    double d = p1.distance(p2);
+  }
+}

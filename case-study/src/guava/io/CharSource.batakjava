@@ -1,0 +1,24 @@
+package guava.io ver 1;
+
+import java.io.*;
+import java.nio.charset.*;
+import java.util.*;
+
+public class CharSource {
+
+  private File file;
+  private Charset charset;
+
+  public CharSource(File file, Charset charset) {
+    this.file = file;
+    this.charset = charset;
+  }
+
+  public ArrayList<String> readLines(LineProcessor processor) {
+    return new ArrayList<String>();
+  }
+
+  public io.InputStreamReader openStream() throws IOException {
+    return new io.InputStreamReader(new FileInputStream(this.file), this.charset);
+  }
+}

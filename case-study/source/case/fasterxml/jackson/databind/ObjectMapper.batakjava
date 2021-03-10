@@ -1,0 +1,9 @@
+package com.fasterxml.jackson.databind ver 1;
+
+public class ObjectMapper {
+
+  public ObjectMapper() {}
+
+  public void setFilters(Object obj) {}
+
+}

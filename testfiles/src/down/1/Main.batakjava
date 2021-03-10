@@ -6,12 +6,8 @@ public class Main extends Point {
     super(x,y);
   }
 
-  public Point create() {
-    return new Main(0,0);
-  }
-
   public static void main(String[] args) {
-    float f = new Main(0,0).getX();
+    Point p = new Main(0,0);
   }
 
 }

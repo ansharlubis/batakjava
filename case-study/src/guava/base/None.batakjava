@@ -1,0 +1,7 @@
+package guava.base ver 1;
+
+public class None extends NamedFastMatcher{
+  public None(String description) {
+    super(description);
+  }
+}

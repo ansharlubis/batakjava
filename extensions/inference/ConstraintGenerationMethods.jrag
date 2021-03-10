@@ -9,11 +9,13 @@ aspect ConstraintGeneration {
       TypeDecl argType = argIter.next();
       while (parameterIter.hasNext()) {
         TypeDecl parameterType = parameterIter.next();
-        SetConstraint trace = argType.constraintApplicable(parameterType);
-        if (!trace.isUnknown()) {
-          SetConstraint subconstraint
-            = parameter.getTypeAccess().build(build(new ConjunctionConstraint(), argType), parameterType);
-          result = result.add(subconstraint.add(trace));
+        Optional<SetConstraint> trace = argType.versionedMethodInvocationConversionTo(parameterType);
+        if (trace.isPresent()) {
+          SetConstraint subconstraint = build(new ConjunctionConstraint(), argType);
+          if (!parameter.hostType().isGenerated() && parameter.hostType().isVersioned()) {
+            subconstraint = parameter.getTypeAccess().build(subconstraint, parameterType);
+          }
+          result = result.add(subconstraint.add(trace.get()));
         }
       }
     }
@@ -71,7 +73,7 @@ aspect ConstraintGeneration {
               }
             }
             if (applicableArg == getNumArg()) {
-              result.add(sub);
+              subresult = subresult.add(sub);
             }
           }
         }        
@@ -92,14 +94,14 @@ aspect ConstraintGeneration {
     Map<TypeDecl,SimpleSet<Variable>> map = versionedLookupVariable(name());
     for (TypeDecl qualifierType: map.keySet()) {
       for (Variable variable: map.get(qualifierType)) {
-        SetConstraint trace = qualifierType.constraintApplicable(variable.hostType());
-        if (!trace.isUnknown()) {
+        Optional<SetConstraint> trace = qualifierType.versionedInstanceOf(variable.hostType());
+        if (trace.isPresent()) {
           Iterator<TypeDecl> variableTypeIter = variable.typeSet().iterator();
           while (variableTypeIter.hasNext()) {
             SetConstraint subconstraint = isQualified()
               ? qualifier().build(build(new ConjunctionConstraint(), variableTypeIter.next()), qualifierType)
               : build(new ConjunctionConstraint(), variableTypeIter.next());
-            subconstraint = subconstraint.add(trace);
+            subconstraint = subconstraint.add(trace.get());
             result = result.add(subconstraint);
           }
         }
@@ -118,7 +120,7 @@ aspect ConstraintGeneration {
       for (MethodDecl method: map.get(qualifierType)) {
         if (getNumArg() == method.getNumParameter()) {
           SetConstraint sub = new ConjunctionConstraint();
-          SetConstraint trace = qualifierType.constraintApplicable(method.hostType());
+          Optional<SetConstraint> trace = qualifierType.versionedInstanceOf(method.hostType());
           int applicableArg = 0;
           for (int i = 0; i < getNumArg(); i++) {
             SetConstraint arg = getArg(i).generateArgConstraints(method.getParameter(i));
@@ -127,10 +129,10 @@ aspect ConstraintGeneration {
               sub.add(arg);
             }
           }
-          if (applicableArg == getNumArg() && !trace.isUnknown()) {
+          if (applicableArg == getNumArg() && trace.isPresent()) {
             Iterator<TypeDecl> returnTypeIter = method.type().typeSet().iterator();
             while (returnTypeIter.hasNext()) {
-              sub = build(sub.add(trace), returnTypeIter.next());
+              sub = build(sub.add(trace.get()), returnTypeIter.next());
               if (isQualified()) {
                 result = result.add(qualifier().build(sub, qualifierType));
               } else {
@@ -159,12 +161,12 @@ aspect ConstraintGeneration {
     SetConstraint result = new DisjunctionConstraint();
     for (TypeDecl sourceType: constraintToTypeSet()) {
       for (TypeDecl destType: destination.constraintToTypeSet()) {
-        SetConstraint trace = sourceType.constraintApplicable(destType);
-        if (!trace.isUnknown()) {
+        Optional<SetConstraint> trace = sourceType.versionedAssignConversionTo(destType, this);
+        if (trace.isPresent()) {
           SetConstraint subconstraint 
             = destination.build(build(new ConjunctionConstraint(), sourceType), destType);
-          subconstraint = subconstraint.add(trace);
-          result.add(subconstraint);
+          subconstraint = subconstraint.add(trace.get());
+          result = result.add(subconstraint);
         }
       }
     }
@@ -180,9 +182,9 @@ aspect ConstraintGeneration {
         Expr e = getInit(i);
         SetConstraint aux = new DisjunctionConstraint();
         for (TypeDecl initType: e.constraintToTypeSet()) {
-          SetConstraint trace = initType.constraintApplicable(initializerType.componentType());
-          if (!trace.isUnknown()) {
-            aux = aux.add(e.build(new ConjunctionConstraint(), initType).add(trace));
+          Optional<SetConstraint> trace = initType.versionedAssignConversionTo(initializerType.componentType(), e);
+          if (trace.isPresent()) {
+            aux = aux.add(e.build(new ConjunctionConstraint(), initType).add(trace.get()));
           }
         }
         if (aux.size() > 0) {
@@ -224,10 +226,10 @@ aspect ConstraintGeneration {
     SetConstraint result = new DisjunctionConstraint();
     for (TypeDecl source: getSource().constraintToTypeSet()) {
       for (TypeDecl dest: getDest().constraintToTypeSet()) {
-        SetConstraint trace = source.constraintApplicable(dest);
-        if (!trace.isUnknown()) {
+        Optional<SetConstraint> trace = source.versionedAssignConversionTo(dest, getSource());
+        if (trace.isPresent()) {
           SetConstraint subconstraint 
-            = getDest().build(getSource().build(new ConjunctionConstraint(), source), dest).add(trace);
+            = getDest().build(getSource().build(new ConjunctionConstraint(), source), dest).add(trace.get());
           result = result.add(subconstraint);
         }
       }

@@ -1,0 +1,12 @@
+package thesis.down ver 1;
+import thesis.up.*;
+import thesis.mid.*;
+
+public class Main {
+  public void before() {
+    Point p1 = new Point(0,0);
+    Point p2 = new PointEx(0,1);
+    Point p2 = e.reverse();
+    double d = p1.distance(p2);
+  }
+}

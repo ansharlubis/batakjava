@@ -1,0 +1,14 @@
+package thesis.up ver 1;
+
+public class Point {
+  private float x;
+  private float y;
+  public Point(float x, float y) {
+    this.x = x; this.y = y;
+  }
+  public float getX() { return x; }
+  public float getY() { return y; }
+  public double distance(Point other) {
+    return java.lang.Math.sqrt(other.getX() - other.getY());
+  }
+}

@@ -11,17 +11,18 @@ aspect ConstraintGeneration {
 
   syn Collection<LocalConstraint> Expr.getConstraints() = constraints().putIntoList();
 
+  eq Dot.getConstraints() = Collections.emptyList();
+
   Stmt contributes each getConstraints() to Program.getConstraints();
 
   syn Collection<LocalConstraint> Stmt.getConstraints() = constraints().putIntoList();
 
-  eq ReturnStmt.getConstraints()
-    = hasResult() ? constraints().putIntoList() : Collections.emptyList();
+  eq ReturnStmt.getConstraints() = hasResult() ? constraints().putIntoList() : Collections.emptyList();
 
   Declarator contributes each getConstraints() to Program.getConstraints();
 
-  syn Collection<LocalConstraint> Declarator.getConstraints()
-    = hasInit() ? constraints().putIntoList() : Collections.emptyList();
+  syn Collection<LocalConstraint> Declarator.getConstraints() = hasInit() ? constraints().putIntoList() : Collections.emptyList();
+
 
 }
 

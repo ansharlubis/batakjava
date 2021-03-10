@@ -1,0 +1,14 @@
+package thesis.upstream ver 2;
+
+public class Point {
+  private float r;
+  private int a;
+  public Point(float r, int a) {
+    this.r = r; this.a = a;
+  }
+  public float getR() { return r; }
+  public int getA() { return a; }
+  public double distance(Point other) {
+    return java.lang.Math.sqrt(other.getR() - other.getA());
+  }
+}

@@ -1,0 +1,24 @@
+package guava.io ver 1;
+
+import java.io.*;
+import java.util.*;
+
+public class Closer {
+
+  public SuppressingSuppressor suppressor;
+  private Deque<Closeable> stack = new ArrayDeque<>(4);
+  private Throwable thrown;
+
+  public Closer() {
+    if (new SuppressingSuppressor().isAvailable()) {
+      this.suppressor = new SuppressingSuppressor();
+    }
+  }
+
+  public io.InputStreamReader register(io.InputStreamReader closeable) {
+    if (closeable != null) {
+      this.stack.addFirst(closeable);
+    }
+    return closeable;
+  }
+}

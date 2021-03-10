@@ -1,0 +1,329 @@
+package verbalregex ver 1;
+
+import java.util.*;
+import java.util.regex.*;
+
+public class Builder {
+
+  public StringBuilder prefixes = new StringBuilder();
+  public StringBuilder source = new StringBuilder();
+  public StringBuilder suffixes = new StringBuilder();
+  public int modifiers = Pattern.MULTILINE;
+
+  private static final Map<Character, Integer> SYMBOL_MAP = new HashMap<Character, Integer>() {{
+      put('d', Pattern.UNIX_LINES);
+      put('i', Pattern.CASE_INSENSITIVE);
+      put('x', Pattern.COMMENTS);
+      put('m', Pattern.MULTILINE);
+      put('s', Pattern.DOTALL);
+      put('u', Pattern.UNICODE_CASE);
+      put('U', Pattern.UNICODE_CHARACTER_CLASS);
+  }};
+
+  public Builder() {}
+
+  private String sanitize(final String pValue) {
+    return pValue.replaceAll("[\\W]", "\\\\$0");
+  }  
+
+  private int countOccurrencesOf(String where, String what) {
+    return (where.length() - where.replace(what, "").length()) / what.length();
+  }
+
+  public VerbalExpression build() {
+    Pattern pattern = Pattern.compile(new StringBuilder(prefixes)
+      .append(source).append(suffixes).toString(), modifiers);
+    return new VerbalExpression(pattern);
+  }
+
+  public Builder add(final String pValue) {
+    this.source.append(pValue);
+    return this;
+  }
+
+  public Builder add(final Builder regex) {
+    return this.group().add(regex.build().toString()).endGr();
+  }
+
+  public Builder startOfLine(final boolean pEnable) {
+    if (pEnable) {
+      this.prefixes.append("^");
+    } else {
+      this.prefixes.append("");
+    }
+    if (!pEnable) {
+      this.prefixes = new StringBuilder(this.prefixes.toString().replace("^", ""));
+    }
+    return this;
+  }
+
+  public Builder startOfLine() {
+    return startOfLine(true);
+  }
+
+  public Builder endOfLine(final boolean pEnable) {
+    if (pEnable) {
+      this.suffixes.append("$");
+    } else {
+      this.suffixes.append("");
+    }
+    if (!pEnable) {
+      this.suffixes = new StringBuilder(this.suffixes.toString().replace("$", ""));
+    }
+    return this;
+  }
+
+  public Builder endOfLine() {
+    return endOfLine(true);
+  }
+
+  public Builder then(final String pValue) {
+    return this.add("(?:" + sanitize(pValue) + ")");
+  }
+
+  public Builder find(final String value) {
+    return this.then(value);
+  }
+
+  public Builder maybe(final String pValue) {
+    return this.then(pValue).add("?");
+  }
+
+  public Builder maybe(final Builder regex) {
+    return this.group().add(regex).endGr().add("?");
+  }
+
+  public Builder anything() {
+    return this.add("(?:.*)");
+  }
+
+  public Builder anythingBut(final String pValue) {
+    return this.add("(?:[^" + sanitize(pValue) + "]*)");
+  }
+
+  public Builder something() {
+    return this.add("(?:.+)");
+  }
+
+  public Builder somethingButNot(final String pValue) {
+    return this.add("(?:[^" + sanitize(pValue) + "]+)");
+  }
+
+  public Builder lineBreak() {
+    return this.add("(?:\\n|(?:\\r\\n)|(?:\\r\\r))");
+  }
+
+  public Builder br() {
+    return this.lineBreak();
+  }
+
+  public Builder tab() {
+    return this.add("(?:\\t)");
+  }
+
+  public Builder word() {
+    return this.add("(?:\\w+)");
+  }
+
+  public Builder wordChar() {
+    return this.add("(?:\\w)");
+  }
+
+  public Builder nonWordChar() {
+    return this.add("(?:\\W)");
+  }
+
+  public Builder nonDigit() {
+    return this.add("(?:\\D)");
+  }
+
+  public Builder digit() {
+    return this.add("(?:\\d)");
+  }
+
+  public Builder space() {
+    return this.add("(?:\\s)");
+  }
+
+  public Builder nonSpace() {
+    return this.add("(?:\\S)");
+  }
+
+  public Builder wordBoundary() {
+    return this.add("(?:\\b)");
+  }
+
+  public Builder anyOf(final String pValue) {
+    this.add("[" + sanitize(pValue) + "]");
+    return this;
+  }
+
+  public Builder any(final String value) {
+    return this.anyOf(value);
+  }
+
+  public Builder range(final String[] pArgs) {
+    StringBuilder value = new StringBuilder("[");
+    for (int firstInPairPosition = 1; firstInPairPosition < pArgs.length; firstInPairPosition += 2) {
+      String from = sanitize(pArgs[firstInPairPosition - 1]);
+      String to = sanitize(pArgs[firstInPairPosition]);
+
+      value.append(from).append("-").append(to);
+    }
+    value.append("]");
+
+    return this.add(value.toString());
+  }
+
+  public Builder addModifier(final char pModifier) {
+    if (SYMBOL_MAP.containsKey(pModifier)) {
+      modifiers |= SYMBOL_MAP.get(pModifier);
+    }
+
+    return this;
+  }
+
+  public Builder removeModifier(final char pModifier) {
+    if (SYMBOL_MAP.containsKey(pModifier)) {
+      modifiers &= ~SYMBOL_MAP.get(pModifier);
+    }
+
+    return this;
+  }
+
+  public Builder withAnyCase(final boolean pEnable) {
+    if (pEnable) {
+      this.addModifier('i');
+    } else {
+      this.removeModifier('i');
+    }
+    return this;
+  }
+
+  public Builder withAnyCase() {
+    return withAnyCase(true);
+  }
+
+  public Builder searchOneLine(final boolean pEnable) {
+    if (pEnable) {
+      this.removeModifier('m');
+    } else {
+      this.addModifier('m');
+    }
+    return this;
+  }
+
+  public Builder multiple(final String pValue, final int[] count) {
+    if (count == null) {
+      return this.then(pValue).oneOrMore();
+    }
+    switch (count.length) {
+      case 1:
+        return this.then(pValue).count(count[0]);
+      case 2:
+        return this.then(pValue).count(count[0], count[1]);
+      default:
+        return this.then(pValue).oneOrMore();
+    }
+  }
+
+  public Builder oneOrMore() {
+    return this.add("+");
+  }
+
+  public Builder zeroOrMore() {
+    return this.add("*");
+  }
+
+  public Builder count(final int count) {
+    this.source.append("{").append(count).append("}");
+    return this;
+  }
+
+  public Builder count(final int from, final int to) {
+    this.source.append("{").append(from).append(",").append(to).append("}");
+    return this;
+  }
+
+  public Builder atLeast(final int from) {
+    return this.add("{").add(String.valueOf(from)).add(",}");
+  }
+
+  public Builder or(final String pValue) {
+    this.prefixes.append("(?:");
+
+    int opened = countOccurrencesOf(this.prefixes.toString(), "(");
+    int closed = countOccurrencesOf(this.suffixes.toString(), ")");
+
+    if (opened >= closed) {
+      this.suffixes = new StringBuilder(")" + this.suffixes.toString());
+    }
+
+    this.add(")|(?:");
+    if (pValue != null) {
+      this.then(pValue);
+    }
+    return this;
+  }
+
+  public Builder oneOf(final String[] pValues) {
+    if (pValues != null && pValues.length > 0) {
+      this.add("(?:");
+      for(int i = 0; i < pValues.length; i++) {
+        String value = pValues[i];
+        this.add("(?:");
+        this.add(value);
+        this.add(")");
+        if (i < pValues.length - 1) {
+          this.add("|");
+        }
+      }
+      this.add(")");
+    }
+    return this;
+  }
+
+  public Builder capture() {
+    return this.capture(null);
+  }
+
+  public Builder capture(final String name) {
+    this.suffixes.append(")");
+
+    if (name == null || name.trim().isEmpty()) {
+      return this.add("(");
+    }
+    return this.add("(?<" + name + ">");
+  }
+
+  public Builder capt() {
+    return this.capture();
+  }
+
+  public Builder capt(final String name) {
+    return this.capture(name);
+  }
+
+  public Builder group() {
+    this.suffixes.append(")");
+    return this.add("(?:");
+  }
+
+  public Builder endCapture() {
+    if (this.suffixes.indexOf(")") != -1) {
+      this.suffixes.setLength(suffixes.length() - 1);
+      return this.add(")");
+    } else {
+      throw new IllegalStateException("Can't end capture (group) when it not started");
+    }
+  }
+
+  public Builder endCapt() {
+    return this.endCapture();
+  }
+
+  public Builder endGr() {
+    return this.endCapture();
+  }
+
+}

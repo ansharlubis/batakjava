@@ -1,0 +1,11 @@
+package thesis.mid ver 1;
+import thesis.up.*;
+
+public class PointEx extends Point {
+  public PointEx(float x, float y) {
+    super(x,y);
+  }
+  public Point reverse() {
+    return new Point(getY(), getX());
+  }
+}

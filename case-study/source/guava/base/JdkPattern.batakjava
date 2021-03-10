@@ -1,0 +1,15 @@
+package guava.base ver 1;
+
+import java.util.regex.*;
+
+public class JdkPattern {
+  private final Pattern pattern;
+
+  public JdkPattern(Pattern p) {
+    this.pattern = p;
+  }
+
+  public JdkMatcher matcher(CharSequence t) {
+    return new JdkMatcher(pattern.matcher(t));
+  }
+}

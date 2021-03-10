@@ -1,0 +1,9 @@
+package com.fasterxml.jackson.core ver 2;
+
+public class JsonParser {
+
+  public JsonParser() {}
+
+  public boolean isExpectedStartObjectToken() { return true; }
+
+}

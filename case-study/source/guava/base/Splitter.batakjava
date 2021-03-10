@@ -1,0 +1,20 @@
+package guava.base ver 1;
+
+public class Splitter {
+  public final CharMatcher trimmer = CharMatcher.none();
+  public final boolean omitEmptyStrings = false;
+  public final Strategy strategy;
+  public final int limit = Integer.MAX_VALUE;  
+
+  private Splitter(Strategy strat) {
+    this.strategy = strat;
+  }
+
+  public static Splitter on(JdkPattern separator) {
+    return new Splitter(new Strategy(separator));
+  }
+
+  public SplittingIterator splittingIterator(String sequence) {
+    return strategy.iterator(this, sequence);
+  }    
+}

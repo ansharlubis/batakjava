@@ -1,0 +1,7 @@
+package com.fasterxml.jackson.databind ver 2;
+
+public class ObjectMapper {
+
+  public ObjectMapper() {}
+
+}

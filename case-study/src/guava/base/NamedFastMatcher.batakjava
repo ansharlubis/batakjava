@@ -1,0 +1,8 @@
+package guava.base ver 1;
+
+public class NamedFastMatcher extends CharMatcher {
+  protected String description;
+  public NamedFastMatcher(String description) {
+    this.description = Preconditions.checkNotNull(description);
+  }
+}

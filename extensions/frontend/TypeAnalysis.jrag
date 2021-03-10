@@ -4,7 +4,7 @@ aspect TypeAnalysis {
    * Check if the ClassDecl is a generated overview
    * which contains FieldDeclarator BATAKJAVACLASS
    */
-  syn boolean TypeDecl.isOverview() = false;
+  syn lazy boolean TypeDecl.isOverview() = false;
 
   eq ClassDecl.isOverview() {
     for (BodyDecl bodyDecl: getBodyDeclList()) {
@@ -70,8 +70,8 @@ aspect TypeAnalysis {
     = methodInvocationConversionTo(target) ? new ConjunctionConstraint() : new UnknownConstraint();
 
   eq ClassDecl.constraintApplicable(TypeDecl target) {
-    if (target.isPrimitiveType()) {
-      return methodInvocationConversionTo(target) ? new ConjunctionConstraint() : new UnknownConstraint();
+    if (methodInvocationConversionTo(target)) {
+      return new ConjunctionConstraint();
     }
     if (this == target) {
       return new ConjunctionConstraint();
@@ -151,5 +151,318 @@ aspect TypeAnalysis {
    */
   syn boolean CompilationUnit.isOverviewUnit()
     = getNumTypeDecl() == 1 && getTypeDecl(0).isOverview();
+
+}
+
+aspect TypeConversion {
+
+  syn Optional<SetConstraint> TypeDecl.versionedIdentityConversionTo(TypeDecl type)
+    = this == type ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
+
+  syn Optional<SetConstraint> TypeDecl.versionedWideningConversionTo(TypeDecl type) = versionedInstanceOf(type);
+  syn lazy Optional<SetConstraint> TypeDecl.versionedNarrowingConversionTo(TypeDecl type) = versionedInstanceOf(type);
+
+  eq PrimitiveType.versionedWideningConversionTo(TypeDecl type) = versionedInstanceOf(type);
+
+  eq PrimitiveType.versionedNarrowingConversionTo(TypeDecl type) = type.versionedInstanceOf(this);
+  eq ShortType.versionedNarrowingConversionTo(TypeDecl type)
+    = type.isByte() || type.isChar() ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
+  eq CharType.versionedNarrowingConversionTo(TypeDecl type)
+    = type.isByte() || type.isShort() ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
+  eq ByteType.versionedNarrowingConversionTo(TypeDecl type)
+    = type.isChar() ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
+
+  eq ReferenceType.versionedWideningConversionTo(TypeDecl type) = versionedInstanceOf(type);
+
+  eq ReferenceType.versionedNarrowingConversionTo(TypeDecl type) {
+    if (type.versionedInstanceOf(this).isPresent()) {
+      return type.versionedInstanceOf(this);
+    }
+    if (isClassDecl() && !getModifiers().isFinal() && type.isInterfaceDecl()) {
+      return Optional.of(new ConjunctionConstraint());
+    }
+    if (isInterfaceDecl() && type.isClassDecl() && !type.getModifiers().isFinal()) {
+      return Optional.of(new ConjunctionConstraint());
+    }
+    if (isInterfaceDecl() && type.versionedInstanceOf(this).isPresent()) {
+      return type.versionedInstanceOf(this);
+    }
+    if (fullName().equals("java.lang.Object") && type.isInterfaceDecl()) {
+      return Optional.of(new ConjunctionConstraint());
+    }
+    if (isArrayDecl() && type.isArrayDecl() 
+        && elementType().versionedInstanceOf(type.elementType()).isPresent()) {
+      return elementType().versionedInstanceOf(type.elementType());
+    }
+    return Optional.empty();
+  }
+
+  syn Optional<SetConstraint> TypeDecl.versionedStringConversion() = Optional.of(new ConjunctionConstraint());
+  eq VoidType.versionedStringConversion() = Optional.empty();
+
+  syn Optional<SetConstraint> TypeDecl.versionedAssignConversionTo(TypeDecl type, Expr expr) {
+    if (versionedIdentityConversionTo(type).isPresent()) {
+      return versionedIdentityConversionTo(type);
+    }
+    if (versionedWideningConversionTo(type).isPresent()) {
+      return versionedWideningConversionTo(type);
+    }
+    boolean sourceIsConstant = expr != null ? expr.isConstant() : false;
+    if (sourceIsConstant && (isInt() || isChar() || isShort() || isByte())
+        && (type.isByte() || type.isShort() || type.isChar()) && narrowingConversionTo(type)
+        && expr.representableIn(type)) {
+      return Optional.of(new ConjunctionConstraint());
+    }
+    return Optional.empty();
+  }
+
+  syn Optional<SetConstraint> TypeDecl.versionedMethodInvocationConversionTo(TypeDecl type) {
+    if (versionedIdentityConversionTo(type).isPresent()) {
+      return versionedIdentityConversionTo(type);
+    }
+    if (versionedWideningConversionTo(type).isPresent()) {
+      return versionedWideningConversionTo(type);
+    }
+    return Optional.empty();
+  }
+
+  syn Optional<SetConstraint> TypeDecl.versionedCastingConversionTo(TypeDecl type) {
+    if (versionedIdentityConversionTo(type).isPresent()) {
+      return versionedIdentityConversionTo(type);
+    }
+    if (versionedWideningConversionTo(type).isPresent()) {
+      return versionedWideningConversionTo(type);
+    }
+    if (versionedNarrowingConversionTo(type).isPresent()) {
+      return versionedNarrowingConversionTo(type);
+    }    
+    return Optional.empty();
+  }
+
+  eq ClassDecl.versionedCastingConversionTo(TypeDecl type) {
+    if (type.isArrayDecl() && isObject()) {
+      return Optional.of(new ConjunctionConstraint());
+    } else if (type.isClassDecl()) {
+      if (type == this) {
+        return Optional.of(new ConjunctionConstraint());
+      } else if (versionedInstanceOf(type).isPresent()) {
+        return versionedInstanceOf(type);
+      } else if (type.versionedInstanceOf(this).isPresent()) {
+        return type.versionedInstanceOf(this);
+      } else {
+        return Optional.empty();
+      }
+    } else if (type.isInterfaceDecl()) {
+      if (!isFinal()) {
+        return Optional.of(new ConjunctionConstraint());
+      } else if (versionedInstanceOf(type).isPresent()) {
+        return versionedInstanceOf(type);
+      } else {
+        return Optional.empty();
+      } 
+    } else {
+      return super.versionedCastingConversionTo(type);
+    }
+  }
+
+  eq InterfaceDecl.versionedCastingConversionTo(TypeDecl type) {
+    if (type.isArrayDecl()) {
+      return type.versionedInstanceOf(this);
+    } else if (type.isClassDecl()) {
+      if (!type.isFinal()) {
+        return Optional.of(new ConjunctionConstraint());
+      } else if (type.versionedInstanceOf(this).isPresent()) {
+        return type.versionedInstanceOf(this);
+      } else {
+        return Optional.empty();
+      }
+    } else if (type.isInterfaceDecl()) {
+      if (castingConversionTo(type)) {
+        return Optional.of(new ConjunctionConstraint());
+      } else {
+        return Optional.empty();
+      }
+    } else {
+      return super.versionedCastingConversionTo(type);
+    }
+  }
+
+  eq ArrayDecl.versionedCastingConversionTo(TypeDecl type) {
+    if (type.isArrayDecl()) {
+      TypeDecl SC = componentType();
+      TypeDecl TC = type.componentType();
+      if (SC.isPrimitiveType() && TC.isPrimitiveType() && SC == TC) {
+        return Optional.of(new ConjunctionConstraint());
+      }
+      if (SC.isReferenceType() && TC.isReferenceType()) {
+        return SC.versionedCastingConversionTo(TC);
+      }
+      return Optional.empty();
+    } else if (type.isClassDecl()) {
+      return type.isObject() ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
+    } else if (type.isInterfaceDecl()) {
+      return type == typeSerializable() || type == typeCloneable()
+        ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
+    } else {
+      return super.versionedCastingConversionTo(type);
+    }
+  }
+
+}
+
+aspect TypeWideningAndIdentity {
+
+  syn lazy Optional<SetConstraint> TypeDecl.versionedInstanceOf(TypeDecl type);
+  eq TypeDecl.versionedInstanceOf(TypeDecl type) 
+    = type == this ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
+  eq ClassDecl.versionedInstanceOf(TypeDecl type) = type.versionedIsSupertypeOfClassDecl(this);
+  eq InterfaceDecl.versionedInstanceOf(TypeDecl type) = type.versionedIsSupertypeOfInterfaceDecl(this);
+  eq ArrayDecl.versionedInstanceOf(TypeDecl type) = type.versionedIsSupertypeOfArrayDecl(this);
+  eq PrimitiveType.versionedInstanceOf(TypeDecl type) = type.versionedIsSupertypeOfPrimitiveType(this);
+  eq NullType.versionedInstanceOf(TypeDecl type) = type.versionedIsSupertypeOfNullType(this);
+  eq VoidType.versionedInstanceOf(TypeDecl type) = type.versionedIsSupertypeOfVoidType(this);
+
+  eq UnknownType.versionedInstanceOf(TypeDecl type) = Optional.of(new ConjunctionConstraint());
+  eq UnknownType.versionedIsSupertypeOfClassDecl(ClassDecl type) = Optional.of(new ConjunctionConstraint());
+  eq UnknownType.versionedIsSupertypeOfInterfaceDecl(InterfaceDecl type) = Optional.of(new ConjunctionConstraint());
+  eq UnknownType.versionedIsSupertypeOfArrayDecl(ArrayDecl type) = Optional.of(new ConjunctionConstraint());
+  eq UnknownType.versionedIsSupertypeOfPrimitiveType(PrimitiveType type) = Optional.of(new ConjunctionConstraint());
+  eq UnknownType.versionedIsSupertypeOfNullType(NullType type) = Optional.of(new ConjunctionConstraint());
+
+  syn Optional<SetConstraint> TypeDecl.versionedIsSupertypeOfClassDecl(ClassDecl type)
+    = type == this ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
+
+  eq ClassDecl.versionedIsSupertypeOfClassDecl(ClassDecl type) {
+    if (type == this) {
+      return Optional.of(new ConjunctionConstraint());
+    }
+    boolean flag = false;
+    SetConstraint result = new DisjunctionConstraint();
+    if (type.hasSuperClass()) {
+      for (TypeDecl check: type.superclass().typeSet()) {
+        SetConstraint sub = new ConjunctionConstraint();
+        if (check.versionedInstanceOf(this).isPresent()) {
+          if (type.superclass().isOverview()) {
+            sub = type.getSuperClass().build(sub, check);
+          }
+          sub = sub.add(check.versionedInstanceOf(this).get());
+          result = result.add(sub);
+          flag = true;
+        }
+      }
+    }
+    return flag ? Optional.of(result) : Optional.empty();
+  }
+  
+  eq InterfaceDecl.versionedIsSupertypeOfClassDecl(ClassDecl type) {
+    if (super.versionedIsSupertypeOfClassDecl(type).isPresent()) {
+      return super.versionedIsSupertypeOfClassDecl(type);
+    }
+    for (InterfaceDecl iface: type.superInterfaces()) {
+      if (iface.instanceOf(this)) {
+        return Optional.of(new ConjunctionConstraint());
+      }
+    }
+    boolean flag = false;
+    SetConstraint result = new DisjunctionConstraint();
+    if (type.hasSuperClass()) {
+      for (TypeDecl check: type.superclass().typeSet()) {
+        SetConstraint sub = new ConjunctionConstraint();
+        if (check.versionedInstanceOf(this).isPresent()) {
+          if (type.superclass().isOverview()) {
+            sub = type.getSuperClass().build(sub, check);
+          }
+          sub = sub.add(check.versionedInstanceOf(this).get());
+          result = result.add(sub);
+          flag = true;
+        }
+      }
+    }
+    return flag ? Optional.of(result) : Optional.empty();
+  }
+  
+  syn Optional<SetConstraint> TypeDecl.versionedIsSupertypeOfInterfaceDecl(InterfaceDecl type)
+    = type == this ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
+  
+  eq ClassDecl.versionedIsSupertypeOfInterfaceDecl(InterfaceDecl type) 
+    = isObject() ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
+
+  eq InterfaceDecl.versionedIsSupertypeOfInterfaceDecl(InterfaceDecl type) {
+    if (type == this) {
+      return Optional.of(new ConjunctionConstraint());
+    }
+    for (InterfaceDecl iface: type.superInterfaces()) {
+      if (iface.instanceOf(this)) {
+        return Optional.of(new ConjunctionConstraint());
+      }
+    }
+    return Optional.empty();
+  }
+
+  syn Optional<SetConstraint> TypeDecl.versionedIsSupertypeOfArrayDecl(ArrayDecl type)
+    = type == this ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
+  
+  eq ClassDecl.versionedIsSupertypeOfArrayDecl(ArrayDecl type) {
+    if (type == this) {
+      return Optional.of(new ConjunctionConstraint());
+    }
+    boolean flag = false;
+    SetConstraint result = new DisjunctionConstraint();
+    if (type.hasSuperClass()) {
+      for (TypeDecl check: type.superclass().typeSet()) {
+        SetConstraint sub = new ConjunctionConstraint();
+        if (check.versionedInstanceOf(this).isPresent()) {
+          if (type.superclass().isOverview()) {
+            sub = type.getSuperClass().build(sub, check);
+          }
+          sub = sub.add(check.versionedInstanceOf(this).get());
+          result = result.add(sub);
+          flag = true;
+        }
+      }
+    }
+    return flag ? Optional.of(result) : Optional.empty();
+  }
+
+  eq InterfaceDecl.versionedIsSupertypeOfArrayDecl(ArrayDecl type) {
+    if (super.versionedIsSupertypeOfArrayDecl(type).isPresent()) {
+      return super.versionedIsSupertypeOfArrayDecl(type);
+    }
+    for (InterfaceDecl iface: type.superInterfaces()) {
+      if (iface.instanceOf(this)) {
+        return Optional.of(new ConjunctionConstraint());
+      }
+    }
+    return Optional.empty();
+  }
+
+  eq ArrayDecl.versionedIsSupertypeOfArrayDecl(ArrayDecl type) {
+    if (type.elementType().isPrimitive() && elementType().isPrimitive()) {
+      if (type.dimension() == dimension() && type.elementType() == elementType()) {
+        return Optional.of(new ConjunctionConstraint());
+      }
+    }
+    return type.componentType().versionedInstanceOf(componentType());
+  }
+
+  syn Optional<SetConstraint> TypeDecl.versionedIsSupertypeOfPrimitiveType(PrimitiveType type)
+    = type == this ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
+
+  eq PrimitiveType.versionedIsSupertypeOfPrimitiveType(PrimitiveType type) {
+    if (type == this) {
+      return Optional.of(new ConjunctionConstraint());
+    }
+    if (type.hasSuperclass() && type.superclass().isPrimitive() && type.superclass().instanceOf(this)) {
+      return Optional.of(new ConjunctionConstraint());
+    }
+    return Optional.empty();
+  }
+
+  syn Optional<SetConstraint> TypeDecl.versionedIsSupertypeOfNullType(NullType type) = Optional.empty();
+  eq ReferenceType.versionedIsSupertypeOfNullType(NullType type) = Optional.of(new ConjunctionConstraint());
+  eq NullType.versionedIsSupertypeOfNullType(NullType type) = Optional.of(new ConjunctionConstraint());
+
+  syn Optional<SetConstraint> TypeDecl.versionedIsSupertypeOfVoidType(VoidType type) = Optional.empty();
+  eq VoidType.versionedIsSupertypeOfVoidType(VoidType type) = Optional.of(new ConjunctionConstraint());
 
 }

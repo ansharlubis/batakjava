@@ -1,0 +1,13 @@
+package guava.io ver 1;
+
+import java.io.*;
+
+public class Suppressor {
+
+  public Suppressor() {}
+
+  public void suppress(Closeable closeable, Throwable thrown, Throwable suppressed) {
+
+  }
+
+}
