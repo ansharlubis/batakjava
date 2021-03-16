@@ -313,21 +313,34 @@ aspect TypeConversion {
 aspect TypeWideningAndIdentity {
 
   syn lazy Optional<SetConstraint> TypeDecl.versionedInstanceOf(TypeDecl type);
+
   eq TypeDecl.versionedInstanceOf(TypeDecl type) 
     = type == this ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
-  eq ClassDecl.versionedInstanceOf(TypeDecl type) = type.versionedIsSupertypeOfClassDecl(this);
-  eq InterfaceDecl.versionedInstanceOf(TypeDecl type) = type.versionedIsSupertypeOfInterfaceDecl(this);
+
+  eq ClassDecl.versionedInstanceOf(TypeDecl type) {
+    if (isVersioned() && !isGenerated()) {
+      return type.versionedIsSupertypeOfClassDecl(this);
+    }
+    return instanceOf(type) ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
+  }
+
+  eq InterfaceDecl.versionedInstanceOf(TypeDecl type) 
+    = instanceOf(type) ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
+
   eq ArrayDecl.versionedInstanceOf(TypeDecl type) = type.versionedIsSupertypeOfArrayDecl(this);
-  eq PrimitiveType.versionedInstanceOf(TypeDecl type) = type.versionedIsSupertypeOfPrimitiveType(this);
-  eq NullType.versionedInstanceOf(TypeDecl type) = type.versionedIsSupertypeOfNullType(this);
-  eq VoidType.versionedInstanceOf(TypeDecl type) = type.versionedIsSupertypeOfVoidType(this);
+
+  eq PrimitiveType.versionedInstanceOf(TypeDecl type) 
+    = instanceOf(type) ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
+
+  eq NullType.versionedInstanceOf(TypeDecl type)
+    = instanceOf(type) ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
+
+  eq VoidType.versionedInstanceOf(TypeDecl type)
+    = instanceOf(type) ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
 
   eq UnknownType.versionedInstanceOf(TypeDecl type) = Optional.of(new ConjunctionConstraint());
-  eq UnknownType.versionedIsSupertypeOfClassDecl(ClassDecl type) = Optional.of(new ConjunctionConstraint());
-  eq UnknownType.versionedIsSupertypeOfInterfaceDecl(InterfaceDecl type) = Optional.of(new ConjunctionConstraint());
+  eq UnknownType.versionedIsSupertypeOfClassDecl(ClassDecl type) = Optional.of(new ConjunctionConstraint());  
   eq UnknownType.versionedIsSupertypeOfArrayDecl(ArrayDecl type) = Optional.of(new ConjunctionConstraint());
-  eq UnknownType.versionedIsSupertypeOfPrimitiveType(PrimitiveType type) = Optional.of(new ConjunctionConstraint());
-  eq UnknownType.versionedIsSupertypeOfNullType(NullType type) = Optional.of(new ConjunctionConstraint());
 
   syn Optional<SetConstraint> TypeDecl.versionedIsSupertypeOfClassDecl(ClassDecl type)
     = type == this ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
@@ -380,24 +393,6 @@ aspect TypeWideningAndIdentity {
     }
     return flag ? Optional.of(result) : Optional.empty();
   }
-  
-  syn Optional<SetConstraint> TypeDecl.versionedIsSupertypeOfInterfaceDecl(InterfaceDecl type)
-    = type == this ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
-  
-  eq ClassDecl.versionedIsSupertypeOfInterfaceDecl(InterfaceDecl type) 
-    = isObject() ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
-
-  eq InterfaceDecl.versionedIsSupertypeOfInterfaceDecl(InterfaceDecl type) {
-    if (type == this) {
-      return Optional.of(new ConjunctionConstraint());
-    }
-    for (InterfaceDecl iface: type.superInterfaces()) {
-      if (iface.instanceOf(this)) {
-        return Optional.of(new ConjunctionConstraint());
-      }
-    }
-    return Optional.empty();
-  }
 
   syn Optional<SetConstraint> TypeDecl.versionedIsSupertypeOfArrayDecl(ArrayDecl type)
     = type == this ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
@@ -444,25 +439,5 @@ aspect TypeWideningAndIdentity {
     }
     return type.componentType().versionedInstanceOf(componentType());
   }
-
-  syn Optional<SetConstraint> TypeDecl.versionedIsSupertypeOfPrimitiveType(PrimitiveType type)
-    = type == this ? Optional.of(new ConjunctionConstraint()) : Optional.empty();
-
-  eq PrimitiveType.versionedIsSupertypeOfPrimitiveType(PrimitiveType type) {
-    if (type == this) {
-      return Optional.of(new ConjunctionConstraint());
-    }
-    if (type.hasSuperclass() && type.superclass().isPrimitive() && type.superclass().instanceOf(this)) {
-      return Optional.of(new ConjunctionConstraint());
-    }
-    return Optional.empty();
-  }
-
-  syn Optional<SetConstraint> TypeDecl.versionedIsSupertypeOfNullType(NullType type) = Optional.empty();
-  eq ReferenceType.versionedIsSupertypeOfNullType(NullType type) = Optional.of(new ConjunctionConstraint());
-  eq NullType.versionedIsSupertypeOfNullType(NullType type) = Optional.of(new ConjunctionConstraint());
-
-  syn Optional<SetConstraint> TypeDecl.versionedIsSupertypeOfVoidType(VoidType type) = Optional.empty();
-  eq VoidType.versionedIsSupertypeOfVoidType(VoidType type) = Optional.of(new ConjunctionConstraint());
 
 }

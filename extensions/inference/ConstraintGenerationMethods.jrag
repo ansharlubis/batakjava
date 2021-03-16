@@ -22,6 +22,20 @@ aspect ConstraintGeneration {
     return result.size() > 0 ? result : new UnknownConstraint();
   }
 
+  public SetConstraint Expr.generateArgArity(ParameterDeclaration parameter) {
+    SetConstraint result = new DisjunctionConstraint();
+    for (TypeDecl argType: constraintToTypeSet()) {
+      for (TypeDecl parameterType: parameter.type().componentType().typeSet()) {
+        Optional<SetConstraint> trace = argType.versionedMethodInvocationConversionTo(parameterType);
+        if (trace.isPresent()) {
+          SetConstraint subconstraint = build(new ConjunctionConstraint(), argType);
+          result = result.add(subconstraint.add(trace.get()));
+        }
+      }
+    }
+    return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
   /**
    * Methods for ClassInstanceExpr.constraints()
    */
@@ -118,21 +132,37 @@ aspect ConstraintGeneration {
     Map<TypeDecl,Collection<MethodDecl>> map = versionedLookupMethod(name());
     for (TypeDecl qualifierType: map.keySet()) {
       for (MethodDecl method: map.get(qualifierType)) {
-        if (getNumArg() == method.getNumParameter()) {
-          SetConstraint sub = new ConjunctionConstraint();
-          Optional<SetConstraint> trace = qualifierType.versionedInstanceOf(method.hostType());
-          int applicableArg = 0;
-          for (int i = 0; i < getNumArg(); i++) {
-            SetConstraint arg = getArg(i).generateArgConstraints(method.getParameter(i));
-            if (!arg.isUnknown()) {
-              applicableArg++;
-              sub.add(arg);
+        Optional<SetConstraint> trace = qualifierType.versionedInstanceOf(method.hostType());
+        if (!method.isVariableArity()) {
+          if (method.getNumParameter() == getNumArg()) {
+            boolean flag = true;
+            SetConstraint sub = new ConjunctionConstraint();
+            for (int i = 0; i < method.getNumParameter(); i++) {
+              SetConstraint arg = getArg(i).generateArgConstraints(method.getParameter(i));
+              if (!arg.isUnknown()) {
+                sub = sub.add(arg);
+              } else {
+                flag = false;
+                break;
+              }
+            }
+            if (flag && trace.isPresent()) {
+              Iterator<TypeDecl> returnTypeIter = method.type().typeSet().iterator();
+              while (returnTypeIter.hasNext()) {
+                sub = build(sub.add(trace.get()), returnTypeIter.next());
+                if (isQualified()) {
+                  result = result.add(qualifier().build(sub, qualifierType));
+                } else {
+                  result = result.add(sub);
+                }
+              }              
             }
           }
-          if (applicableArg == getNumArg() && trace.isPresent()) {
-            Iterator<TypeDecl> returnTypeIter = method.type().typeSet().iterator();
-            while (returnTypeIter.hasNext()) {
-              sub = build(sub.add(trace.get()), returnTypeIter.next());
+        } else {
+          SetConstraint sub = generateVariableArity(method);
+          if (!sub.isUnknown()) {
+            for (TypeDecl returnType: method.type().typeSet()) {
+              sub = build(sub.add(trace.get()), returnType);
               if (isQualified()) {
                 result = result.add(qualifier().build(sub, qualifierType));
               } else {
@@ -144,6 +174,27 @@ aspect ConstraintGeneration {
       }
     }
     return result.size() > 0 ? result : new UnknownConstraint();
+  }
+
+  private SetConstraint MethodAccess.generateVariableArity(MethodDecl method) {
+    SetConstraint sub = new ConjunctionConstraint();
+    for (int i = 0; i < method.getNumParameter() - 1; i++) {
+      SetConstraint arg = getArg(i).generateArgConstraints(method.getParameter(i));
+      if (!arg.isUnknown()) {
+        sub = sub.add(arg);
+      } else {
+        return new UnknownConstraint();
+      }
+    }
+    for (int i = method.getNumParameter() - 1; i < getNumArg(); i++) {
+      SetConstraint arg = getArg(i).generateArgArity(method.lastParameter());
+      if (!arg.isUnknown()) {
+        sub = sub.add(arg);
+      } else {
+        return new UnknownConstraint();
+      }
+    }
+    return sub;
   }
 
   private SetConstraint InstanceOfExpr.generateConstraints() {
