@@ -1,0 +1,5 @@
+package P ver 2;
+
+public class B extends C {
+  public A f2;
+}

@@ -1,0 +1,51 @@
+aspect ErrorCheck {
+
+  coll LinkedList<Problem> CompilationUnit.verProblems() root CompilationUnit;
+
+  /**
+   *  Maybe declare new syn attributes for the extension
+   *  instead of refining old definitions
+   */
+  refine ErrorCheck eq CompilationUnit.errors() {
+    Collection<Problem> errors = new LinkedList();
+    for (Problem problem: verProblems()) {
+      if (problem.severity() == Problem.Severity.ERROR) {
+        errors.add(problem);
+      }
+    }
+    return errors;
+  }
+
+  refine ErrorCheck eq CompilationUnit.warnings() {
+    Collection<Problem> errors = new LinkedList();
+    for (Problem problem: verProblems()) {
+      if (problem.severity() == Problem.Severity.WARNING) {
+        errors.add(problem);
+      }
+    }
+    return errors;
+  }
+
+}
+
+aspect ImplementationCheck {
+
+  VarAccess contributes each implementationCheck() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> VarAccess.implementationCheck() {
+    return Collections.emptyList();
+  }
+
+  ClassInstanceExpr contributes each implementationCheck() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> ClassInstanceExpr.implementationCheck() {
+    return Collections.emptyList();
+  }
+
+  ClassDecl contributes each implementationCheck() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> ClassDecl.implementationCheck() {
+    return Collections.emptyList();
+  }
+
+}

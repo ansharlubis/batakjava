@@ -1,0 +1,32 @@
+aspect ClassPath {
+
+  /** Used for typeSet **/
+  syn lazy List<CompilationUnit> Program.getCompilationUnitList(String prefixName, SimpleSet<String> compiledNames) {
+    List<CompilationUnit> units = new List();
+    for (String compiledName: compiledNames) {
+      String name = !prefixName.isEmpty() ? prefixName + "." + compiledName : compiledName ;
+      final ParseSynchronizer synchronizer;
+      ParseSynchronizer old = parseLocks.get(name);
+      if (old != null) {
+        synchronizer = old;
+      } else {
+        ParseSynchronizer fresh = new ParseSynchronizer();
+        old = parseLocks.putIfAbsent(name, fresh);
+        if (old == null) {
+          synchronizer = fresh;
+        } else {
+          synchronizer = old;
+        }
+      }
+      if (synchronizer.first()) {
+        CompilationUnit result = classPath.getCompilationUnit(name, emptyCompilationUnit());
+        synchronizer.set(result);
+        units.add(result);
+      } else {
+        units.add(synchronizer.get());
+      }
+    }
+    return units;
+  }
+
+}

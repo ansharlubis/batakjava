@@ -1,0 +1,9 @@
+package Q ver 1;
+import P.*;
+
+public class E {
+  private C c;
+  public E(C c) {
+    this.c = c;
+  }
+}

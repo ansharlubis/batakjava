@@ -1,0 +1,26 @@
+aspect ConstructScope {
+
+  /**
+   *  Used for constraint generation.
+   *  Empty takes places of fail subtyping check.
+   */
+  syn Optional<Formula> Expr.verApplicableAndAccessible(ConstructorDecl decl) = Optional.empty();
+
+  eq ClassInstanceExpr.verApplicableAndAccessible(ConstructorDecl decl) {
+    Formula formula = new Formula();
+    if ((getNumArg() == decl.getNumParameter()) && decl.accessibleFrom(hostType()) &&
+        (!decl.isProtected() || hasTypeDecl() || decl.hostPackage().equals(hostPackage()))) {
+      for (int i = 0; i < getNumArg(); i++) {
+        Optional<Formula> arg = getArg(i).argConstraint(decl.getParameter(i));
+        if (arg.isPresent()) {
+          formula = formula.multiply(arg.get());
+        } else {
+          return Optional.empty();
+        }
+      }
+    }
+    return Optional.of(formula);
+  }
+
+
+}

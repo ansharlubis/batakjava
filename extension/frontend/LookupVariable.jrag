@@ -1,0 +1,299 @@
+aspect VariableScope {
+
+  /**
+   *  Lookup variable needs to keep track where the variable is located
+   *  because constraints have to be put on the enclosing class if the
+   *  variable is an inherited field.
+   *
+   *  If the key is an unknown type, then the it is not a field, but
+   *  either a parameter or a field, hence no tracing for constraint is
+   *  needed.
+   */
+  inh Map<TypeDecl, SimpleSet<Variable>> Expr.verLookupVariable(String name);
+
+  eq Program.getChild().verLookupVariable(String name) = new HashMap();
+
+  inh Map<TypeDecl,SimpleSet<Variable>> TypeDecl.verLookupVariable(String name);
+
+  eq TypeDecl.getBodyDecl(int i).verLookupVariable(String name) {
+    Map<TypeDecl, SimpleSet<Variable>> fieldMap = verMemberFields(name);
+    if (!fieldMap.isEmpty()) {
+      return fieldMap;
+    }
+    // No nested classes, this probably end up empty
+    Map<TypeDecl, SimpleSet<Variable>> map = verLookupVariable(name);
+    for (TypeDecl type: map.keySet()) {
+      map.replace(type, removeInstanceVariables(map.get(type)));
+    }
+    return map;
+  }
+
+  inh Map<TypeDecl,SimpleSet<Variable>> BodyDecl.verLookupVariable(String name);
+
+  eq MethodDecl.getBlock().verLookupVariable(String name) {
+    // Check parameter
+    SimpleSet<Variable> result = parameterDeclaration(name);
+    if (!result.isEmpty()) {
+      return new HashMap<TypeDecl, SimpleSet<Variable>>() {{
+        put(unknownType(), result);
+      }};
+    }
+    return verLookupVariable(name);
+  }
+
+  eq MethodDecl.getParameter().verLookupVariable(String name) =
+    new HashMap<TypeDecl, SimpleSet<Variable>>() {{
+      put(unknownType(), parameterDeclaration(name));
+    }};
+
+  eq ConstructorDecl.getBlock().verLookupVariable(String name) {
+    // Check parameter
+    SimpleSet<Variable> result = parameterDeclaration(name);
+    TypeDecl type = hostType();
+    if (!result.isEmpty()) {
+      return new HashMap<TypeDecl,SimpleSet<Variable>>() {{
+        put(type, result);
+      }};
+    }
+    return verLookupVariable(name);
+  }
+
+  eq ConstructorDecl.getParsedConstructorInvocation().verLookupVariable(String name) {
+    // Check parameter
+    SimpleSet<Variable> result = parameterDeclaration(name);
+    TypeDecl type = hostType();
+    if (!result.isEmpty()) {
+      return new HashMap<TypeDecl,SimpleSet<Variable>>() {{
+        put(type, result);
+      }};
+    }
+    return verLookupVariable(name);
+  }
+
+  eq ConstructorDecl.getImplicitConstructorInvocation().verLookupVariable(String name) {
+    // Check parameter
+    SimpleSet<Variable> result = parameterDeclaration(name);
+    TypeDecl hostType = hostType();
+    if (!result.isEmpty()) {
+      return new HashMap<TypeDecl,SimpleSet<Variable>>() {{
+        put(hostType, result);
+      }};
+    }
+
+    Map<TypeDecl, SimpleSet<Variable>> map = verLookupVariable(name);
+    for (TypeDecl type: map.keySet()) {
+      SimpleSet<Variable> newSet = emptySet();
+      for (Variable v: map.get(type)) {
+        if (v.isStatic() || !hostType().verMemberFields(name).containsKey(type)
+            || (hostType().verMemberFields(name).containsKey(type)
+            && !hostType().verMemberFields(name).get(type).contains(v))) {
+          newSet = newSet.add(v);
+        }
+      }
+      map.replace(type, newSet);
+    }
+    return map;
+  }
+
+  eq ConstructorDecl.getParameter().verLookupVariable(String name)
+    = new HashMap<TypeDecl, SimpleSet<Variable>>() {{ put(hostType(), parameterDeclaration(name)); }};
+
+  inh Map<TypeDecl,SimpleSet<Variable>> Stmt.verLookupVariable(String name);
+
+  eq VarDeclStmt.getDeclarator(int index).verLookupVariable(String name) {
+    TypeDecl type = hostType().unknownType();
+    for (int i = index - 1; i >= 0; i -= 1) {
+      if (getDeclarator(i).declaresVariable(name)) {
+        Map<TypeDecl, SimpleSet<Variable>> map = new HashMap();
+        map.put(type, ASTNode.<Variable>emptySet().add(getDeclarator(i)));
+        return map;
+      }
+    }
+    return verLookupVariable(name);
+  }
+
+  inh Map<TypeDecl,SimpleSet<Variable>> Block.verLookupVariable(String name);
+
+  eq Block.getStmt(int index).verLookupVariable(String name) {
+    VariableDeclarator v = localVariableDeclaration(name);
+    TypeDecl type = hostType().unknownType();
+    if (v != null && declaredBeforeUse(v, index)) {
+      return new HashMap<TypeDecl, SimpleSet<Variable>>() {{
+        put(type, ASTNode.<Variable>emptySet().add(v));
+      }};
+    }
+    return verLookupVariable(name);
+  }
+
+  inh Map<TypeDecl,SimpleSet<Variable>> CatchClause.verLookupVariable(String name);
+
+  eq CatchClause.getBlock().verLookupVariable(String name) {
+    SimpleSet<Variable> result = parameterDeclaration(name);
+    TypeDecl type = program().unknownType();
+    if (!result.isEmpty()) {
+      return new HashMap<TypeDecl, SimpleSet<Variable>>() {{
+        put(type, result);
+      }};
+    }
+    return verLookupVariable(name);
+  }
+
+  inh Map<TypeDecl,SimpleSet<Variable>> ForStmt.verLookupVariable(String name);
+
+  eq ForStmt.getInitStmt(int index).verLookupVariable(String name) {
+    TypeDecl type = hostType().unknownType();
+    for (int i = index - 1; i >= 0; i -= 1) {
+      VariableDeclarator decl = getInitStmt(i).variableDeclaration(name);
+      if (decl != null) {
+        return new HashMap<TypeDecl,SimpleSet<Variable>>() {{
+          put(type, ASTNode.<Variable>emptySet().add(decl));
+        }};
+      }
+    }
+    return verLookupVariable(name);
+  }
+
+  eq ForStmt.getCondition().verLookupVariable(String name) = verLocalLookup(name);
+
+  eq ForStmt.getUpdateStmt().verLookupVariable(String name) = verLocalLookup(name);
+
+  eq ForStmt.getStmt().verLookupVariable(String name) = verLocalLookup(name);
+
+  syn lazy Map<TypeDecl,SimpleSet<Variable>> ForStmt.verLocalLookup(String name) {
+    TypeDecl type = hostType().unknownType();
+    VariableDeclarator v = localVariableDeclaration(name);
+    if (v != null) {
+      return new HashMap<TypeDecl,SimpleSet<Variable>>() {{
+        put(type, ASTNode.<Variable>emptySet().add(v));
+      }};
+    }
+    return verLookupVariable(name);
+  }
+
+  eq MethodAccess.getChild().verLookupVariable(String name) = unqualifiedScope().verLookupVariable(name);
+  eq ConstructorAccess.getArg().verLookupVariable(String name) = unqualifiedScope().verLookupVariable(name);
+  eq SuperConstructorAccess.getArg().verLookupVariable(String name) = unqualifiedScope().verLookupVariable(name);
+  eq ArrayAccess.getExpr().verLookupVariable(String name) = unqualifiedScope().verLookupVariable(name);
+  eq ArrayTypeWithSizeAccess.getExpr().verLookupVariable(String name) = unqualifiedScope().verLookupVariable(name);
+  eq ClassInstanceExpr.getArg().verLookupVariable(String name) = unqualifiedScope().verLookupVariable(name);
+  eq Dot.getRight().verLookupVariable(String name) = getLeft().verQualifiedLookupVariable(name);
+
+  eq ParseName.verQualifiedLookupVariable(String name) = new HashMap<TypeDecl,SimpleSet<Variable>>();
+
+  /**
+   *  Lookup variable on dot expressions eventually depends
+   *  on the constraint of the previous access.
+   */
+  syn Map<TypeDecl, SimpleSet<Variable>> Expr.verQualifiedLookupVariable(String name) {
+    Map<TypeDecl, SimpleSet<Variable>> map = new HashMap();
+    for (TypeDecl type: constraintToTypeSet()) {
+      if (type.accessibleFrom(hostType())) {
+        Map<TypeDecl, SimpleSet<Variable>> fieldMap = type.verMemberFields(name);
+        for (TypeDecl fieldHost: fieldMap.keySet()) {
+          map.put(fieldHost, keepAccessibleFields(fieldMap.get(fieldHost)));
+        }
+      }
+    }
+    return map;
+  }
+
+  eq PackageAccess.verQualifiedLookupVariable(String name) = new HashMap();
+
+  eq TypeAccess.verQualifiedLookupVariable(String name) {
+    Map<TypeDecl, SimpleSet<Variable>> map = new HashMap();
+    for (TypeDecl type: typeSet()) {
+      if (type.accessibleFrom(hostType())) {
+        Map<TypeDecl, SimpleSet<Variable>> fieldMap = type.verMemberFields(name);
+        for (TypeDecl fieldHost: fieldMap.keySet()) {
+          SimpleSet<Variable> fields = keepAccessibleFields(fieldMap.get(fieldHost));
+          if (type.isClassDecl()) {
+            fields = removeInstanceVariables(fields);
+          }
+          map.put(fieldHost, fields);
+        }
+      }
+    }
+    return map;
+  }
+
+}
+
+aspect Fields {
+
+  syn lazy SimpleSet<Variable> TypeDecl.verLocalFields(String name) =
+    verLocalFieldsMap().containsKey(name)
+    ? verLocalFieldsMap().get(name)
+    : ASTNode.<Variable>emptySet();
+
+  syn lazy Map<String, SimpleSet<Variable>> TypeDecl.verLocalFieldsMap() {
+    Map<String, SimpleSet<Variable>> map = new HashMap();
+    for (BodyDecl decl: getBodyDeclList()) {
+      if (decl instanceof FieldDecl) {
+        for (FieldDeclarator field: ((FieldDecl) decl).getDeclaratorList()) {
+          putSimpleSetElement(map, field.uncompiledName(), field);
+        }
+      }
+    }
+    return map;
+  }
+
+  /**
+   *  Member fields can branch across different version of superclass,
+   *  so it is necessary to keep track where the field is found for
+   *  constraint generation purposes.
+   */
+  syn lazy Map<TypeDecl, SimpleSet<Variable>> TypeDecl.verMemberFields(String name) {
+    Map<TypeDecl, SimpleSet<Variable>> result = new HashMap();
+    result.put(this, verLocalFields(name));
+    return result;
+  }
+
+  eq ClassDecl.verMemberFields(String name) {
+    Map<TypeDecl, SimpleSet<Variable>> result = new HashMap();
+
+    SimpleSet<Variable> fields = verLocalFields(name);
+    if (!fields.isEmpty()) {
+      result.put(this, fields);
+      return result;
+    }
+
+    for (TypeDecl superType: superclassSet()) {
+      Map<TypeDecl, SimpleSet<Variable>> superFields = superType.verMemberFields(name);
+      for (TypeDecl type: superFields.keySet()) {
+        if (!superFields.get(type).isEmpty()) {
+          result.put(type, superFields.get(type));
+        }
+      }
+    }
+
+    for (InterfaceDecl iface: superInterfaces()) {
+      if (!iface.memberFields(name).isEmpty()) {
+        result.put(iface, iface.memberFields(name));
+      }
+    }
+
+    return result;
+  }
+
+}
+
+aspect Variables {
+
+  /**
+   *  Field name in compiled class may have version attached,
+   *  making it incompatible with name being looked up.
+   */
+  syn String Declarator.uncompiledName() {
+    if (hostType().isCompiled()) {
+      String[] splitName = getID().split("\\$");
+      if (splitName.length > 1) {
+        String[] splitClass = splitName[1].split("_");
+        if (splitClass[splitClass.length - 2].equals("ver")) {
+          return splitName[0];
+        }
+      }
+    }
+    return getID();
+  }
+
+}

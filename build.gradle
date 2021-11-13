@@ -15,28 +15,32 @@ jastadd {
   modules {
     include("extendj/jastadd_modules") // Include core ExtendJ modules.
 
-    module "template", {
+    module "batakjava", {
       imports "java8 frontend" // ExtendJ dependency for template module.
 
       jastadd {
-        basedir "src/jastadd/"
-        include "**/*.ast"
-        include "**/*.jadd"
-        include "**/*.jrag"
+        basedir "extension"
+        include "**/frontend/*.jrag"
+        include "**/surface/*.ast"
+        include "**/surface/*.jadd"
+        include "**/surface/*.jrag"
+        include "**/inference/*.jrag"
       }
 
-      //scanner {
-      // List scanner files here.
-      //}
+      scanner {
+        basedir "extension"
+        include "**/surface/*.flex"
+      }
 
-      //parser {
-      // List parser files here.
-      //}
+      parser {
+        basedir "extension"
+        include "**/surface/*.parser"
+      }
     }
   }
 
   // Target module to build:
-  module = 'template'
+  module = 'batakjava'
 
   astPackage = 'org.extendj.ast'
   parser.name = 'JavaParser'
@@ -46,6 +50,7 @@ jastadd {
 sourceSets.main {
   java {
     srcDir 'extendj/src/frontend-main'
+    srcDir 'src/frontend-main'
   }
   resources {
     srcDir 'extendj/src/res'
@@ -53,18 +58,31 @@ sourceSets.main {
   }
 }
 
+repositories.mavenCentral()
+dependencies {
+  compile 'org.choco-solver:choco-solver:4.10.5'
+  compile 'com.google.guava:guava:30.1-jre'
+}
+
+jar {
+  from {
+    configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+  }
+}
+
 // Use JavaCompiler if you need bytecode generation.
-jar.manifest.attributes 'Main-Class': 'org.extendj.JavaChecker'
+//jar.manifest.attributes 'Main-Class': 'org.extendj.JavaChecker'
 //jar.manifest.attributes 'Main-Class': 'org.extendj.JavaCompiler'
+jar.manifest.attributes 'Main-Class': 'org.extendj.BatakjavaChecker'
 jar.destinationDir = projectDir
 
 // Java -source and -target version.
-sourceCompatibility = targetCompatibility = '1.7'
+sourceCompatibility = targetCompatibility = '1.8'
 
 task sourceZip(type: Zip) {
   description 'Builds a Zip file with the entire repisotory (including the ExtendJ submodule).'
   destinationDir = projectDir
-  archiveName = "template-src.zip"
+  archiveName = "batakjava-src.zip"
 
   from (projectDir) {
     exclude '**/.git'
@@ -82,5 +100,5 @@ task sourceZip(type: Zip) {
     exclude '**/*.swp'
   }
 
-  into 'template'
+  into 'batakjava'
 }

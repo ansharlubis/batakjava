@@ -1,0 +1,293 @@
+aspect TypeScopePropagation {
+
+  syn SimpleSet<TypeDecl> TypeAccess.declSet() =
+    packageName().equals("")
+    ? lookupTypeSet(name())
+    : lookupTypeSet(packageName(), name());
+
+  inh SimpleSet<TypeDecl> Expr.lookupTypeSet(String name);
+  inh SimpleSet<TypeDecl> CompilationUnit.lookupTypeSet(String name);
+
+  eq Program.getChild().lookupTypeSet(String name) = emptySet();
+
+  eq CompilationUnit.getChild().lookupTypeSet(String name) {
+    SimpleSet<TypeDecl> result = emptySet();
+
+    // Types in the same package
+    SimpleSet<TypeDecl> pkgTypes = lookupTypeSet(packageName(), name);
+    for (TypeDecl pkgType: pkgTypes) {
+      if (pkgType.accessibleFromPackage(packageName())) {
+        if (pkgType.version() != null) {
+          if (pkgType.versionNumber() >= versionNumber()) {
+            result = result.add(pkgType);
+          }
+        } else {
+          result = result.add(pkgType);
+        }
+      }
+    }
+    if (!result.isEmpty()) {
+      return result;
+    }
+
+    result = importedTypeSet(name);
+    if (!result.isEmpty()) {
+      return result;
+    }
+
+    result = importedTypeSetOnDemand(name);
+    if (!result.isEmpty()) {
+      return result;
+    }
+
+    SimpleSet<TypeDecl> primitiveType = lookupTypeSet(PRIMITIVE_PACKAGE_NAME, name);
+    if (!primitiveType.isEmpty()) {
+      return primitiveType;
+    }
+
+    TypeDecl defaultType = lookupType("java.lang", name);
+    if (defaultType.accessibleFromPackage(packageName())) {
+      return this.<TypeDecl>emptySet().add(defaultType);
+    }
+
+    return lookupTypeSet(name);
+  }
+
+  /**
+   *  Attributes related to getting types from SingleTypeImportDecl
+   */
+  syn SimpleSet<TypeDecl> CompilationUnit.importedTypeSet(String name) {
+    SimpleSet<TypeDecl> result = emptySet();
+    for (ImportDecl importDecl: getImportDeclList()) {
+      if (!importDecl.isOnDemand()) {
+        for (TypeDecl type: importDecl.importedTypeSet(name)) {
+          result = result.add(type);
+        }
+      }
+    }
+    return result;
+  }
+
+  syn lazy SimpleSet<TypeDecl> ImportDecl.importedTypeSet(String name) = emptySet();
+
+  eq SingleTypeImportDecl.importedTypeSet(String name) {
+    SimpleSet<TypeDecl> result = emptySet();
+    for (TypeDecl type: getAccess().typeSet()) {
+      if (type.name().equals(name)) {
+        result = result.add(type);
+      }
+    }
+    return result;
+  }
+
+  eq SingleTypeImportDeclTake.importedTypeSet(String name) {
+    SimpleSet<TypeDecl> result = emptySet();
+    for (TypeDecl type: getAccess().typeSet()) {
+      if (type.name().equals(name) && type.version() != null
+          && versions().contains(type.version())) {
+        result = result.add(type);
+      }
+    }
+    return result;
+  }
+
+  eq SingleTypeImportDeclLeave.importedTypeSet(String name) {
+    SimpleSet<TypeDecl> result = emptySet();
+    for (TypeDecl type: getAccess().typeSet()) {
+      if (type.name().equals(name) && type.version() != null
+          && !versions().contains(type.version())) {
+        result = result.add(type);
+      }
+    }
+    return result;
+  }
+
+  /**
+   *  Attributes related to getting types from TypeImportOnDemandDecl
+   */
+  syn SimpleSet<TypeDecl> CompilationUnit.importedTypeSetOnDemand(String name) {
+    SimpleSet<TypeDecl> result = emptySet();
+    for (ImportDecl importDecl: getImportDeclList()) {
+      if (importDecl.isOnDemand()) {
+        for (TypeDecl type: importDecl.importedTypeSet(name)) {
+          result = result.add(type);
+        }
+      }
+    }
+    return result;
+  }
+
+  syn SimpleSet<TypeDecl> TypeImportOnDemandDecl.importedTypeSet(String name) {
+    SimpleSet<TypeDecl> result = emptySet();
+    // No nested class, so else case does not need consideration for now
+    if (getAccess() instanceof PackageAccess) {
+      String packageName = ((PackageAccess) getAccess()).getPackage();
+      SimpleSet<TypeDecl> types = lookupTypeSet(packageName, name);
+      for (TypeDecl type: types) {
+        if (type.accessibleFromPackage(packageName())
+            && type.typeName().equals(packageName + "." + name)) {
+          result = result.add(type);
+        }
+      }
+    }
+    return result;
+  }
+
+  eq TypeImportOnDemandDeclTake.importedTypeSet(String name) {
+    SimpleSet<TypeDecl> result = emptySet();
+    for (TypeDecl type: super.importedTypeSet(name)) {
+      if (type.version() != null && versions().contains(type.version())) {
+        result = result.add(type);
+      }
+    }
+    return result;
+  }
+
+  eq TypeImportOnDemandDeclLeave.importedTypeSet(String name) {
+    SimpleSet<TypeDecl> result = emptySet();
+    for (TypeDecl type: super.importedTypeSet(name)) {
+      if (type.version() != null && !versions().contains(type.version())) {
+        result = result.add(type);
+      }
+    }
+    return result;
+  }
+
+}
+
+aspect LookupFullyQualifiedTypes {
+
+  /**
+   *  New inherited attributes added according to need
+   */
+  inh SimpleSet<TypeDecl> Expr.lookupTypeSet(String packageName, String typeName);
+  inh SimpleSet<TypeDecl> CompilationUnit.lookupTypeSet(String packageName, String typeName);
+  inh SimpleSet<TypeDecl> TypeImportOnDemandDecl.lookupTypeSet(String packageName, String typeName);
+
+  // inh SimpleSet<TypeDecl> Stmt.lookupTypeSet(String packageName, String typeName);
+  // inh SimpleSet<TypeDecl> BodyDecl.lookupTypeSet(String packageName, String typeName);
+  // inh SimpleSet<TypeDecl> TypeDecl.lookupTypeSet(String packageName, String typename);
+
+  eq Program.getChild().lookupTypeSet(String packageName, String typeName) =
+    lookupTypeSet(packageName, typeName);
+
+  syn lazy SimpleSet<TypeDecl> Program.lookupTypeSet(String packageName, String typeName) {
+    SimpleSet<TypeDecl> sourceType = lookupSourceTypeSet(packageName, typeName);
+    if (!sourceType.isEmpty()) {
+      return sourceType;
+    }
+
+    return lookupLibraryTypeSet(packageName, typeName);
+  }
+
+  private final Map<String, SimpleSet<TypeDecl>> Program.sourceTypeSetMap = new HashMap<String, SimpleSet<TypeDecl>>();
+
+  private boolean Program.sourceTypeSetMapInitialized = false;
+
+  private void Program.initializeSourceTypeSetMap() {
+    for (int i = 0; i < getNumCompilationUnit(); i++) {
+      CompilationUnit unit = getCompilationUnit(i);
+      for (int j = 0; j < unit.getNumTypeDecl(); j++) {
+        TypeDecl type = unit.getTypeDecl(j);
+        if (sourceTypeSetMap.containsKey(type.fullName())) {
+          SimpleSet<TypeDecl> existingMap = sourceTypeSetMap.get(type.fullName());
+          sourceTypeSetMap.put(type.fullName(), existingMap.add(type));
+        } else {
+          sourceTypeSetMap.put(type.fullName(), this.<TypeDecl>emptySet().add(type));
+        }
+      }
+    }
+  }
+
+  /**
+   *  Deal with uncompiled Batakjava source codes
+   */
+  protected synchronized SimpleSet<TypeDecl> Program.lookupSourceTypeSet(String packageName, String typeName) {
+    String fullName = packageName.equals("") ? typeName : packageName + "." + typeName;
+
+    if (!sourceTypeSetMapInitialized) {
+      initializeSourceTypeSetMap();
+      sourceTypeSetMapInitialized = true;
+    }
+
+    if (sourceTypeSetMap.containsKey(fullName)) {
+      return sourceTypeSetMap.get(fullName);
+    } else {
+      sourceTypeSetMap.put(fullName, emptySet());
+    }
+
+    return emptySet();
+  }
+
+  private final Map<String, SimpleSet<TypeDecl>> Program.libraryTypeSetMap = new HashMap<String, SimpleSet<TypeDecl>>();
+
+  private boolean Program.libraryTypeSetMapInitialized = false;
+
+  private void Program.initializeLibraryTypeSetMap() {
+    PrimitiveCompilationUnit unit = getPrimitiveCompilationUnit();
+    libraryTypeSetMap.put(PRIMITIVE_PACKAGE_NAME + ".boolean", this.<TypeDecl>emptySet().add(unit.typeBoolean()));
+    libraryTypeSetMap.put(PRIMITIVE_PACKAGE_NAME + ".byte", this.<TypeDecl>emptySet().add(unit.typeByte()));
+    libraryTypeSetMap.put(PRIMITIVE_PACKAGE_NAME + ".short", this.<TypeDecl>emptySet().add(unit.typeShort()));
+    libraryTypeSetMap.put(PRIMITIVE_PACKAGE_NAME + ".char", this.<TypeDecl>emptySet().add(unit.typeChar()));
+    libraryTypeSetMap.put(PRIMITIVE_PACKAGE_NAME + ".int", this.<TypeDecl>emptySet().add(unit.typeInt()));
+    libraryTypeSetMap.put(PRIMITIVE_PACKAGE_NAME + ".long", this.<TypeDecl>emptySet().add(unit.typeLong()));
+    libraryTypeSetMap.put(PRIMITIVE_PACKAGE_NAME + ".float", this.<TypeDecl>emptySet().add(unit.typeFloat()));
+    libraryTypeSetMap.put(PRIMITIVE_PACKAGE_NAME + ".double", this.<TypeDecl>emptySet().add(unit.typeDouble()));
+    libraryTypeSetMap.put(PRIMITIVE_PACKAGE_NAME + ".null", this.<TypeDecl>emptySet().add(unit.typeNull()));
+    libraryTypeSetMap.put(PRIMITIVE_PACKAGE_NAME + ".void", this.<TypeDecl>emptySet().add(unit.typeVoid()));
+    libraryTypeSetMap.put(PRIMITIVE_PACKAGE_NAME + ".Unknown", this.<TypeDecl>emptySet().add(unit.unknownType()));
+  }
+
+  syn nta List<CompilationUnit> Program.getLibCompilationUnitList(String prefixName, SimpleSet<String> compiledNames) =
+    getCompilationUnitList(prefixName, compiledNames);
+
+  /**
+   *  Deal with compiled Batakjava codes or Java codes
+   */
+  protected synchronized SimpleSet<TypeDecl> Program.lookupLibraryTypeSet(String packageName, String typeName) {
+    String fullName = packageName.isEmpty() ? typeName : packageName + "." + typeName;
+
+    if (!libraryTypeSetMapInitialized) {
+      initializeLibraryTypeSetMap();
+      libraryTypeSetMapInitialized = true;
+    }
+
+    if (libraryTypeSetMap.containsKey(fullName)) {
+      return libraryTypeSetMap.get(fullName);
+    }
+
+    CompilationUnit libraryUnit = getLibCompilationUnit(fullName);
+
+    libraryCompilationUnitSet.add(libraryUnit);
+
+    // If overview is found then find the specific classes
+    if (libraryUnit.isOverviewUnit()) {
+      List<CompilationUnit> compiledUnits = getLibCompilationUnitList(packageName, libraryUnit.compiledClassNames());
+      for (CompilationUnit specificUnit: compiledUnits) {
+        for (TypeDecl type: specificUnit.getTypeDeclList()) {
+          if (libraryTypeSetMap.containsKey(type.fullName())) {
+            SimpleSet<TypeDecl> existingMap = libraryTypeSetMap.get(type.fullName());
+            libraryTypeSetMap.put(type.fullName(), existingMap.add(type));
+          } else {
+            libraryTypeSetMap.put(type.fullName(), this.<TypeDecl>emptySet().add(type));
+          }
+        }
+      }
+    } else {
+      for (int j = 0; j < libraryUnit.getNumTypeDecl(); j++) {
+        TypeDecl type = libraryUnit.getTypeDecl(j);
+        if (!libraryTypeSetMap.containsKey(type.fullName())) {
+          libraryTypeSetMap.put(type.fullName(), this.<TypeDecl>emptySet().add(type));
+        }
+      }
+    }
+
+    if (libraryTypeSetMap.containsKey(fullName)) {
+      return libraryTypeSetMap.get(fullName);
+    } else {
+      libraryTypeSetMap.put(fullName, emptySet());
+      return emptySet();
+    }
+  }
+
+}

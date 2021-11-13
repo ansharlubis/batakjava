@@ -1,0 +1,242 @@
+aspect TypeAnalysis {
+
+  /**
+   *  A compilation unit is an overview unit if
+   *  it only has one class and that class is an overview.
+   */
+  syn lazy boolean CompilationUnit.isOverviewUnit() =
+    getNumTypeDecl() == 1 && getTypeDecl(0).isOverview();
+
+  /**
+   *  A class is an overview by searching for
+   *  the field BATAKJAVACLASS.
+   */
+  syn lazy boolean TypeDecl.isOverview() = false;
+
+  eq ClassDecl.isOverview() {
+    for (BodyDecl bodyDecl: getBodyDeclList()) {
+      if (bodyDecl instanceof FieldDecl) {
+        FieldDecl decl = (FieldDecl) bodyDecl;
+        if (decl.getNumDeclarator() == 1 &&
+            decl.getDeclarator(0).getID().equals("BATAKJAVACLASS")) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   *  A class is compiled if its name contains 'ver'.
+   */
+  syn boolean TypeDecl.isCompiled() = false;
+
+  eq ClassDecl.isCompiled() {
+    String[] splitName = name().split("\\$");
+    String[] splitPrefix = splitName[0].split("_");
+    return splitPrefix.length > 2 && splitPrefix[splitPrefix.length - 2].equals("ver");
+  }
+
+  /**
+   *  A class is uncompiled if its host version is not null.
+   */
+  syn lazy boolean TypeDecl.isUncompiled() = false;
+  eq ClassDecl.isUncompiled() = !isOverview() && (hostVersion() != null);
+
+  /**
+   *  Find the set of type for an expression
+   *  Treat an empty set as replacement for unknown type
+   */
+  syn SimpleSet<TypeDecl> Expr.typeSet() = emptySet();
+
+  eq Access.typeSet() = emptySet();
+  eq TypeAccess.typeSet() = declSet();
+  eq ClassInstanceExpr.typeSet() = hasTypeDecl() ? this.<TypeDecl>emptySet().add(getTypeDecl()) : getAccess().typeSet();
+
+  syn lazy SimpleSet<TypeDecl> ParameterDeclaration.typeSet() = getTypeAccess().typeSet();
+}
+
+aspect SuperClasses {
+
+  public SimpleSet<TypeDecl> ClassDecl.superclassSet() {
+    if (isObject()) {
+      return emptySet();
+    } else if (hasSuperClass()) {
+      return getSuperClass().typeSet();
+    } else {
+      return typeObject();
+    }
+  }
+
+}
+
+aspect TypeConversion {
+
+  /**
+   *  Check if this is a subtype of type, while also
+   *  keeping track of constraint for super type access.
+   */
+  syn Optional<Formula> TypeDecl.verMethodInvocationConversionTo(TypeDecl type) {
+    if (verIdentityConversionTo(type).isPresent()) {
+      return verIdentityConversionTo(type);
+    }
+    if (verWideningConversionTo(type).isPresent()) {
+      return verWideningConversionTo(type);
+    }
+    return Optional.empty();
+  }
+
+  syn Optional<Formula> TypeDecl.verIdentityConversionTo(TypeDecl type) =
+    this == type ? Optional.of(new Formula()) : Optional.empty();
+
+  syn Optional<Formula> TypeDecl.verWideningConversionTo(TypeDecl type) = verInstanceOf(type);
+
+  syn Optional<Formula> TypeDecl.verAssignConversionTo(TypeDecl type, Expr expr) {
+    if (verIdentityConversionTo(type).isPresent()) {
+      return verIdentityConversionTo(type);
+    }
+    if (verWideningConversionTo(type).isPresent()) {
+      return verWideningConversionTo(type);
+    }
+    boolean sourceIsConstant = expr != null ? expr.isConstant() : false;
+    if (sourceIsConstant && (isInt() || isChar() || isShort() || isByte())
+        && (type.isByte() || type.isShort() || type.isChar()) && narrowingConversionTo(type)
+        && expr.representableIn(type)) {
+      return Optional.of(new Formula());
+    }
+    return Optional.empty();
+  }
+
+}
+
+aspect TypeWideningAndIdentity {
+
+  /**
+   *  Continue, used by the above attributes.
+   */
+  syn lazy Optional<Formula> TypeDecl.verInstanceOf(TypeDecl type);
+
+  eq TypeDecl.verInstanceOf(TypeDecl type)
+   = type == this ? Optional.of(new Formula()) : Optional.empty();
+
+  eq ClassDecl.verInstanceOf(TypeDecl type) {
+    if (isUncompiled()) {
+      return type.verIsSupertypeOfClassDecl(this);
+    }
+    return instanceOf(type) ? Optional.of(new Formula()) : Optional.empty();
+  }
+
+  eq InterfaceDecl.verInstanceOf(TypeDecl type)
+    = instanceOf(type) ? Optional.of(new Formula()) : Optional.empty();
+
+  eq ArrayDecl.verInstanceOf(TypeDecl type) = type.verIsSupertypeOfArrayDecl(this);
+
+  eq UnknownType.verInstanceOf(TypeDecl type) = Optional.of(new Formula());
+
+  syn Optional<Formula> TypeDecl.verIsSupertypeOfClassDecl(ClassDecl type) =
+    type == this ? Optional.of(new Formula()) : Optional.empty();
+
+  eq ClassDecl.verIsSupertypeOfClassDecl(ClassDecl type) {
+    if (type == this) {
+      return Optional.of(new Formula());
+    }
+
+    boolean okay = false;
+    Formula formula = new Formula();
+
+    for (TypeDecl check: type.superclassSet()) {
+      Formula sub = new Formula();
+      Optional<Formula> checkConstraint = check.verInstanceOf(this);
+      if (checkConstraint.isPresent()) {
+        if (check.version() != null) {
+          sub = sub.multiply(type.getSuperClass().buildClause(check));
+        }
+        sub = sub.multiply(checkConstraint.get());
+        formula = formula.add(sub);
+        okay = true;
+      }
+    }
+
+    return okay ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq InterfaceDecl.verIsSupertypeOfClassDecl(ClassDecl type) {
+    if (super.verIsSupertypeOfClassDecl(type).isPresent()) {
+      return super.verIsSupertypeOfClassDecl(type);
+    }
+
+    for (InterfaceDecl iface: type.superInterfaces()) {
+      if (iface.instanceOf(this)) {
+        return Optional.of(new Formula());
+      }
+    }
+
+    boolean okay = false;
+    Formula formula = new Formula();
+
+    for (TypeDecl check: type.superclassSet()) {
+      Formula sub = new Formula();
+      Optional<Formula> checkConstraint = check.verInstanceOf(this);
+      if (checkConstraint.isPresent()) {
+        if (check.version() != null) {
+          sub = sub.multiply(type.getSuperClass().buildClause(check));
+        }
+        sub = sub.multiply(checkConstraint.get());
+        formula = formula.add(sub);
+        okay = true;
+      }
+    }
+
+    return okay ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq UnknownType.verIsSupertypeOfClassDecl(ClassDecl type) = Optional.of(new Formula());
+
+  syn Optional<Formula> TypeDecl.verIsSupertypeOfArrayDecl(ArrayDecl type)
+    = type == this ? Optional.of(new Formula()) : Optional.empty();
+
+  eq ClassDecl.verIsSupertypeOfArrayDecl(ArrayDecl type) {
+    if (super.verIsSupertypeOfArrayDecl(type).isPresent()) {
+      return super.verIsSupertypeOfArrayDecl(type);
+    }
+
+    boolean okay = false;
+    Formula formula = new Formula();
+
+    for (TypeDecl check: type.superclassSet()) {
+      Formula sub = new Formula();
+      Optional<Formula> checkConstraint = check.verInstanceOf(this);
+      if (checkConstraint.isPresent()) {
+        if (check.version() != null) {
+          sub = sub.multiply(type.getSuperClass().buildClause(check));
+        }
+        sub = sub.multiply(checkConstraint.get());
+        formula = formula.add(sub);
+        okay = true;
+      }
+    }
+
+    return okay ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq InterfaceDecl.verIsSupertypeOfArrayDecl(ArrayDecl type) {
+    if (super.verIsSupertypeOfArrayDecl(type).isPresent()) {
+      return super.verIsSupertypeOfArrayDecl(type);
+    }
+    for (InterfaceDecl iface: type.superInterfaces()) {
+      if (iface.instanceOf(this)) {
+        return Optional.of(new Formula());
+      }
+    }
+    return Optional.empty();
+  }
+
+  eq ArrayDecl.verIsSupertypeOfArrayDecl(ArrayDecl type) {
+    if (type.elementType().isPrimitive() && elementType().isPrimitive()) {
+      if (type.dimension() == dimension() && type.elementType() == elementType()) {
+        return Optional.of(new Formula());
+      }
+    }
+    return type.componentType().verInstanceOf(componentType());
+  }
+}

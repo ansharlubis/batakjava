@@ -1,0 +1,104 @@
+aspect BatakjavaVersion {
+
+  /**
+   *  Get version from the nodes.
+   */
+  syn String CompilationUnit.version() = null;
+  eq BatakjavaCompilationUnit.version() = getVersionNum();
+
+  syn String TypeDecl.version() = null;
+
+  /**
+   *  An uncompiled Batakjava class' version is the unit's version,
+   *  a compiled Batakjava class' version is found from its name.
+   */
+  eq ClassDecl.version() {
+    if (isUncompiled()) {
+      return hostVersion();
+    }
+    if (isCompiled()) {
+      String[] splitName = name().split("\\$");
+      String[] splitClassName = splitName[0].split("_");
+      if (splitClassName.length > 2
+          && splitClassName[splitClassName.length-2].equals("ver")) {
+        return splitClassName[splitClassName.length-1];
+      }
+    }
+    return "0";
+  }
+
+  /**
+   *  Set of version specified by the import declaration
+   */
+  syn SimpleSet<String> ImportDecl.versions() = emptySet();
+
+  eq SingleTypeImportDeclTake.versions() {
+    SimpleSet<String> vers = emptySet();
+    for (Version ver: getVersionList()) {
+      vers = vers.add(ver.getVersionNum());
+    }
+    return vers;
+  }
+
+  eq SingleTypeImportDeclLeave.versions() {
+    SimpleSet<String> vers = emptySet();
+    for (Version ver: getVersionList()) {
+      vers = vers.add(ver.getVersionNum());
+    }
+    return vers;
+  }
+
+  eq TypeImportOnDemandDeclTake.versions() {
+    SimpleSet<String> vers = emptySet();
+    for (Version ver: getVersionList()) {
+      vers = vers.add(ver.getVersionNum());
+    }
+    return vers;
+  }
+
+  eq TypeImportOnDemandDeclLeave.versions() {
+    SimpleSet<String> vers = emptySet();
+    for (Version ver: getVersionList()) {
+      vers = vers.add(ver.getVersionNum());
+    }
+    return vers;
+  }
+
+  /**
+   *  Version number is a version casted
+   */
+  public Integer CompilationUnit.versionNumber() { return version() != null ? Integer.valueOf(version()) : null; }
+  public Integer TypeDecl.versionNumber() { return version() != null ? Integer.valueOf(version()) : null; }
+
+  /**
+   *  Host version is defined through inh attribute
+   *  checking through the unit
+   */
+  inh String TypeDecl.hostVersion();
+  inh String BodyDecl.hostVersion();
+  inh String Expr.hostVersion();
+  inh String Variable.hostVersion();
+
+  eq CompilationUnit.getChild().hostVersion() = version();
+
+  /**
+   *  Grab set of compiled batakjava class names.
+   */
+  syn SimpleSet<String> CompilationUnit.compiledClassNames() {
+    SimpleSet<String> result = emptySet();
+    if (isOverviewUnit()) {
+      ClassDecl classDecl = (ClassDecl) getTypeDecl(0);
+      for (BodyDecl bodyDecl: classDecl.getBodyDeclList()) {
+        if (bodyDecl instanceof FieldDecl) {
+          FieldDecl decl = (FieldDecl) bodyDecl;
+          String[] splitField = decl.getDeclarator(0).getID().split("_");
+          if (splitField.length > 1 && splitField[0].equals(classDecl.getID())) {
+            result = result.add(decl.getDeclarator(0).getID());
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+}

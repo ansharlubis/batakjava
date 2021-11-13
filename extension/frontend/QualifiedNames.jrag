@@ -1,0 +1,14 @@
+aspect TypeName {
+
+  /**
+   *  Full name attached with `#(version)` for debugging purposes
+   */
+  syn lazy String TypeDecl.verFullName() {
+    String fullName = fullName();
+    if (version() != null) {
+      return fullName + "#" + version();
+    }
+    return fullName;
+  }
+
+}

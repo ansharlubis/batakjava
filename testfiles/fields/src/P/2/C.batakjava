@@ -1,0 +1,5 @@
+package P ver 2;
+
+public class C {
+  public double f1;
+}

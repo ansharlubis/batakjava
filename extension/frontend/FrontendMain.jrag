@@ -1,0 +1,83 @@
+aspect BatakjavaFrontendMain {
+
+  /**
+   *  Frontend class for Batakjava
+   */
+  abstract public class BatakjavaFrontend extends Frontend {
+
+    protected BatakjavaFrontend(String name, String version) {
+      super(name, version);
+    }
+
+    @Override
+    public int run(String[] args, BytecodeReader reader, JavaParser parser) {
+
+      program.resetStatistics();
+      program.initBytecodeReader(reader);
+      program.initJavaParser(parser);
+
+      initOptions();
+      int argResult = processArgs(args);
+      if (argResult != 0) {
+        return argResult;
+      }
+
+      Collection<String> files = program.options().files();
+
+      if (program.options().hasOption("-version")) {
+        printVersion();
+        return EXIT_SUCCESS;
+      }
+
+      if (program.options().hasOption("-help") || files.isEmpty()) {
+        printUsage();
+        return EXIT_SUCCESS;
+      }
+
+      try {
+        for (String file: files) {
+          program.addSourceFile(file);
+        }
+
+        TypeDecl object = program.lookupType("java.lang", "Object");
+        if (object.isUnknown()) {
+          System.err.println("Error: java.lang.Object is missing."
+            + " The Java standard library was not found.");
+          return EXIT_UNHANDLED_ERROR;
+        }
+
+        int compileResult = EXIT_SUCCESS;
+
+        program.initializeInfVar();
+        program.initializeInfType();
+
+        for (CompilationUnit unit: program.getCompilationUnitList()) {
+          int result = processCompilationUnit(unit);
+          switch (result) {
+            case EXIT_SUCCESS:
+              break;
+            case EXIT_UNHANDLED_ERROR:
+              return result;
+            default:
+              compileResult = result;
+          }
+        }
+
+        System.out.println(program.printInfTypeMap());
+
+      } catch (Throwable t) {
+        System.err.println("Fatal exception:");
+        t.printStackTrace(System.err);
+        return EXIT_UNHANDLED_ERROR;
+      } finally {
+        if (program.options().hasOption("-profile")) {
+          program.printStatistics(System.out);
+        }
+      }
+
+      return EXIT_SUCCESS;
+    }
+
+  }
+
+}

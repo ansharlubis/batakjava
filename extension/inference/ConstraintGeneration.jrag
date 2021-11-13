@@ -1,0 +1,129 @@
+aspect ConstraintGeneration {
+
+  /**
+   *  infTypeCount is the number of unique types in the program.
+   *  infTypeMap is the mapping from types to the integer representations.
+   */
+  private Integer Program.infTypeCount = 0;
+  public Map<TypeDecl,Integer> Program.infTypeMap = Collections.emptyMap();
+
+  public void Program.initializeInfType() {
+    infTypeCount = 0;
+    infTypeMap = new HashMap<TypeDecl,Integer>();
+  }
+
+  // Should there be a contain check, or just stay with lazy
+  public Integer Program.getInfType(TypeDecl type) {
+    Integer count = infTypeCount;
+    infTypeCount++;
+    infTypeMap.put(type, count);
+    return count;
+  }
+
+  public TypeDecl Expr.intToType(Integer typeInt) {
+    for (TypeDecl type: program().infTypeMap.keySet()) {
+      if (program().infTypeMap.get(type) == typeInt) {
+        return type;
+      }
+    }
+    return program().unknownType();
+  }
+
+  syn lazy Integer TypeDecl.infType() = program().getInfType(this);
+
+  /**
+   *  infVarCount is the number of variable for inference.
+   *  infVarMap is the mapping from expressions to the variable integer.
+   */
+  private Integer Program.infVarCount = 0;
+  public Map<ASTNode,Integer> Program.infVarMap = Collections.emptyMap();
+
+  public void Program.initializeInfVar() {
+    infVarCount = 0;
+    infVarMap = new HashMap<ASTNode,Integer>();
+  }
+
+  public Integer Program.getInfVar(ASTNode node) {
+    Integer count = infVarCount;
+    infVarCount++;
+    infVarMap.put(node, count);
+    return count;
+  }
+
+  /**
+   *  Inference variables for expressions and variables.
+   *  Stored using lazy attribute.
+   *
+   *  NOTE:
+   *  -- Super access' variable depends on the previous expression (if it exists)
+   */
+  syn lazy Integer Expr.infVar() = program().getInfVar(this);
+  eq ClassInstanceExpr.infVar() = getAccess().infVar();
+  eq VarAccess.infVar() = decl().infVar();
+  eq Dot.infVar() = lastAccess().infVar();
+  eq AssignExpr.infVar() = getDest().infVar();
+  eq ParExpr.infVar() = getExpr().infVar();
+  eq CastExpr.infVar() = getTypeAccess().infVar();
+
+  syn lazy Integer Variable.infVar();
+  eq ParameterDeclaration.infVar() = getTypeAccess().infVar();
+  eq Declarator.infVar() = declarationType().infVar();
+  /** Not supported variable **/
+  eq EnumConstant.infVar() = program().getInfVar(this);
+  eq CatchParameterDeclaration.infVar() = program().getInfVar(this);
+  eq InferredParameterDeclaration.infVar() = program().getInfVar(this);
+
+  /**
+   *  Get the set of type from constraint
+   */
+  syn SimpleSet<TypeDecl> Expr.constraintToTypeSet() {
+    SimpleSet<TypeDecl> typeSet = emptySet();
+    Optional<Formula> constraint = constraint();
+    if (constraint.isPresent()) {
+      for (Integer typeInt: constraint.get().getTypeInt(infVar())) {
+        typeSet = typeSet.add(intToType(typeInt));
+      }
+    }
+    return typeSet;
+  }
+
+  /**
+   *  Constraint generation for type checking, then version inference
+   */
+  syn lazy Optional<Formula> Expr.constraint() = Optional.empty();
+
+  eq ClassInstanceExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl type: typeSet()) {
+      for (ConstructorDecl constructor: type.constructors()) {
+        Optional<Formula> sub = verApplicableAndAccessible(constructor);
+        if (sub.isPresent()) {
+          formula = formula.add(sub.get().multiply(buildClause(type)));
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+
+
+  public Optional<Formula> Expr.argConstraint(ParameterDeclaration parameter) {
+    Formula formula = new Formula();
+    for (TypeDecl argType: constraintToTypeSet()) {
+      for (TypeDecl parameterType: parameter.typeSet()) {
+        Optional<Formula> trace = argType.verMethodInvocationConversionTo(parameterType);
+        if (trace.isPresent()) {
+          Formula sub = buildFormula(argType);
+          if (parameter.hostType().isUncompiled()) {
+            sub = sub.multiply(parameter.getTypeAccess().buildClause(parameterType));
+          }
+          formula = formula.add(sub.multiply(trace.get()));
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+
+
+}

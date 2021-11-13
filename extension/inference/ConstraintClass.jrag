@@ -1,0 +1,233 @@
+import org.chocosolver.solver.constraints.Constraint;
+import org.chocosolver.solver.Model;
+import org.chocosolver.solver.Solution;
+import org.chocosolver.solver.variables.IntVar;
+import com.google.common.primitives.Ints;
+
+/**
+ *  The constraint in the program is represented as
+ *  disjunctive normal form.
+ */
+aspect ConstraintClass {
+
+  /**
+   *  Methods to simplify constraint generation
+   */
+  public Formula Expr.buildFormula(TypeDecl type) {
+    return new Formula().add(new Clause().add(new Lit(infVar(), type.infType())));
+  }
+
+  public Clause Expr.buildClause(TypeDecl type) {
+    return new Clause().add(new Lit(infVar(), type.infType()));
+  }
+
+  /** The disjunction of clauses **/
+  public class Formula {
+    public java.util.List<Clause> clauses;
+
+    public Formula() {
+      this.clauses = new LinkedList();
+    }
+
+    public Formula(java.util.List<Clause> clauses) {
+      this.clauses = clauses;
+    }
+
+    public java.util.Set<Integer> getTypeInt(Integer arg) {
+      java.util.Set<Integer> result = new HashSet();
+      for (Clause clause: clauses) {
+        Optional<Integer> typeInt = clause.getTypeInt(arg);
+        if (typeInt.isPresent()) {
+          result.add(typeInt.get());
+        }
+      }
+      return result;
+    }
+
+    public int size() { return clauses.size(); }
+
+    /**
+     *  Non-destructive operations
+     *  -- Multiply is pair-wise additions of clauses.
+     *  -- Add is addition of formulas.
+     */
+    public Formula multiply(Formula other) {
+      if (clauses.size() == 0) {
+        return add(other);
+      }
+      java.util.List<Clause> newClauses = new LinkedList();
+      for (Clause thisClause: clauses) {
+        if (other.size() == 0) {
+          newClauses.add(thisClause);
+        } else {
+          for (Clause otherClause: other.clauses) {
+            newClauses.add(thisClause.add(otherClause));
+          }
+        }
+      }
+      return new Formula(newClauses);
+    }
+
+    public Formula multiply(Clause c) {
+      if (size() == 0) {
+        return add(c);
+      }
+      java.util.List<Clause> newClauses = new LinkedList();
+      for (Clause clause: clauses) {
+        newClauses.add(clause.add(c));
+      }
+      return new Formula(newClauses);
+    }
+
+    public Formula add(Formula other) {
+      java.util.List<Clause> newClauses = new LinkedList();
+      for (Clause clause: clauses) {
+        newClauses.add(clause);
+      }
+      for (Clause otherClause: other.clauses) {
+        newClauses.add(otherClause);
+      }
+      return new Formula(newClauses);
+    }
+
+    public Formula add(Clause c) {
+      java.util.List<Clause> newClauses = new LinkedList();
+      for (Clause clause: clauses) {
+        newClauses.add(clause);
+      }
+      newClauses.add(c);
+      return new Formula(newClauses);
+    }
+
+    public boolean isUnknown() { return false; }
+
+    public Constraint post(Model model, IntVar[] vars) {
+      Constraint[] toPost = new Constraint[size()];
+      for (int i = 0; i < size(); i++) {
+        toPost[i] = clauses.get(i).post(model, vars);
+      }
+      return model.or(toPost);
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder result = new StringBuilder();
+      result.append("{");
+      boolean first = true;
+      for (Clause clause: clauses) {
+        if (!first) result.append(" OR ");
+        result.append(clause.toString());
+        first = false;
+      }
+      result.append("}");
+      return result.toString();
+    }
+
+    public Collection<Formula> toList() {
+      Collection<Formula> result = new LinkedList();
+      if (size() > 0) { result.add(this); }
+      return result;
+    }
+  }
+
+  /** The conjunction of literals **/
+  public class Clause {
+    public java.util.List<Lit> literals;
+
+    public Clause() {
+      this.literals = new LinkedList();
+    }
+
+    public Clause(java.util.List<Lit> literals) {
+      this.literals = literals;
+    }
+
+    public Optional<Integer> getTypeInt(Integer arg) {
+      boolean flag = false;
+      Optional<Integer> result = Optional.empty();
+      for (Lit lit: literals) {
+        if (lit.getTypeInt(arg).isPresent()) {
+          result = lit.getTypeInt(arg);
+        }
+      }
+      return result;
+    }
+
+    /** Non-destructive **/
+    public Clause add(Clause other) {
+      java.util.List<Lit> newLits = new LinkedList();
+      for (Lit lit: literals) {
+        newLits.add(lit);
+      }
+      for (Lit otherLit: other.literals) {
+        newLits.add(otherLit);
+      }
+      return new Clause(newLits);
+    }
+
+    public Clause add(Lit other) {
+      java.util.List<Lit> newLits = new LinkedList();
+      for (Lit lit: literals) {
+        newLits.add(lit);
+      }
+      newLits.add(other);
+      return new Clause(newLits);
+    }
+
+    public int size() { return literals.size(); }
+
+    public Constraint post(Model model, IntVar[] vars) {
+      Constraint[] toPost = new Constraint[size()];
+      for (int i = 0; i < size(); i++) {
+        toPost[i] = literals.get(i).post(model, vars);
+      }
+      return model.and(toPost);
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder result = new StringBuilder();
+      result.append("(");
+      boolean first = true;
+      for (Lit lit: literals) {
+        if (!first) result.append(" AND ");
+        result.append(lit.toString());
+        first = false;
+      }
+      result.append(")");
+      return result.toString();
+    }
+  }
+
+  /**
+   *  A constraint literal of the form [var = typeInt]
+   *  which means the variable var is bound to number typeInt.
+   *  var represents the constraint variable of an expression.
+   *  typeInt represents a type.
+   */
+  public class Lit {
+    public final Integer var;
+    public final Integer typeInt;
+
+    public Lit(Integer var, Integer typeInt) {
+      this.var = var;
+      this.typeInt = typeInt;
+    }
+
+    public Optional<Integer> getTypeInt(Integer arg) {
+      return var == arg ? Optional.of(typeInt) : Optional.empty();
+    }
+
+    public Constraint post(Model model, IntVar[] vars) {
+      return model.arithm(vars[var], "=", typeInt);
+    }
+
+    @Override
+    public String toString() {
+      return var.toString() + ":" + typeInt.toString();
+    }
+
+  }
+
+
+}

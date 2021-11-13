@@ -1,0 +1,11 @@
+/* Compilation Unit */
+BatakjavaCompilationUnit : CompilationUnit ::= <PackageDecl:String> <VersionNum:String> ImportDecl* TypeDecl*;
+
+/* Import Declaration */
+SingleTypeImportDeclTake : SingleTypeImportDecl ::= Version*;
+SingleTypeImportDeclLeave : SingleTypeImportDecl ::= Version*;
+TypeImportOnDemandDeclTake : TypeImportOnDemandDecl ::= Version*;
+TypeImportOnDemandDeclLeave : TypeImportOnDemandDecl ::= Version*;
+
+/* Version Number */
+Version ::= <VersionNum:String>;
