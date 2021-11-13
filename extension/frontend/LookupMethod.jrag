@@ -1,0 +1,143 @@
+aspect LookupMethod {
+
+  inh Map<TypeDecl,Collection<MethodDecl>> Expr.verLookupMethod(String name);
+  //inh Map<TypeDecl,Collection<MethodDecl>> Stmt.verLookupMethod(String name);
+  inh Map<TypeDecl,Collection<MethodDecl>> TypeDecl.verLookupMethod(String name);
+  inh Map<TypeDecl,Collection<MethodDecl>> BodyDecl.verLookupMethod(String name);
+
+  eq Program.getChild().verLookupMethod(String name) = new HashMap();
+
+  eq MethodAccess.getArg().verLookupMethod(String name) = unqualifiedScope().verLookupMethod(name);
+  eq ConstructorAccess.getArg().verLookupMethod(String name) = unqualifiedScope().verLookupMethod(name);
+  eq ArrayAccess.getExpr().verLookupMethod(String name) = unqualifiedScope().verLookupMethod(name);
+  eq ArrayTypeWithSizeAccess.getExpr().verLookupMethod(String name) = unqualifiedScope().verLookupMethod(name);
+
+  eq TypeDecl.getBodyDecl(int i).verLookupMethod(String name) = verUnqualifiedLookupMethod(name);
+
+
+  syn lazy Map<TypeDecl,Collection<MethodDecl>> TypeDecl.verUnqualifiedLookupMethod(String name) {
+    Collection<MethodDecl> methods = verMemberMethods(name);
+    TypeDecl host = this;
+    if (!methods.isEmpty()) {
+      return new HashMap<TypeDecl,Collection<MethodDecl>>() {{
+        put(host, methods);
+      }};
+    }
+    Map<TypeDecl,Collection<MethodDecl>> map = verLookupMethod(name);
+    for (TypeDecl type: map.keySet()) {
+      map.replace(type, keepStaticMethods(map.get(type)));
+    }
+    return map;
+  }
+
+  eq ConstructorDecl.getParsedConstructorInvocation().verLookupMethod(String name) {
+    Map<TypeDecl,Collection<MethodDecl>> map = new HashMap();
+    Map<TypeDecl,Collection<MethodDecl>> check = verLookupMethod(name);
+    for (TypeDecl type: check.keySet()) {
+      Collection<MethodDecl> methods = new ArrayList();
+      for (MethodDecl m: check.get(type)) {
+        if (!hostType().verMemberMethods(name).contains(m) || m.isStatic()) {
+          methods.add(m);
+        }
+      }
+      map.put(type, methods);
+    }
+    return map;
+  }
+
+  eq Dot.getRight().verLookupMethod(String name) {
+    Map<TypeDecl,Collection<MethodDecl>> map = new HashMap();
+    for (TypeDecl type: getLeft().constraintToTypeSet()) {
+      map.put(type, type.verMemberMethods(name));
+    }
+    return map;
+  }
+
+}
+
+aspect MemberMethods {
+
+  syn Collection<MethodDecl> TypeDecl.verMemberMethods(String name) {
+    Collection<MethodDecl> methods = verMethodsNameMap().get(name);
+    if (methods != null) {
+      return methods;
+    } else {
+      return Collections.emptyList();
+    }
+  }
+
+  syn lazy Map<String,Collection<MethodDecl>> TypeDecl.verMethodsNameMap() {
+    Map<String,Collection<MethodDecl>> map = new HashMap();
+    for (MethodDecl m: verMethods()) {
+      Collection<MethodDecl> methods = map.get(m.uncompiledName());
+      if (methods == null) {
+        methods = new ArrayList<MethodDecl>(4);
+        map.put(m.uncompiledName(), methods);
+      }
+      methods.add(m);
+    }
+    return map;
+  }
+
+  syn lazy java.util.List<MethodDecl> TypeDecl.verMethods() = localMethods();
+
+  eq ClassDecl.verMethods() {
+    Map<String,SimpleSet<MethodDecl>> localMap = verLocalMethodsSignatureMap();
+    ArrayList<MethodDecl> methods = new ArrayList<MethodDecl>(localMethods());
+    for (TypeDecl superType: superclassSet()) {
+      for (MethodDecl m: superType.verMethods()) {
+        if (!m.isPrivate() && m.accessibleFrom(this) && !localMap.containsKey(m.uncompiledSignature())) {
+          methods.add(m);
+        }
+      }
+    }
+    for (MethodDecl m: interfacesMethods()) {
+      if (m.accessibleFrom(this) && !localMap.containsKey(m.signature())
+          && allMethodsAbstract(methods, m.signature())) {
+        methods.add(m);
+      }
+    }
+    return methods;
+  }
+
+  eq InterfaceDecl.verMethods() = methods();
+
+  syn lazy Map<String,SimpleSet<MethodDecl>> TypeDecl.verLocalMethodsSignatureMap() {
+    Map<String,SimpleSet<MethodDecl>> map = new HashMap<String,SimpleSet<MethodDecl>>(localMethods().size());
+    for (MethodDecl m: localMethods()) {
+      putSimpleSetElement(map, m.uncompiledSignature(), m);
+    }
+    return map;
+  }
+
+}
+
+aspect MethodDecl {
+
+  syn lazy String MethodDecl.uncompiledName() {
+    if (hostType().isCompiled()) {
+      String[] splitName = name().split("\\$");
+      if (splitName.length > 1) {
+        String[] splitClass = splitName[1].split("_");
+        if (splitClass.length > 2 && splitClass[splitClass.length - 2].equals("ver")) {
+          return splitName[0];
+        }
+      }
+    }
+    return name();
+  }
+
+  syn lazy String MethodDecl.uncompiledSignature() {
+    StringBuilder sb = new StringBuilder();
+    sb.append(name() + "(");
+    for (int i = 0; i < getNumParameter(); i++) {
+      if (i != 0) {
+        sb.append(", ");
+      }
+      sb.append(getParameter(i).type().uncompiledName());
+    }
+    sb.append(")");
+    return sb.toString();
+  }
+
+}

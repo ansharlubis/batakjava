@@ -45,6 +45,24 @@ aspect ImplementationCheck {
   ClassDecl contributes each implementationCheck() to CompilationUnit.verProblems();
 
   syn Collection<Problem> ClassDecl.implementationCheck() {
+    // Member methods check
+    /*
+    java.util.List<MethodDecl> methods = verMethods();
+    System.err.println("type: " + verFullName());
+    for (MethodDecl m: methods) {
+      System.err.println(m.signature());
+    }
+    */
+
+    // Member fields check
+    /*
+    SimpleSet<Variable> fields = verMemberFields("f1");
+    System.err.println("type: " + verFullName());
+    for (Variable m: fields) {
+      System.err.println(((Declarator) m).prettyPrint());
+    }
+    */
+
     return Collections.emptyList();
   }
 

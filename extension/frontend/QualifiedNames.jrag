@@ -1,6 +1,28 @@
 aspect TypeName {
 
   /**
+   *  Name for types before they were compiled and attached
+   *  with version numbers.
+   */
+  syn String TypeDecl.uncompiledName() = name();
+
+  eq ClassDecl.uncompiledName() {
+    String[] splitName = name().split("\\$");
+    String[] splitPrefix = splitName[0].split("_");
+    if (splitPrefix.length > 2) {
+      if (splitPrefix[splitPrefix.length - 2].equals("ver")) {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < splitPrefix.length-2; i++) {
+          if (i != 0) result.append("_");
+          result.append(splitPrefix[i]);
+        }
+        return result.toString();
+      }
+    }
+    return name();
+  }
+
+  /**
    *  Full name attached with `#(version)` for debugging purposes
    */
   syn lazy String TypeDecl.verFullName() {

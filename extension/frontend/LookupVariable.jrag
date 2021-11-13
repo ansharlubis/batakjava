@@ -6,8 +6,8 @@ aspect VariableScope {
    *  variable is an inherited field.
    *
    *  If the key is an unknown type, then the it is not a field, but
-   *  either a parameter or a field, hence no tracing for constraint is
-   *  needed.
+   *  either a parameter or a local variable, hence no tracing for
+   *  constraint is needed.
    */
   inh Map<TypeDecl, SimpleSet<Variable>> Expr.verLookupVariable(String name);
 
@@ -16,9 +16,12 @@ aspect VariableScope {
   inh Map<TypeDecl,SimpleSet<Variable>> TypeDecl.verLookupVariable(String name);
 
   eq TypeDecl.getBodyDecl(int i).verLookupVariable(String name) {
-    Map<TypeDecl, SimpleSet<Variable>> fieldMap = verMemberFields(name);
-    if (!fieldMap.isEmpty()) {
-      return fieldMap;
+    SimpleSet<Variable> list = verMemberFields(name);
+    TypeDecl thisType = this;
+    if (!list.isEmpty()) {
+      return new HashMap<TypeDecl,SimpleSet<Variable>>() {{
+        put(thisType, list);
+      }};
     }
     // No nested classes, this probably end up empty
     Map<TypeDecl, SimpleSet<Variable>> map = verLookupVariable(name);
@@ -84,9 +87,7 @@ aspect VariableScope {
     for (TypeDecl type: map.keySet()) {
       SimpleSet<Variable> newSet = emptySet();
       for (Variable v: map.get(type)) {
-        if (v.isStatic() || !hostType().verMemberFields(name).containsKey(type)
-            || (hostType().verMemberFields(name).containsKey(type)
-            && !hostType().verMemberFields(name).get(type).contains(v))) {
+        if (!hostType().verMemberFields(name).contains(v) || v.isStatic()) {
           newSet = newSet.add(v);
         }
       }
@@ -188,10 +189,7 @@ aspect VariableScope {
     Map<TypeDecl, SimpleSet<Variable>> map = new HashMap();
     for (TypeDecl type: constraintToTypeSet()) {
       if (type.accessibleFrom(hostType())) {
-        Map<TypeDecl, SimpleSet<Variable>> fieldMap = type.verMemberFields(name);
-        for (TypeDecl fieldHost: fieldMap.keySet()) {
-          map.put(fieldHost, keepAccessibleFields(fieldMap.get(fieldHost)));
-        }
+        map.put(type, keepAccessibleFields(type.verMemberFields(name)));
       }
     }
     return map;
@@ -203,14 +201,12 @@ aspect VariableScope {
     Map<TypeDecl, SimpleSet<Variable>> map = new HashMap();
     for (TypeDecl type: typeSet()) {
       if (type.accessibleFrom(hostType())) {
-        Map<TypeDecl, SimpleSet<Variable>> fieldMap = type.verMemberFields(name);
-        for (TypeDecl fieldHost: fieldMap.keySet()) {
-          SimpleSet<Variable> fields = keepAccessibleFields(fieldMap.get(fieldHost));
-          if (type.isClassDecl()) {
-            fields = removeInstanceVariables(fields);
-          }
-          map.put(fieldHost, fields);
+        SimpleSet<Variable> decls = type.verMemberFields(name);
+        decls = keepAccessibleFields(decls);
+        if (type.isClassDecl()) {
+          decls = removeInstanceVariables(decls);
         }
+        map.put(type, decls);
       }
     }
     return map;
@@ -237,42 +233,28 @@ aspect Fields {
     return map;
   }
 
-  /**
-   *  Member fields can branch across different version of superclass,
-   *  so it is necessary to keep track where the field is found for
-   *  constraint generation purposes.
-   */
-  syn lazy Map<TypeDecl, SimpleSet<Variable>> TypeDecl.verMemberFields(String name) {
-    Map<TypeDecl, SimpleSet<Variable>> result = new HashMap();
-    result.put(this, verLocalFields(name));
-    return result;
-  }
+  syn lazy SimpleSet<Variable> TypeDecl.verMemberFields(String name) = localFields(name);
 
   eq ClassDecl.verMemberFields(String name) {
-    Map<TypeDecl, SimpleSet<Variable>> result = new HashMap();
-
     SimpleSet<Variable> fields = verLocalFields(name);
     if (!fields.isEmpty()) {
-      result.put(this, fields);
-      return result;
+      return fields;
     }
-
     for (TypeDecl superType: superclassSet()) {
-      Map<TypeDecl, SimpleSet<Variable>> superFields = superType.verMemberFields(name);
-      for (TypeDecl type: superFields.keySet()) {
-        if (!superFields.get(type).isEmpty()) {
-          result.put(type, superFields.get(type));
+      for (Variable decl: superType.verMemberFields(name)) {
+        if (!decl.isPrivate() && decl.accessibleFrom(this)) {
+          fields = fields.add(decl);
         }
       }
     }
-
     for (InterfaceDecl iface: superInterfaces()) {
-      if (!iface.memberFields(name).isEmpty()) {
-        result.put(iface, iface.memberFields(name));
+      for (Variable decl: iface.memberFields(name)) {
+        if (!decl.isPrivate() && decl.accessibleFrom(this)) {
+          fields = fields.add(decl);
+        }
       }
     }
-
-    return result;
+    return fields;
   }
 
 }
