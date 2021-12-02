@@ -1,0 +1,8 @@
+package P ver 2;
+
+public class B extends C {
+  public A f2;
+  public B() {
+    super(1);
+  }
+}

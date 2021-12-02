@@ -44,16 +44,47 @@ aspect TypeAnalysis {
   eq ClassDecl.isUncompiled() = !isOverview() && (hostVersion() != null);
 
   /**
+   *  Get the set of type from constraint
+   */
+  protected SimpleSet<TypeDecl> Expr.constraintToTypeSet() {
+    SimpleSet<TypeDecl> typeSet = emptySet();
+    Optional<Formula> constraint = constraint();
+    if (constraint.isPresent()) {
+      for (Integer typeInt: constraint.get().getTypeInt(infVar())) {
+        typeSet = typeSet.add(intToType(typeInt));
+      }
+    }
+    return typeSet;
+  }
+
+  /**
    *  Find the set of type for an expression
    *  Treat an empty set as replacement for unknown type
    */
-  syn SimpleSet<TypeDecl> Expr.typeSet() = emptySet();
+  syn SimpleSet<TypeDecl> Expr.typeSet() = this.<TypeDecl>emptySet().add(type());
 
   eq Access.typeSet() = emptySet();
   eq TypeAccess.typeSet() = declSet();
   eq ClassInstanceExpr.typeSet() = hasTypeDecl() ? this.<TypeDecl>emptySet().add(getTypeDecl()) : getAccess().typeSet();
+  eq Dot.typeSet() = lastAccess().typeSet();
 
-  syn lazy SimpleSet<TypeDecl> ParameterDeclaration.typeSet() = getTypeAccess().typeSet();
+  // Allow only using parametrized class from Java
+  eq ParTypeAccess.typeSet() = this.<TypeDecl>emptySet().add(type());
+
+  eq MethodAccess.typeSet() = constraintToTypeSet();
+  eq VarAccess.typeSet() = constraintToTypeSet();
+  eq ThisAccess.typeSet() = this.<TypeDecl>emptySet().add(type());
+
+  syn lazy SimpleSet<TypeDecl> MethodDecl.typeSet() = getTypeAccess().typeSet();
+
+  syn lazy SimpleSet<TypeDecl> Variable.typeSet();
+
+  eq ParameterDeclaration.typeSet() = getTypeAccess().typeSet();
+  eq Declarator.typeSet() = getTypeAccess().typeSet();
+  eq CatchParameterDeclaration.typeSet() = emptySet();
+  eq EnumConstant.typeSet() = emptySet();
+  eq InferredParameterDeclaration.typeSet() = emptySet();
+
 }
 
 aspect SuperClasses {
@@ -66,6 +97,14 @@ aspect SuperClasses {
     } else {
       return typeObject();
     }
+  }
+
+  public boolean SuperConstructorAccess.classHasSuperAccess() {
+    TypeDecl type = hostType();
+    if (type instanceof ClassDecl && ((ClassDecl) type).hasSuperClass()) {
+      return true;
+    }
+    return false;
   }
 
 }
@@ -82,6 +121,19 @@ aspect TypeConversion {
     }
     if (verWideningConversionTo(type).isPresent()) {
       return verWideningConversionTo(type);
+    }
+    return Optional.empty();
+  }
+
+  syn Optional<Formula> TypeDecl.verCastingConversionTo(TypeDecl type) {
+    if (verIdentityConversionTo(type).isPresent()) {
+      return verIdentityConversionTo(type);
+    }
+    if (verWideningConversionTo(type).isPresent()) {
+      return verWideningConversionTo(type);
+    }
+    if (verNarrowingConversionTo(type).isPresent()) {
+      return verNarrowingConversionTo(type);
     }
     return Optional.empty();
   }
@@ -107,6 +159,39 @@ aspect TypeConversion {
     return Optional.empty();
   }
 
+  syn Optional<Formula> TypeDecl.verNarrowingConversionTo(TypeDecl type) = verInstanceOf(type);
+
+  eq PrimitiveType.verNarrowingConversionTo(TypeDecl type) =
+    type.instanceOf(this) ? Optional.of(new Formula()) : Optional.empty();
+
+  eq ShortType.verNarrowingConversionTo(TypeDecl type) =
+    type.isByte() || type.isChar() ? Optional.of(new Formula()) : Optional.empty();
+
+  eq CharType.verNarrowingConversionTo(TypeDecl type) =
+    type.isByte() || type.isShort() ? Optional.of(new Formula()) : Optional.empty();
+
+  eq ByteType.verNarrowingConversionTo(TypeDecl type) =
+    type.isChar() ? Optional.of(new Formula()) : Optional.empty();
+
+  eq ReferenceType.verNarrowingConversionTo(TypeDecl type) {
+    if (type.verInstanceOf(this).isPresent()) {
+      return type.verInstanceOf(this);
+    }
+    if (isClassDecl() && !getModifiers().isFinal() && type.isInterfaceDecl()) {
+      return Optional.of(new Formula());
+    }
+    if (isInterfaceDecl() && type.instanceOf(this)) {
+      return Optional.of(new Formula());
+    }
+    if (fullName().equals("java.lang.Object") && type.isInterfaceDecl()) {
+      return Optional.of(new Formula());
+    }
+    if (isArrayDecl() && type.isArrayDecl()
+        && elementType().verInstanceOf(type.elementType()).isPresent()) {
+      return elementType().verInstanceOf(type.elementType());
+    }
+    return Optional.empty();
+  }
 }
 
 aspect TypeWideningAndIdentity {

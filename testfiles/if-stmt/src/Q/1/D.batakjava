@@ -1,0 +1,11 @@
+package Q ver 1;
+
+public class D  {
+  private boolean bool() { return true; }
+
+  public static void main(String[] args) {
+    if (new D().bool()) {
+      D d = new D();
+    }
+  }
+}

@@ -1,0 +1,17 @@
+package Q ver 1;
+import P.B;
+import P.C;
+
+public class D extends B {
+  public int m1() { return 1; }
+
+  public int m2() { return 2; }
+
+  public Integer m3() { return 3; }
+
+  public static void main(String[] args) {
+    int i1 = new D().m1() + new D().m2();
+    int i1 = new D().m1() * new D().m3();
+    bool b = new D() == new D();
+  }
+}

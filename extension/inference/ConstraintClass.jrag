@@ -224,7 +224,7 @@ aspect ConstraintClass {
 
     @Override
     public String toString() {
-      return var.toString() + ":" + typeInt.toString();
+      return "v" + var.toString() + ":" + typeInt.toString();
     }
 
   }

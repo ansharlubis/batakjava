@@ -187,7 +187,7 @@ aspect VariableScope {
    */
   syn Map<TypeDecl, SimpleSet<Variable>> Expr.verQualifiedLookupVariable(String name) {
     Map<TypeDecl, SimpleSet<Variable>> map = new HashMap();
-    for (TypeDecl type: constraintToTypeSet()) {
+    for (TypeDecl type: typeSet()) {
       if (type.accessibleFrom(hostType())) {
         map.put(type, keepAccessibleFields(type.verMemberFields(name)));
       }
@@ -242,7 +242,8 @@ aspect Fields {
     }
     for (TypeDecl superType: superclassSet()) {
       for (Variable decl: superType.verMemberFields(name)) {
-        if (!decl.isPrivate() && decl.accessibleFrom(this)) {
+        if (!decl.isPrivate() && decl.accessibleFrom(this)
+            && !fields.contains(decl)) {
           fields = fields.add(decl);
         }
       }

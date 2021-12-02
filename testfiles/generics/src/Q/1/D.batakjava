@@ -1,0 +1,16 @@
+package Q ver 1;
+//import P.B;
+import P.C;
+import java.util.ArrayList;
+
+public class D {
+  public String m() { return "test"; }
+
+  public static void main(String[] args) {
+    // System.out.println(new D().m());
+
+    ArrayList<C> listOfC = new ArrayList<C>();
+    listOfC.add(new C());
+
+  }
+}

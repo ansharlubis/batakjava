@@ -33,28 +33,142 @@ aspect ImplementationCheck {
   VarAccess contributes each implementationCheck() to CompilationUnit.verProblems();
 
   syn Collection<Problem> VarAccess.implementationCheck() {
+    /* Checked
+    System.out.println(prettyPrint());
+    System.out.println(constraint());
+    */
+    return Collections.emptyList();
+  }
+
+  MethodAccess contributes each implementationCheck() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> MethodAccess.implementationCheck() {
+    // TODO: Allow using generics
+    System.out.println(prettyPrint());
+    /*
+    System.out.println("access var: " + infVar());
+    for (Expr arg: getArgList()) {
+      System.out.println("arg: " + arg.infVar());
+    }
+    */
+    System.out.println(constraint());
+
     return Collections.emptyList();
   }
 
   ClassInstanceExpr contributes each implementationCheck() to CompilationUnit.verProblems();
 
   syn Collection<Problem> ClassInstanceExpr.implementationCheck() {
+    // TODO: Allow using generics
+    /*
+    System.out.println(prettyPrint());
+    // System.out.println("access var: " + infVar());
+    for (Expr arg: getArgList()) {
+      System.out.println("arg: " + arg.infVar());
+    }
+    System.out.println(constraint());
+    */
+    return Collections.emptyList();
+  }
+
+  SuperConstructorAccess contributes each implementationCheck() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> SuperConstructorAccess.implementationCheck() {
+    /* Checked
+    System.out.println("type: " + hostType().verFullName());
+    System.out.println(constraint());
+    */
+    return Collections.emptyList();
+  }
+
+  VariableDeclarator contributes each implementationCheck() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> VariableDeclarator.implementationCheck() {
+    /* Checked (assign-expr)
+    System.out.println(prettyPrint());
+    System.out.println(constraint());
+    */
+    return Collections.emptyList();
+  }
+
+  AssignExpr contributes each implementationCheck() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> AssignExpr.implementationCheck() {
+    /* Checked (assign-expr)
+    System.out.println(prettyPrint());
+    System.out.println(getDest().infVar());
+    System.out.println(getSource().infVar());
+    System.out.println(constraint());
+    */
+    return Collections.emptyList();
+  }
+
+  Binary contributes each implementationCheck() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> Binary.implementationCheck() {
+    System.out.println(prettyPrint());
+    System.out.println(constraint());
+    return Collections.emptyList();
+  }
+
+  InstanceOfExpr contributes each implementationCheck() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> InstanceOfExpr.implementationCheck() {
+    /* Checked
+    System.out.println(prettyPrint());
+    System.out.println(getExpr().infVar());
+    System.out.println(getTypeAccess().infVar());
+    System.out.println(constraint());
+    */
+    return Collections.emptyList();
+  }
+
+  CastExpr contributes each implementationCheck() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> CastExpr.implementationCheck() {
+    /* Checked
+    System.out.println(prettyPrint());
+    System.out.println(getExpr().infVar());
+    System.out.println(getTypeAccess().infVar());
+    System.out.println(constraint());
+    */
+    return Collections.emptyList();
+  }
+
+  ReturnStmt contributes each implementationCheck() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> ReturnStmt.implementationCheck() {
+    /* Checked
+    System.out.println(prettyPrint());
+    System.out.println(constraint());
+    */
+    return Collections.emptyList();
+  }
+
+  IfStmt contributes each implementationCheck() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> IfStmt.implementationCheck() {
+    /* Checked
+    System.out.println(prettyPrint());
+    System.out.println(constraint());
+    */
     return Collections.emptyList();
   }
 
   ClassDecl contributes each implementationCheck() to CompilationUnit.verProblems();
 
   syn Collection<Problem> ClassDecl.implementationCheck() {
-    // Member methods check
+    // Checked
     /*
     java.util.List<MethodDecl> methods = verMethods();
     System.err.println("type: " + verFullName());
     for (MethodDecl m: methods) {
-      System.err.println(m.signature());
+      System.err.println(m.hostType().verFullName() + ": " + m.signature());
     }
+    System.err.println();
     */
 
-    // Member fields check
+    // Checked
     /*
     SimpleSet<Variable> fields = verMemberFields("f1");
     System.err.println("type: " + verFullName());

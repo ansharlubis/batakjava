@@ -4,8 +4,10 @@ import P.C;
 
 public class D extends B {
   public static void main(String[] args) {
-    int i = new B().f1;
-    C c = new C();
-    C d = c;
+    B b1 = new D();
+    b1 = new D();
+    C c1 = new B();
+    c1 = new C();
+    // C c2 = new D();
   }
 }

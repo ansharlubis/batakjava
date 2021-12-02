@@ -1,4 +1,4 @@
-package P ver 1;
+package P ver 2;
 
 public class B extends C {
 

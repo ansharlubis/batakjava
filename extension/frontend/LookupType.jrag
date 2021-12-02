@@ -1,5 +1,13 @@
 aspect TypeScopePropagation {
 
+  /**
+   *  Attribute for getting the return type access of a method decl
+   */
+  inh Access ReturnStmt.returnTypeAccess();
+  eq TypeDecl.getBodyDecl().returnTypeAccess() = null;
+  eq MethodDecl.getBlock().returnTypeAccess() = !isVoid() ? getTypeAccess() : null;
+  eq Program.getChild().returnTypeAccess() = null;
+
   syn SimpleSet<TypeDecl> TypeAccess.declSet() =
     packageName().equals("")
     ? lookupTypeSet(name())
@@ -51,6 +59,18 @@ aspect TypeScopePropagation {
     }
 
     return lookupTypeSet(name);
+  }
+
+  /** To allow using generics **/
+  // Current: Adhoc methods to allow basic examples
+  eq ParTypeDecl.getBodyDecl().lookupTypeSet(String name) {
+    TypeDecl paramType = getParameterization().substitute(name);
+    return lookupTypeSet(paramType.packageName(), paramType.name());
+  }
+
+  eq ParTypeDecl.getChild().lookupTypeSet(String name) {
+    TypeDecl paramType = getParameterization().substitute(name);
+    return lookupTypeSet(paramType.packageName(), paramType.name());
   }
 
   /**
@@ -166,7 +186,7 @@ aspect LookupFullyQualifiedTypes {
 
   // inh SimpleSet<TypeDecl> Stmt.lookupTypeSet(String packageName, String typeName);
   // inh SimpleSet<TypeDecl> BodyDecl.lookupTypeSet(String packageName, String typeName);
-  // inh SimpleSet<TypeDecl> TypeDecl.lookupTypeSet(String packageName, String typename);
+  inh SimpleSet<TypeDecl> TypeDecl.lookupTypeSet(String packageName, String typename);
 
   eq Program.getChild().lookupTypeSet(String packageName, String typeName) =
     lookupTypeSet(packageName, typeName);

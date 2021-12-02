@@ -68,29 +68,18 @@ aspect ConstraintGeneration {
   syn lazy Integer Variable.infVar();
   eq ParameterDeclaration.infVar() = getTypeAccess().infVar();
   eq Declarator.infVar() = declarationType().infVar();
+
   /** Not supported variable **/
   eq EnumConstant.infVar() = program().getInfVar(this);
   eq CatchParameterDeclaration.infVar() = program().getInfVar(this);
   eq InferredParameterDeclaration.infVar() = program().getInfVar(this);
 
   /**
-   *  Get the set of type from constraint
-   */
-  syn SimpleSet<TypeDecl> Expr.constraintToTypeSet() {
-    SimpleSet<TypeDecl> typeSet = emptySet();
-    Optional<Formula> constraint = constraint();
-    if (constraint.isPresent()) {
-      for (Integer typeInt: constraint.get().getTypeInt(infVar())) {
-        typeSet = typeSet.add(intToType(typeInt));
-      }
-    }
-    return typeSet;
-  }
-
-  /**
    *  Constraint generation for type checking, then version inference
    */
   syn lazy Optional<Formula> Expr.constraint() = Optional.empty();
+
+  eq ThisAccess.constraint() = Optional.of(buildFormula(type()));
 
   eq ClassInstanceExpr.constraint() {
     Formula formula = new Formula();
@@ -105,25 +94,404 @@ aspect ConstraintGeneration {
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
-
-
-  public Optional<Formula> Expr.argConstraint(ParameterDeclaration parameter) {
+  eq MethodAccess.constraint() {
     Formula formula = new Formula();
-    for (TypeDecl argType: constraintToTypeSet()) {
-      for (TypeDecl parameterType: parameter.typeSet()) {
-        Optional<Formula> trace = argType.verMethodInvocationConversionTo(parameterType);
-        if (trace.isPresent()) {
-          Formula sub = buildFormula(argType);
-          if (parameter.hostType().isUncompiled()) {
-            sub = sub.multiply(parameter.getTypeAccess().buildClause(parameterType));
+    Map<TypeDecl,Collection<MethodDecl>> map = verLookupMethod(name());
+
+    for (TypeDecl qualifierType: map.keySet()) {
+      for (MethodDecl method: map.get(qualifierType)) {
+        Optional<Formula> trace = qualifierType.verInstanceOf(method.hostType());
+        Optional<Formula> sub = verApplicableAndAccessible(method);
+        if (trace.isPresent() && sub.isPresent()) {
+          for (TypeDecl returnType: method.typeSet()) {
+            Formula add = sub.get().multiply(trace.get()).multiply(buildClause(returnType));
+            if (isQualified()) {
+              formula = formula.add(add.multiply(qualifier().buildClause(qualifierType)));
+            } else {
+              formula = formula.add(add);
+            }
           }
-          formula = formula.add(sub.multiply(trace.get()));
+        }
+      }
+    }
+
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq VarAccess.constraint() {
+    Formula formula = new Formula();
+    Map<TypeDecl,SimpleSet<Variable>> map = verLookupVariable(name());
+
+    for (TypeDecl qualifierType: map.keySet()) {
+      for (Variable var: map.get(qualifierType)) {
+        for (TypeDecl varType: var.typeSet()) {
+          if (qualifierType.isUnknown()) {
+            Formula sub = buildFormula(varType);
+            formula = formula.add(sub);
+          } else {
+            Optional<Formula> trace = qualifierType.verInstanceOf(var.hostType());
+            if (trace.isPresent()) {
+              Formula sub = isQualified()
+                ? trace.get().multiply(buildClause(varType))
+                             .multiply(qualifier().buildClause(qualifierType))
+                : trace.get().multiply(buildClause(varType));
+              formula = formula.add(sub);
+            }
+          }
+        }
+      }
+    }
+
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq SuperConstructorAccess.constraint() {
+    Formula formula = new Formula();
+
+    if (classHasSuperAccess()) {
+      Access superAccess = ((ClassDecl) hostType()).getSuperClass();
+      for (TypeDecl superType: superAccess.typeSet()) {
+        for (ConstructorDecl constructor: superType.constructors()) {
+          Optional<Formula> sub = verApplicableAndAccessible(constructor);
+          if (sub.isPresent()) {
+            formula = formula.add(sub.get().multiply(superAccess.buildClause(superType)));
+          }
+        }
+      }
+    } else if (!decls().isEmpty()) {
+      return Optional.of(formula);
+    }
+
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq Dot.constraint() = lastAccess().constraint();
+
+  /**
+   *  Array expressions
+   */
+
+  /**
+   *  Assign expressions
+   */
+  eq AssignExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl source: getSource().typeSet()) {
+      for (TypeDecl dest: getDest().typeSet()) {
+        if (source.isPrimitive() && dest.isPrimitive()) {
+          formula = formula.add(
+            getSource().buildFormula(source)
+              .multiply(getDest().buildClause(dest)));
         }
       }
     }
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
+  eq AssignSimpleExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl source: getSource().typeSet()) {
+      for (TypeDecl dest: getDest().typeSet()) {
+        Optional<Formula> trace = source.verAssignConversionTo(dest, getSource());
+        if (trace.isPresent()) {
+          Formula sub = trace.get()
+            .multiply(getSource().buildClause(source))
+            .multiply(getDest().buildClause(dest));
+          formula = formula.add(sub);
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq AssignMultiplicativeExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl source: getSource().typeSet()) {
+      for (TypeDecl dest: getDest().typeSet()) {
+        if (!source.isBoolean() && !dest.isBoolean()
+            && source.isPrimitive() && dest.isPrimitive()) {
+          formula = formula.add(getSource().buildFormula(source)
+            .multiply(getDest().buildClause(dest)));
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq AssignPlusExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl source: getSource().typeSet()) {
+      for (TypeDecl dest: getDest().typeSet()) {
+        if (dest.isString() && !source.isVoid()) {
+          formula = formula.add(
+            getSource().buildFormula(source).multiply(
+            getDest().buildClause(dest)));
+        } else if (!source.isBoolean() && !dest.isBoolean()
+            && source.isPrimitive() && dest.isPrimitive()) {
+          formula = formula.add(getSource().buildFormula(source)
+            .multiply(getDest().buildClause(dest)));
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq AssignMinusExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl source: getSource().typeSet()) {
+      for (TypeDecl dest: getDest().typeSet()) {
+        if (!source.isBoolean() && !dest.isBoolean()
+            && source.isPrimitive() && dest.isPrimitive()) {
+          formula = formula.add(getSource().buildFormula(source)
+            .multiply(getDest().buildClause(dest)));
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq AssignShiftExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl source: getSource().typeSet()) {
+      for (TypeDecl dest: getDest().typeSet()) {
+        if (source.isIntegralType() && dest.isIntegralType()
+            && source.isPrimitive() && dest.isPrimitive()) {
+          formula = formula.add(getSource().buildFormula(source)
+            .multiply(getDest().buildClause(dest)));
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq AssignBitwiseExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl source: getSource().typeSet()) {
+      for (TypeDecl dest: getDest().typeSet()) {
+        if ((source.isIntegralType() && dest.isIntegralType()) ||
+            (source.isBoolean() && dest.isBoolean())) {
+          if (source.isPrimitive() && dest.isPrimitive()) {
+            formula = formula.add(getSource().buildFormula(source)
+              .multiply(getDest().buildClause(dest)));
+          }
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  /**
+   *  Binary expressions
+   */
+  eq PlusExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl type: getOperand().typeSet()) {
+      formula = formula.add(buildFormula(type.unaryNumericPromotion())
+        .multiply(getOperand().buildClause(type)));
+    }
+    return Optional.of(formula);
+  }
+
+  eq MinusExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl type: getOperand().typeSet()) {
+      formula = formula.add(buildFormula(type.unaryNumericPromotion())
+        .multiply(getOperand().buildClause(type)));
+    }
+    return Optional.of(formula);
+  }
+
+  eq BitNotExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl type: getOperand().typeSet()) {
+      formula = formula.add(buildFormula(type.unaryNumericPromotion())
+        .multiply(getOperand().buildClause(type)));
+    }
+    return Optional.of(formula);
+  }
+
+  eq LogNotExpr.constraint() = Optional.of(buildFormula(typeBoolean()));
+
+  eq MultiplicativeExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl left: getLeftOperand().typeSet()) {
+      for (TypeDecl right: getRightOperand().typeSet()) {
+        if (!left.binaryNumericPromotion(right).isUnknown()) {
+          formula = formula.add(buildFormula(left.binaryNumericPromotion(right))
+            .multiply(getRightOperand().buildClause(right))
+            .multiply(getLeftOperand().buildClause(left)));
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq AdditiveExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl left: getLeftOperand().typeSet()) {
+      for (TypeDecl right: getRightOperand().typeSet()) {
+        if (!left.binaryNumericPromotion(right).isUnknown()) {
+          formula = formula.add(buildFormula(left.binaryNumericPromotion(right))
+            .multiply(getRightOperand().buildClause(right))
+            .multiply(getLeftOperand().buildClause(left)));
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq AddExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl left: getLeftOperand().typeSet()) {
+      for (TypeDecl right: getRightOperand().typeSet()) {
+        if (!left.isString() && !right.isString()) {
+          if (!left.binaryNumericPromotion(right).isUnknown()) {
+            formula = formula.add(buildFormula(left.binaryNumericPromotion(right))
+              .multiply(getRightOperand().buildClause(right))
+              .multiply(getLeftOperand().buildClause(left)));
+          }
+        } else {
+          if (!left.isVoid() && !right.isVoid()) {
+            TypeDecl type = left.isString() ? left : right;
+            formula = formula.add(buildFormula(type)
+              .multiply(getRightOperand().buildClause(right))
+              .multiply(getLeftOperand().buildClause(left)));
+          }
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq ShiftExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl left: getLeftOperand().typeSet()) {
+      formula = formula.add(buildFormula(left.unaryNumericPromotion())
+        .multiply(getLeftOperand().buildClause(left)));
+    }
+    return Optional.of(formula);
+  }
+
+  eq RelationalExpr.constraint() = Optional.of(buildFormula(typeBoolean()));
+
+  eq LogicalExpr.constraint() = Optional.of(buildFormula(typeBoolean()));
+
+  eq EqualityExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl left: getLeftOperand().typeSet()) {
+      for (TypeDecl right: getRightOperand().typeSet()) {
+        if ((left.isNumericType() && right.isNumericType())
+            || (left.isBoolean() && right.isBoolean())) {
+          formula = formula.add(buildFormula(typeBoolean())
+            .multiply(getLeftOperand().buildClause(left))
+            .multiply(getRightOperand().buildClause(right)));
+        } else if ((left.isReferenceType() || left.isNull())
+            && (right.isReferenceType() || right.isNull())) {
+          Optional<Formula> leftCast = left.verCastingConversionTo(right);
+          Optional<Formula> rightCast = right.verCastingConversionTo(left);
+          if (leftCast.isPresent() || rightCast.isPresent()) {
+            Formula sub = buildFormula(typeBoolean())
+              .multiply(getLeftOperand().buildClause(left))
+              .multiply(getRightOperand().buildClause(right));
+            if (leftCast.isPresent() && rightCast.isPresent()) {
+              sub = sub.multiply(leftCast.get()).multiply(rightCast.get());
+            } else if (leftCast.isPresent()) {
+              sub = sub.multiply(leftCast.get());
+            } else if (rightCast.isPresent()) {
+              sub = sub.multiply(rightCast.get());
+            }
+            formula = formula.add(sub);
+          }
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq BitwiseExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl left: getLeftOperand().typeSet()) {
+      for (TypeDecl right: getRightOperand().typeSet()) {
+        if (left.isIntegralType() && right.isIntegralType()) {
+          if (!left.binaryNumericPromotion(right).isUnknown()) {
+            formula = formula.add(buildFormula(left.binaryNumericPromotion(right))
+              .multiply(getRightOperand().buildClause(right))
+              .multiply(getLeftOperand().buildClause(left)));
+          }
+        } else if (left.isBoolean() && right.isBoolean()) {
+          formula = formula.add(buildFormula(typeBoolean())
+            .multiply(getRightOperand().buildClause(right))
+            .multiply(getLeftOperand().buildClause(left)));
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq CastExpr.constraint() {
+    Formula formula = new Formula();
+    if (getTypeAccess().isTypeAccess()) {
+      for (TypeDecl expr: getExpr().typeSet()) {
+        for (TypeDecl type: getTypeAccess().typeSet()) {
+          Optional<Formula> cast = expr.verCastingConversionTo(type);
+          if (cast.isPresent()) {
+            formula = formula.add(cast.get()
+              .multiply(getExpr().buildClause(expr))
+              .multiply(getTypeAccess().buildClause(type)));
+          }
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq InstanceOfExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl exprType: getExpr().typeSet()) {
+      for (TypeDecl accessType: getTypeAccess().typeSet()) {
+        Optional<Formula> trace = exprType.verInstanceOf(accessType);
+        if (trace.isPresent()) {
+          formula = formula.add(trace.get()
+            .multiply(getExpr().buildFormula(exprType))
+            .multiply(getTypeAccess().buildClause(accessType)));
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  syn lazy Optional<Formula> Stmt.constraint() = Optional.empty();
+
+  eq ReturnStmt.constraint() {
+    if (hasResult() && returnTypeAccess() != null) {
+      return getResult().subtypingConstraint(returnTypeAccess());
+    }
+    return returnType().isVoid() ? Optional.of(new Formula()) : Optional.empty();
+  }
+
+  eq IfStmt.constraint() = Optional.of(getCondition().buildFormula(getCondition().typeBoolean()));
+
+  syn lazy Optional<Formula> Declarator.constraint()
+    = hasInit() ? getInit().subtypingConstraint(declarationType()) : Optional.of(new Formula());
+
+  public Optional<Formula> Expr.subtypingConstraint(Access dest) {
+    Formula formula = new Formula();
+    for (TypeDecl sourceType: typeSet()) {
+      for (TypeDecl destType: dest.typeSet()) {
+        Optional<Formula> trace = sourceType.verAssignConversionTo(destType, this);
+        if (trace.isPresent()) {
+          Formula sub = trace.get().multiply(buildClause(sourceType));
+          /** If the access belongs to the Java or compiled classes,
+              then constraints are unnecessary **/
+          if (dest.hostType().isUncompiled()) {
+            sub = sub.multiply(dest.buildClause(destType));
+          }
+          formula = formula.add(sub);
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
 
 
 }

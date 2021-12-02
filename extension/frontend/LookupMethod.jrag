@@ -47,7 +47,7 @@ aspect LookupMethod {
 
   eq Dot.getRight().verLookupMethod(String name) {
     Map<TypeDecl,Collection<MethodDecl>> map = new HashMap();
-    for (TypeDecl type: getLeft().constraintToTypeSet()) {
+    for (TypeDecl type: getLeft().typeSet()) {
       map.put(type, type.verMemberMethods(name));
     }
     return map;
@@ -86,7 +86,8 @@ aspect MemberMethods {
     ArrayList<MethodDecl> methods = new ArrayList<MethodDecl>(localMethods());
     for (TypeDecl superType: superclassSet()) {
       for (MethodDecl m: superType.verMethods()) {
-        if (!m.isPrivate() && m.accessibleFrom(this) && !localMap.containsKey(m.uncompiledSignature())) {
+        if (!m.isPrivate() && m.accessibleFrom(this) && !methods.contains(m)
+            && !localMap.containsKey(m.uncompiledSignature())) {
           methods.add(m);
         }
       }
@@ -113,6 +114,28 @@ aspect MemberMethods {
 }
 
 aspect MethodDecl {
+
+  syn Optional<Formula> MethodAccess.verApplicableAndAccessible(MethodDecl m) {
+    if (m.getNumParameter() != getNumArg()) {
+      return Optional.empty();
+    }
+
+    if (!accessible(m)) {
+      return Optional.empty();
+    }
+
+    Formula formula = new Formula();
+    for (int i = 0; i < m.getNumParameter(); i++) {
+      Optional<Formula> arg = getArg(i).subtypingConstraint(m.getParameter(i).getTypeAccess());
+      if (arg.isPresent()) {
+        formula = formula.multiply(arg.get());
+      } else {
+        return Optional.empty();
+      }
+    }
+
+    return Optional.of(formula);
+  }
 
   syn lazy String MethodDecl.uncompiledName() {
     if (hostType().isCompiled()) {

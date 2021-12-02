@@ -11,15 +11,32 @@ aspect ConstructScope {
     if ((getNumArg() == decl.getNumParameter()) && decl.accessibleFrom(hostType()) &&
         (!decl.isProtected() || hasTypeDecl() || decl.hostPackage().equals(hostPackage()))) {
       for (int i = 0; i < getNumArg(); i++) {
-        Optional<Formula> arg = getArg(i).argConstraint(decl.getParameter(i));
+        Optional<Formula> arg = getArg(i).subtypingConstraint(decl.getParameter(i).getTypeAccess());
         if (arg.isPresent()) {
           formula = formula.multiply(arg.get());
         } else {
           return Optional.empty();
         }
       }
+      return Optional.of(formula);
     }
-    return Optional.of(formula);
+    return Optional.empty();
+  }
+
+  eq ConstructorAccess.verApplicableAndAccessible(ConstructorDecl decl) {
+    Formula formula = new Formula();
+    if ((getNumArg() == decl.getNumParameter()) && decl.accessibleFrom(hostType())) {
+      for (int i = 0; i < getNumArg(); i++) {
+        Optional<Formula> arg = getArg(i).subtypingConstraint(decl.getParameter(i).getTypeAccess());
+        if (arg.isPresent()) {
+          formula = formula.multiply(arg.get());
+        } else {
+          return Optional.empty();
+        }
+      }
+      return Optional.of(formula);
+    }
+    return Optional.empty();
   }
 
 

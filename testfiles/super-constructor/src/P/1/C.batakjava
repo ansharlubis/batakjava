@@ -1,0 +1,8 @@
+package P ver 1;
+
+public class C {
+  public int f1;
+  public C(int v1) {
+    this.f1 = v1;
+  }
+}

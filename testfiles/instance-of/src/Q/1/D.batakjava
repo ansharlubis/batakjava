@@ -1,11 +1,12 @@
 package Q ver 1;
 import P.B;
 import P.C;
+import P.A;
 
 public class D extends B {
   public static void main(String[] args) {
-    int i = new B().f1;
-    C c = new C();
-    C d = c;
+    bool a = new A() instanceof A;
+    bool b = new D() instanceof B;
+    bool c = new D() instanceof C;
   }
 }
