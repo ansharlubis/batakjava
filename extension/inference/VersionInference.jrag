@@ -1,3 +1,63 @@
+aspect ConstraintGeneration {
+
+  coll LinkedList<Formula> Program.collectConstraint() root Program;
+
+  Expr contributes each collectConstraint() to Program.collectConstraint();
+
+  syn Collection<Formula> Expr.collectConstraint() =
+    constraint().isPresent() ? constraint().get().toList() : Collections.emptyList();
+
+  eq Dot.collectConstraint() = Collections.emptyList();
+
+  Stmt contributes each collectConstraint() to Program.collectConstraint();
+
+  syn Collection<Formula> Stmt.collectConstraint() =
+    constraint().isPresent() ? constraint().get().toList() : Collections.emptyList();
+
+  Declarator contributes each collectConstraint() to Program.collectConstraint();
+
+  syn Collection<Formula> Declarator.collectConstraint() =
+    constraint().isPresent() ? constraint().get().toList() : Collections.emptyList();
+
+}
+
 aspect VersionInference {
+
+  public final Set<Map<Integer,TypeDecl>> Program.solutions = new HashSet();
+
+  public int Program.solveConstraint() {
+    long start = System.nanoTime();
+    LinkedList<Formula> constraints = collectConstraint();
+    constraintGenTime += System.nanoTime() - start;
+
+    Model model = new Model("Inference");
+    IntVar[] vars = new IntVar[infVarCount];
+
+    for (int i = 0; i < infVarCount; i++) {
+      vars[i] = infTypeMap.size() > 1
+        ? model.intVar("v" + i, 0, infTypeMap.size() - 1)
+        : model.intVar("v" + i, 0);
+    }
+
+    for (Formula constraint: constraints) {
+      constraint.post(model, vars).post();
+    }
+
+    start = System.nanoTime();
+    java.util.List<Solution> solverSolutions = model.getSolver().findAllSolutions();
+    solvingTime += System.nanoTime() - start;
+
+    for (Solution solverSolution: solverSolutions) {
+      Map<Integer,TypeDecl> solution = new HashMap();
+      for (int i = 0; i < infVarCount; i++) {
+        Integer infType = solverSolution.getIntVal(vars[i]);
+        solution.put(i, intToType(infType));
+      }
+      // System.out.println(solution);
+      solutions.add(solution);
+    }
+
+    return solutions.size() > 0 ? 0 : 4;
+  }
 
 }

@@ -44,15 +44,14 @@ aspect ImplementationCheck {
 
   syn Collection<Problem> MethodAccess.implementationCheck() {
     // TODO: Allow using generics
-    System.out.println(prettyPrint());
     /*
+    System.out.println(prettyPrint());
     System.out.println("access var: " + infVar());
     for (Expr arg: getArgList()) {
       System.out.println("arg: " + arg.infVar());
     }
-    */
     System.out.println(constraint());
-
+    */
     return Collections.emptyList();
   }
 

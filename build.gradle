@@ -17,9 +17,11 @@ jastadd {
 
     module "batakjava", {
       imports "java8 frontend" // ExtendJ dependency for template module.
+      imports "java8 backend"
 
       jastadd {
         basedir "extension"
+        include "**/backend/*.jrag"
         include "**/frontend/*.jrag"
         include "**/surface/*.ast"
         include "**/surface/*.jadd"
@@ -51,6 +53,7 @@ sourceSets.main {
   java {
     srcDir 'extendj/src/frontend-main'
     srcDir 'src/frontend-main'
+    srcDir 'src/backend-main'
   }
   resources {
     srcDir 'extendj/src/res'
@@ -73,7 +76,8 @@ jar {
 // Use JavaCompiler if you need bytecode generation.
 //jar.manifest.attributes 'Main-Class': 'org.extendj.JavaChecker'
 //jar.manifest.attributes 'Main-Class': 'org.extendj.JavaCompiler'
-jar.manifest.attributes 'Main-Class': 'org.extendj.BatakjavaChecker'
+//jar.manifest.attributes 'Main-Class': 'org.extendj.BatakjavaChecker'
+jar.manifest.attributes 'Main-Class': 'org.extendj.BatakjavaCompiler'
 jar.destinationDir = projectDir
 
 // Java -source and -target version.

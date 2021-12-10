@@ -1,5 +1,7 @@
 aspect ConstraintGeneration {
 
+  // TODO: Get generics to be usable
+
   /**
    *  infTypeCount is the number of unique types in the program.
    *  infTypeMap is the mapping from types to the integer representations.
@@ -20,14 +22,19 @@ aspect ConstraintGeneration {
     return count;
   }
 
-  public TypeDecl Expr.intToType(Integer typeInt) {
-    for (TypeDecl type: program().infTypeMap.keySet()) {
-      if (program().infTypeMap.get(type) == typeInt) {
+  public TypeDecl Program.intToType(Integer typeInt) {
+    for (TypeDecl type: infTypeMap.keySet()) {
+      if (infTypeMap.get(type) == typeInt) {
         return type;
       }
     }
-    return program().unknownType();
+    return unknownType();
   }
+
+  public TypeDecl Expr.intToType(Integer typeInt) {
+    return program().intToType(typeInt);
+  }
+
 
   syn lazy Integer TypeDecl.infType() = program().getInfType(this);
 
@@ -78,6 +85,18 @@ aspect ConstraintGeneration {
    *  Constraint generation for type checking, then version inference
    */
   syn lazy Optional<Formula> Expr.constraint() = Optional.empty();
+
+  eq TypeAccess.constraint() {
+    if (parent instanceof ImportDecl) {
+      return Optional.of(new Formula());
+    } else {
+      Formula formula = new Formula();
+      for (TypeDecl type: typeSet()) {
+        formula = formula.add(buildClause(type));
+      }
+      return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+    }
+  }
 
   eq ThisAccess.constraint() = Optional.of(buildFormula(type()));
 
@@ -170,6 +189,7 @@ aspect ConstraintGeneration {
   /**
    *  Array expressions
    */
+  // TODO: Array constraints
 
   /**
    *  Assign expressions

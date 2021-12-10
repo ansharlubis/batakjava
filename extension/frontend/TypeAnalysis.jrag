@@ -75,6 +75,8 @@ aspect TypeAnalysis {
   eq VarAccess.typeSet() = constraintToTypeSet();
   eq ThisAccess.typeSet() = this.<TypeDecl>emptySet().add(type());
 
+  syn SimpleSet<TypeDecl> FieldDecl.typeSet() = getTypeAccess().typeSet();
+
   syn lazy SimpleSet<TypeDecl> MethodDecl.typeSet() = getTypeAccess().typeSet();
 
   syn lazy SimpleSet<TypeDecl> Variable.typeSet();

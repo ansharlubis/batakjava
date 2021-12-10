@@ -71,7 +71,7 @@ aspect BatakJavaPrettyPrint {
       if (flag) {
         out.print(", ");
       } else {
-        out.print("take ver ");
+        out.print(" take ver ");
         flag = true;
       }
       out.print(ver);

@@ -74,6 +74,7 @@ aspect BatakjavaVersion {
    *  Host version is defined through inh attribute
    *  checking through the unit
    */
+  inh String ImportDecl.hostVersion();
   inh String TypeDecl.hostVersion();
   inh String BodyDecl.hostVersion();
   inh String Expr.hostVersion();

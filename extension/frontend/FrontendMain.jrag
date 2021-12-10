@@ -1,5 +1,9 @@
 aspect BatakjavaFrontendMain {
 
+  public long Program.constraintGenTime;
+  public long Program.solvingTime;
+  public long Program.javaGenTime;
+
   /**
    *  Frontend class for Batakjava
    */
@@ -63,7 +67,16 @@ aspect BatakjavaFrontendMain {
           }
         }
 
-        System.out.println(program.printInfTypeMap());
+        if (compileResult != EXIT_SUCCESS) {
+          return compileResult;
+        }
+
+        if (program.solveConstraint() != EXIT_SUCCESS) {
+          System.err.println("No solution found for the program");
+          return compileResult;
+        }
+
+        System.out.println("Type map: " + program.printInfTypeMap());
 
       } catch (Throwable t) {
         System.err.println("Fatal exception:");
@@ -80,4 +93,116 @@ aspect BatakjavaFrontendMain {
 
   }
 
+  public java.util.List<CompilationUnit> Program.genUnits = new LinkedList();
+
+  abstract public class BatakjavaBackend extends BatakjavaFrontend {
+
+    protected Program genProgram;
+
+    protected BatakjavaBackend(String name, String version) {
+      super(name, version);
+    }
+
+    @Override
+    public int run(String[] args, BytecodeReader reader, JavaParser parser) {
+
+      program.resetStatistics();
+      program.initBytecodeReader(reader);
+      program.initJavaParser(parser);
+
+      initOptions();
+      int argResult = processArgs(args);
+      if (argResult != 0) {
+        return argResult;
+      }
+
+      Collection<String> files = program.options().files();
+
+      if (program.options().hasOption("-version")) {
+        printVersion();
+        return EXIT_SUCCESS;
+      }
+
+      if (program.options().hasOption("-help") || files.isEmpty()) {
+        printUsage();
+        return EXIT_SUCCESS;
+      }
+
+      try {
+        for (String file: files) {
+          program.addSourceFile(file);
+        }
+
+        TypeDecl object = program.lookupType("java.lang", "Object");
+        if (object.isUnknown()) {
+          System.err.println("Error: java.lang.Object is missing."
+            + " The Java standard library was not found.");
+          return EXIT_UNHANDLED_ERROR;
+        }
+
+        int compileResult = EXIT_SUCCESS;
+
+        program.initializeInfVar();
+        program.initializeInfType();
+
+        for (CompilationUnit unit: program.getCompilationUnitList()) {
+          int result = processCompilationUnit(unit);
+          switch (result) {
+            case EXIT_SUCCESS:
+              break;
+            case EXIT_UNHANDLED_ERROR:
+              return result;
+            default:
+              compileResult = result;
+          }
+        }
+
+        if (compileResult != EXIT_SUCCESS) {
+          return compileResult;
+        }
+
+        if (program.solveConstraint() != EXIT_SUCCESS) {
+          System.err.println("No solution found for the program");
+          return compileResult;
+        }
+
+        System.out.println("Type map: " + program.printInfTypeMap());
+
+        long genStart = System.nanoTime();
+
+        genProgram = new Program();
+        genProgram.state().reset();
+
+        /** Generate Java classes **/
+        for (CompilationUnit unit: program.getCompilationUnitList()) {
+          CompilationUnit newUnit = unit.genJava(program.solutions);
+          genProgram.addCompilationUnit(newUnit);
+        }
+
+        program.javaGenTime += System.nanoTime() - genStart;
+
+        /** Initialize lookup **/
+        object = genProgram.lookupType("java.lang", "Object");
+        if (object.isUnknown()) {
+          return EXIT_UNHANDLED_ERROR;
+        }
+
+        for (CompilationUnit newUnit: genProgram.getCompilationUnitList()) {
+          System.out.println(newUnit.prettyPrint());
+        }
+
+      } catch (Throwable t) {
+        System.err.println("Fatal exception:");
+        t.printStackTrace(System.err);
+        return EXIT_UNHANDLED_ERROR;
+      } finally {
+        if (program.options().hasOption("-profile")) {
+          program.printStatistics(System.out);
+        }
+      }
+
+      return EXIT_SUCCESS;
+    }
+
+  }
 }
