@@ -21,6 +21,15 @@ aspect ConstraintClass {
     return new Clause().add(new Lit(infVar(), type.infType()));
   }
 
+  public Formula Declarator.buildFormula(TypeDecl type) {
+    return new Formula().add(new Clause().add(new Lit(infVar(), type.infType())));
+  }
+
+  public Clause Declarator.buildClause(TypeDecl type) {
+    return new Clause().add(new Lit(infVar(), type.infType()));
+  }
+
+
   /** The disjunction of clauses **/
   public class Formula {
     public java.util.List<Clause> clauses;

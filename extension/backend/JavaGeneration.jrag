@@ -35,15 +35,15 @@ aspect JavaGeneration {
 
   eq SingleTypeImportDecl.genImport(Set<Map<Integer,TypeDecl>> solutions) {
     List<ImportDecl> imports = new List();
-    SimpleSet<TypeDecl> addedTypes = emptySet();
+    SimpleSet<String> addedTypes = emptySet();
     for (TypeDecl type: getAccess().typeSet()) {
       for (Map<Integer,TypeDecl> sol: solutions) {
         for (Integer infType: sol.keySet()) {
           if (type == sol.get(infType) && type.version() != null
-              && !addedTypes.contains(type)) {
+              && !addedTypes.contains(type.compiledName(sol))) {
             imports = imports.add(
               new SingleTypeImportDecl(getAccess().genImportAccess(type, sol)));
-            addedTypes = addedTypes.add(type);
+            addedTypes = addedTypes.add(type.compiledName(sol));
           }
         }
       }

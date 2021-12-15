@@ -1,0 +1,60 @@
+aspect NameCheck {
+
+  // TODO: Type existence
+
+  /**
+   *  Check whether an applicable constructor is available
+   */
+  ClassInstanceExpr contributes each constraintProblems() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> ClassInstanceExpr.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    SimpleSet<TypeDecl> typeSet = typeSet();
+    for (TypeDecl type: typeSet) {
+      if (!type.isClassDecl()) {
+        problems.add(errorf("*** Can only instantiate classes, which %s is not", type.typeName()));
+      }
+    }
+    boolean flag = true;
+    for (Expr arg: getArgList()) {
+      if (!arg.constraint().isPresent()) { flag = false; }
+    }
+    if (flag && !constraint().isPresent()) {
+      problems.add(errorf("no candidate constructor found for %s", prettyPrint()));
+    }
+    return problems;
+  }
+
+  /**
+   *  Check whether an applicable method is available
+   *  TODO: Make example
+   */
+  MethodAccess contributes each constraintProblems() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> MethodAccess.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    boolean flag = true;
+    for (Expr arg: getArgList()) {
+      if (!arg.constraint().isPresent()) { flag = false; }
+    }
+    if (flag && !constraint().isPresent()) {
+      problems.add(errorf("no candidate method %s found", prettyPrint()));
+    }
+    return problems;
+  }
+
+  /**
+   *  Check whether an applicable field/var can be found
+   *  TODO: Make example
+   */
+  VarAccess contributes each constraintProblems() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> VarAccess.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    if (!constraint().isPresent()) {
+      problems.add(errorf("no variable %s found", prettyPrint()));
+    }
+    return problems;
+  }
+
+}

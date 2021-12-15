@@ -40,6 +40,7 @@ aspect VersionInference {
     }
 
     for (Formula constraint: constraints) {
+      // System.err.println(constraint);
       constraint.post(model, vars).post();
     }
 

@@ -1,7 +1,5 @@
 aspect ConstraintGeneration {
 
-  // TODO: Get generics to be usable
-
   /**
    *  infTypeCount is the number of unique types in the program.
    *  infTypeMap is the mapping from types to the integer representations.
@@ -74,7 +72,8 @@ aspect ConstraintGeneration {
 
   syn lazy Integer Variable.infVar();
   eq ParameterDeclaration.infVar() = getTypeAccess().infVar();
-  eq Declarator.infVar() = declarationType().infVar();
+  // eq Declarator.infVar() = declarationType().infVar();
+  eq Declarator.infVar() = program().getInfVar(this);
 
   /** Not supported variable **/
   eq EnumConstant.infVar() = program().getInfVar(this);
@@ -189,7 +188,51 @@ aspect ConstraintGeneration {
   /**
    *  Array expressions
    */
-  // TODO: Array constraints
+  // DONE: Array constraints
+  eq ArrayInit.constraint() {
+    Formula formula = new Formula();
+    if (getNumInit() == 0) { return Optional.of(formula); }
+    for (TypeDecl initializerType: declTypeSet()) {
+      int applicable = 0;
+      Formula sub = new Formula();
+      for (Expr init: getInitList()) {
+        Formula aux = new Formula();
+        for (TypeDecl initType: init.typeSet()) {
+          Optional<Formula> trace = initType.verAssignConversionTo(initializerType.componentType(), init);
+          if (trace.isPresent()) {
+            aux = aux.multiply(init.buildClause(initType)).multiply(trace.get());
+          }
+        }
+        // There is an applicable type for this init
+        if (aux.size() > 0) {
+          applicable++;
+          sub = sub.multiply(aux);
+        }
+      }
+      if (applicable == getNumInit()) {
+        formula = formula.add(sub.multiply(buildClause(initializerType)));
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq ArrayAccess.constraint() {
+    Formula formula = new Formula();
+    if (isQualified()) {
+      for (TypeDecl qualifierType: qualifier().typeSet()) {
+        for (TypeDecl accessType: getExpr().typeSet()) {
+          if (qualifierType.isArrayDecl() && accessType.unaryNumericPromotion().isInt()
+              && accessType.isIntegralType()) {
+            formula = formula.add(
+              buildFormula(qualifierType.elementType()).multiply(
+              qualifier().buildClause(qualifierType)).multiply(
+              getExpr().buildClause(accessType)));
+          }
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
 
   /**
    *  Assign expressions
@@ -491,8 +534,29 @@ aspect ConstraintGeneration {
 
   eq IfStmt.constraint() = Optional.of(getCondition().buildFormula(getCondition().typeBoolean()));
 
-  syn lazy Optional<Formula> Declarator.constraint()
-    = hasInit() ? getInit().subtypingConstraint(declarationType()) : Optional.of(new Formula());
+  syn lazy Optional<Formula> Declarator.constraint() {
+    if (hasInit()) {
+      Formula formula = new Formula();
+      for (TypeDecl initType: getInit().typeSet()) {
+        for (TypeDecl declType: typeSet()) {
+          Optional<Formula> trace = initType.verAssignConversionTo(declType, getInit());
+          if (trace.isPresent()) {
+            // Add constraint to the type access
+            TypeDecl componentType = declType;
+            for (int i = 0; i < getNumDims(); i++) {
+              componentType = declType.componentType();
+            }
+            formula = formula.add(trace.get()
+              .multiply(buildClause(declType))
+              .multiply(getInit().buildClause(initType))
+              .multiply(declarationType().buildClause(componentType)));
+          }
+        }
+      }
+      return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+    }
+    return Optional.of(new Formula());
+  }
 
   public Optional<Formula> Expr.subtypingConstraint(Access dest) {
     Formula formula = new Formula();

@@ -6,7 +6,7 @@ aspect ErrorCheck {
    *  Maybe declare new syn attributes for the extension
    *  instead of refining old definitions
    */
-  refine ErrorCheck eq CompilationUnit.errors() {
+  syn Collection<Problem> CompilationUnit.verErrors() {
     Collection<Problem> errors = new LinkedList();
     for (Problem problem: verProblems()) {
       if (problem.severity() == Problem.Severity.ERROR) {
@@ -16,7 +16,7 @@ aspect ErrorCheck {
     return errors;
   }
 
-  refine ErrorCheck eq CompilationUnit.warnings() {
+  syn Collection<Problem> CompilationUnit.verWarnings() {
     Collection<Problem> errors = new LinkedList();
     for (Problem problem: verProblems()) {
       if (problem.severity() == Problem.Severity.WARNING) {
@@ -28,6 +28,10 @@ aspect ErrorCheck {
 
 }
 
+
+/**
+ *  The following errors are used to debug the implementation
+ */
 aspect ImplementationCheck {
 
   VarAccess contributes each implementationCheck() to CompilationUnit.verProblems();
@@ -105,8 +109,10 @@ aspect ImplementationCheck {
   Binary contributes each implementationCheck() to CompilationUnit.verProblems();
 
   syn Collection<Problem> Binary.implementationCheck() {
+    /* Checked
     System.out.println(prettyPrint());
     System.out.println(constraint());
+    */
     return Collections.emptyList();
   }
 
@@ -129,6 +135,26 @@ aspect ImplementationCheck {
     System.out.println(prettyPrint());
     System.out.println(getExpr().infVar());
     System.out.println(getTypeAccess().infVar());
+    System.out.println(constraint());
+    */
+    return Collections.emptyList();
+  }
+
+  ArrayInit contributes each implementationCheck() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> ArrayInit.implementationCheck() {
+    /* Checked
+    System.out.println(prettyPrint());
+    System.out.println(constraint());
+    */
+    return Collections.emptyList();
+  }
+
+  ArrayAccess contributes each implementationCheck() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> ArrayAccess.implementationCheck() {
+    /* Checked
+    System.out.println(prettyPrint());
     System.out.println(constraint());
     */
     return Collections.emptyList();
@@ -178,5 +204,7 @@ aspect ImplementationCheck {
 
     return Collections.emptyList();
   }
+
+
 
 }

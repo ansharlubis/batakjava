@@ -13,6 +13,14 @@ aspect TypeScopePropagation {
     ? lookupTypeSet(name())
     : lookupTypeSet(packageName(), name());
 
+  eq ArrayTypeAccess.declSet() {
+    SimpleSet<TypeDecl> types = emptySet();
+    for (TypeDecl comp: getAccess().typeSet()) {
+      types = types.add(comp.arrayType());
+    }
+    return types;
+  }
+
   inh SimpleSet<TypeDecl> Expr.lookupTypeSet(String name);
   inh SimpleSet<TypeDecl> CompilationUnit.lookupTypeSet(String name);
 

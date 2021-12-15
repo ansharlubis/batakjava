@@ -65,10 +65,21 @@ aspect TypeAnalysis {
 
   eq Access.typeSet() = emptySet();
   eq TypeAccess.typeSet() = declSet();
+
+  eq ArrayAccess.typeSet() {
+    SimpleSet<TypeDecl> types = emptySet();
+    if (isQualified()) {
+      for (TypeDecl qualifierType: qualifier().typeSet()) {
+        types = types.add(qualifierType.componentType());
+      }
+    }
+    return types;
+  }
+
   eq ClassInstanceExpr.typeSet() = hasTypeDecl() ? this.<TypeDecl>emptySet().add(getTypeDecl()) : getAccess().typeSet();
   eq Dot.typeSet() = lastAccess().typeSet();
 
-  // Allow only using parametrized class from Java
+  // Allow only using parameterized class from Java
   eq ParTypeAccess.typeSet() = this.<TypeDecl>emptySet().add(type());
 
   eq MethodAccess.typeSet() = constraintToTypeSet();
@@ -86,6 +97,23 @@ aspect TypeAnalysis {
   eq CatchParameterDeclaration.typeSet() = emptySet();
   eq EnumConstant.typeSet() = emptySet();
   eq InferredParameterDeclaration.typeSet() = emptySet();
+
+  inh lazy SimpleSet<TypeDecl> ArrayInit.declTypeSet();
+  eq Program.getChild(int i).declTypeSet() = emptySet();
+  eq FieldDecl.getDeclarator().declTypeSet() = emptySet();
+  eq VarDeclStmt.getDeclarator().declTypeSet() = emptySet();
+
+  eq Declarator.getInit().declTypeSet() = typeSet();
+  eq ArrayCreationExpr.getArrayInit().declTypeSet() = typeSet();
+  eq ArrayInit.getInit().declTypeSet() {
+    SimpleSet<TypeDecl> types = emptySet();
+    for (TypeDecl comp: declTypeSet()) {
+      types = types.add(comp.componentType());
+    }
+    return types;
+  }
+
+  eq ArrayInit.typeSet() = declTypeSet();
 
 }
 
