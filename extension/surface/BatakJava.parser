@@ -27,33 +27,6 @@ ImportDecl type_import_on_demand_declaration_leave =
     IMPORT name DOT MULT LEAVE VER version_numbers.vl SEMICOLON
     {: return new TypeImportOnDemandDeclLeave(name, vl); :}
   ;
-/*
-List import_declarations_ver =
-    import_ver_with_comment.i                           {: return new List().add(i); :}
-  | import_declarations_ver.l import_ver_with_comment.i {: return l.add(i); :}
-  ;
-ImportDecl import_ver_with_comment =
-  doc_comment_list? import_declaration_ver
-  ;
-ImportDecl import_declaration_ver =
-    type_import_on_demand_decl_ver
-  | single_type_import_decl_ver
-  ;
-ImportDecl type_import_on_demand_decl_ver =
-    IMPORT name DOT MULT take_vers.t? leave_vers.l? SEMICOLON
-    {: return new TypeImportOnDemandDeclVer(name, t, l); :}
-  ;
-ImportDecl single_type_import_decl_ver =
-    IMPORT name take_vers.t? leave_vers.l? SEMICOLON
-    {: return new SingleTypeImportDeclVer(name, t, l); :}
-  ;
-List take_vers =
-    TAKE VER version_numbers.vl   {: return vl; :}
-  ;
-List leave_vers =
-    LEAVE VER version_numbers.vl  {: return vl; :}
-  ;
-*/
 List batakjava_class_declarations =
     batakjava_class_with_comment.t                                  {: return new List().add(t); :}
   | batakjava_class_declarations.l batakjava_class_with_comment.t   {: return l.add(t); :}
@@ -93,6 +66,13 @@ BodyDecl batakjava_body_declaration =
   ;
 BodyDecl batakjava_field_declaration =
     modifiers.m? type.t field_declarator.f SEMICOLON   {: return new FieldDecl(new Modifiers(m), t, new List().add(f)); :}
+  ;
+Expr primary_no_new_array =
+    version_access
+  ;
+Access version_access =
+    primary.p DOT LBRACE version_numbers.n RBRACE
+    {: return p.qualifiesAccess(new VersionAccess(n)); :}
   ;
 List version_numbers =
     version_number.v                            {: return new List().add(new Version(v)); :}

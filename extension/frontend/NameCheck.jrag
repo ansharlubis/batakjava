@@ -1,7 +1,5 @@
 aspect NameCheck {
 
-  // TODO: Type existence
-
   /**
    *  Check whether an applicable constructor is available
    */
@@ -27,7 +25,6 @@ aspect NameCheck {
 
   /**
    *  Check whether an applicable method is available
-   *  TODO: Make example
    */
   MethodAccess contributes each constraintProblems() to CompilationUnit.verProblems();
 
@@ -45,7 +42,6 @@ aspect NameCheck {
 
   /**
    *  Check whether an applicable field/var can be found
-   *  TODO: Make example
    */
   VarAccess contributes each constraintProblems() to CompilationUnit.verProblems();
 
@@ -53,6 +49,31 @@ aspect NameCheck {
     Collection<Problem> problems = new LinkedList();
     if (!constraint().isPresent()) {
       problems.add(errorf("no variable %s found", prettyPrint()));
+    }
+    return problems;
+  }
+
+  /**
+   *  Check whether the selected versions apply with the qualifier
+   */
+  VersionAccess contributes each constraintProblems() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> VersionAccess.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    java.util.List<String> strings = new ArrayList<String>();
+    for (Version ver: getVersionList()) {
+      boolean flag = true;
+      for (TypeDecl type: typeSet()) {
+        if (type.version().equals(ver.getVersionNum())) {
+          flag = false;
+        }
+      }
+      if (flag) {
+        strings.add(ver.getVersionNum());
+      }
+    }
+    if (strings.size() > 0) {
+      problems.add(errorf("version(s) %s not found in %s", String.join(", ", strings), qualifier().prettyPrint()));
     }
     return problems;
   }

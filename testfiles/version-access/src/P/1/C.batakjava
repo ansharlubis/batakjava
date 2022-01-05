@@ -1,0 +1,5 @@
+package P ver 1;
+
+public class C {
+  public int m1() { return 1; }
+}

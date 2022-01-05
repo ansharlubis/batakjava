@@ -76,6 +76,9 @@ aspect TypeAnalysis {
     return types;
   }
 
+  // A versiona access just return the type set of the qualifier expression
+  eq VersionAccess.typeSet() = qualifier().typeSet();
+
   eq ClassInstanceExpr.typeSet() = hasTypeDecl() ? this.<TypeDecl>emptySet().add(getTypeDecl()) : getAccess().typeSet();
   eq Dot.typeSet() = lastAccess().typeSet();
 
