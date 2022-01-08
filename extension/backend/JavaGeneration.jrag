@@ -8,9 +8,9 @@ aspect JavaGeneration {
    *  of types in the context of which is more prioritized.
    */
 
-  syn nta CompilationUnit CompilationUnit.genJava(Set<Map<Integer,TypeDecl>> solutions) = treeCopy();
+  syn nta CompilationUnit CompilationUnit.genJava(java.util.List<Map<Integer,TypeDecl>> solutions) = treeCopy();
 
-  eq BatakjavaCompilationUnit.genJava(Set<Map<Integer,TypeDecl>> solutions) {
+  eq BatakjavaCompilationUnit.genJava(java.util.List<Map<Integer,TypeDecl>> solutions) {
     List<ImportDecl> imports = new List();
     for (ImportDecl imp: getImportDeclList()) {
       imports = imports.addAll(imp.genImport(solutions));
@@ -31,9 +31,9 @@ aspect JavaGeneration {
   /** Import declarations **/
   // DONE: lookup type set from import decl is problematic -> doesn't need to use it directly
   // DONE: handle versions for single import declaration
-  syn nta List<ImportDecl> ImportDecl.genImport(Set<Map<Integer,TypeDecl>> solutions) = new List().add(treeCopy());
+  syn nta List<ImportDecl> ImportDecl.genImport(java.util.List<Map<Integer,TypeDecl>> solutions) = new List().add(treeCopy());
 
-  eq SingleTypeImportDecl.genImport(Set<Map<Integer,TypeDecl>> solutions) {
+  eq SingleTypeImportDecl.genImport(java.util.List<Map<Integer,TypeDecl>> solutions) {
     List<ImportDecl> imports = new List();
     SimpleSet<String> addedTypes = emptySet();
     for (TypeDecl type: getAccess().typeSet()) {
@@ -51,23 +51,23 @@ aspect JavaGeneration {
     return imports;
   }
 
-  eq TypeImportOnDemandDeclTake.genImport(Set<Map<Integer,TypeDecl>> solutions) =
+  eq TypeImportOnDemandDeclTake.genImport(java.util.List<Map<Integer,TypeDecl>> solutions) =
     new List().add(new TypeImportOnDemandDecl(getAccess()));
 
-  eq TypeImportOnDemandDeclLeave.genImport(Set<Map<Integer,TypeDecl>> solutions) =
+  eq TypeImportOnDemandDeclLeave.genImport(java.util.List<Map<Integer,TypeDecl>> solutions) =
     new List().add(new TypeImportOnDemandDecl(getAccess()));
 
   /** Type declarations **/
-  syn nta List<TypeDecl> TypeDecl.genTypes(Set<Map<Integer,TypeDecl>> solutions) =
+  syn nta List<TypeDecl> TypeDecl.genTypes(java.util.List<Map<Integer,TypeDecl>> solutions) =
     new List().add(treeCopy());
 
-  eq ClassDecl.genTypes(Set<Map<Integer,TypeDecl>> solutions) {
+  eq ClassDecl.genTypes(java.util.List<Map<Integer,TypeDecl>> solutions) {
     List<TypeDecl> types = new List();
 
-    Map<TypeDecl,Set<Map<Integer,TypeDecl>>> groups = groupSolutions(solutions);
+    Map<TypeDecl,java.util.List<Map<Integer,TypeDecl>>> groups = groupSolutions(solutions);
 
     for (TypeDecl keyType: groups.keySet()) {
-      Set<Map<Integer,TypeDecl>> group = groups.get(keyType);
+      java.util.List<Map<Integer,TypeDecl>> group = groups.get(keyType);
       Map<Integer,TypeDecl> sel = group.iterator().next();
       TypeDecl type = genType(sel, group);
       types = types.add(type);
@@ -76,7 +76,7 @@ aspect JavaGeneration {
     return types;
   }
 
-  syn nta TypeDecl ClassDecl.genType(Map<Integer,TypeDecl> sel, Set<Map<Integer,TypeDecl>> sols) {
+  syn nta TypeDecl ClassDecl.genType(Map<Integer,TypeDecl> sel, java.util.List<Map<Integer,TypeDecl>> sols) {
     String className = compiledName(sel);
     Opt<Access> superAccess = hasSuperClass() ? new Opt(getSuperClass().genAccess(sel)) : new Opt();
 
@@ -89,10 +89,10 @@ aspect JavaGeneration {
   }
 
   /** Body declarations **/
-  syn nta List<BodyDecl> BodyDecl.genBodies(Map<Integer,TypeDecl> sel, Set<Map<Integer,TypeDecl>> sols) =
+  syn nta List<BodyDecl> BodyDecl.genBodies(Map<Integer,TypeDecl> sel, java.util.List<Map<Integer,TypeDecl>> sols) =
     new List().add(treeCopy());
 
-  eq FieldDecl.genBodies(Map<Integer,TypeDecl> sel, Set<Map<Integer,TypeDecl>> sols) {
+  eq FieldDecl.genBodies(Map<Integer,TypeDecl> sel, java.util.List<Map<Integer,TypeDecl>> sols) {
     List<BodyDecl> bodies = new List();
     for (Map<Integer,TypeDecl> sol: filterSolutions(sel, sols)) {
       for (FieldDeclarator decl: getDeclaratorList()) {
@@ -105,7 +105,7 @@ aspect JavaGeneration {
     return bodies;
   }
 
-  eq ConstructorDecl.genBodies(Map<Integer,TypeDecl> sel, Set<Map<Integer,TypeDecl>> sols) {
+  eq ConstructorDecl.genBodies(Map<Integer,TypeDecl> sel, java.util.List<Map<Integer,TypeDecl>> sols) {
     List<BodyDecl> bodies = new List();
 
     for (Map<Integer,TypeDecl> sol: filterSolutions(sel, sols)) {
@@ -125,7 +125,7 @@ aspect JavaGeneration {
     return bodies;
   }
 
-  eq MethodDecl.genBodies(Map<Integer,TypeDecl> sel, Set<Map<Integer,TypeDecl>> sols) {
+  eq MethodDecl.genBodies(Map<Integer,TypeDecl> sel, java.util.List<Map<Integer,TypeDecl>> sols) {
     List<BodyDecl> bodies = new List();
 
     for (Map<Integer,TypeDecl> sol: filterSolutions(sel, sols)) {
@@ -414,8 +414,9 @@ aspect JavaGeneration {
 
 aspect JavaGeneration {
 
-  private Map<TypeDecl,Set<Map<Integer,TypeDecl>>> ClassDecl.groupSolutions(Set<Map<Integer,TypeDecl>> solutions) {
-    Map<TypeDecl,Set<Map<Integer,TypeDecl>>> result = new HashMap(solutions.size());
+  private Map<TypeDecl,java.util.List<Map<Integer,TypeDecl>>> ClassDecl.groupSolutions(
+      java.util.List<Map<Integer,TypeDecl>> solutions) {
+    Map<TypeDecl,java.util.List<Map<Integer,TypeDecl>>> result = new HashMap(solutions.size());
     if (hasSuperClass()) {
       Integer var = getSuperClass().infVar();
       for (Map<Integer,TypeDecl> solution: solutions) {
@@ -423,9 +424,9 @@ aspect JavaGeneration {
         if (result.containsKey(solutionType)) {
           result.get(solutionType).add(solution);
         } else {
-          Set<Map<Integer,TypeDecl>> solutionSet = new HashSet();
-          solutionSet.add(solution);
-          result.put(solutionType, solutionSet);
+          java.util.List<Map<Integer,TypeDecl>> solutionList = new ArrayList();
+          solutionList.add(solution);
+          result.put(solutionType, solutionList);
         }
       }
     } else {
@@ -434,20 +435,21 @@ aspect JavaGeneration {
     return result;
   }
 
-  protected Set<Map<Integer,TypeDecl>> BodyDecl.filterSolutions(Map<Integer,TypeDecl> sel, Set<Map<Integer,TypeDecl>> sols) {
-    Map<Map<Integer,TypeDecl>,Set<Map<Integer,TypeDecl>>> mapping = new HashMap();
+  protected java.util.List<Map<Integer,TypeDecl>> BodyDecl.filterSolutions(
+      Map<Integer,TypeDecl> sel, java.util.List<Map<Integer,TypeDecl>> sols) {
+    Map<Map<Integer,TypeDecl>,java.util.List<Map<Integer,TypeDecl>>> mapping = new HashMap();
 
     for (Map<Integer,TypeDecl> sol: sols) {
       Map<Integer,TypeDecl> map = paramMap(sol);
       if (mapping.containsKey(map)) {
         mapping.get(map).add(sol);
       } else {
-        Set<Map<Integer,TypeDecl>> newGroup = new HashSet() {{ add(sol); }};
+        java.util.List<Map<Integer,TypeDecl>> newGroup = new ArrayList() {{ add(sol); }};
         mapping.put(map, newGroup);
       }
     }
 
-    Set<Map<Integer,TypeDecl>> result = new HashSet(mapping.size());
+    java.util.List<Map<Integer,TypeDecl>> result = new ArrayList(mapping.size());
     Map<Integer,TypeDecl> selParamMap = paramMap(sel);
 
     for (Map<Integer,TypeDecl> key: mapping.keySet()) {

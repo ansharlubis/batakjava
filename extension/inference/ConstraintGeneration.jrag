@@ -41,17 +41,17 @@ aspect ConstraintGeneration {
    *  infVarMap is the mapping from expressions to the variable integer.
    */
   private Integer Program.infVarCount = 0;
-  public Map<ASTNode,Integer> Program.infVarMap = Collections.emptyMap();
+  public Map<Integer,ASTNode> Program.infVarMap = Collections.emptyMap();
 
   public void Program.initializeInfVar() {
     infVarCount = 0;
-    infVarMap = new HashMap<ASTNode,Integer>();
+    infVarMap = new HashMap<Integer,ASTNode>();
   }
 
   public Integer Program.getInfVar(ASTNode node) {
     Integer count = infVarCount;
     infVarCount++;
-    infVarMap.put(node, count);
+    infVarMap.put(count, node);
     return count;
   }
 

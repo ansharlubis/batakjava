@@ -1,5 +1,9 @@
 package P ver 2;
 
 public class C {
+  private A a;
+  public C(A f) {
+    a = f;
+  }
   public int m1() { return 1; }
 }

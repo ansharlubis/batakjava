@@ -15,5 +15,8 @@ public class D extends B {
   public static void main(String[] args) {
     B b1 = new B(new A());
     A a1 = new A(new B());
+    A a2 = new C(new A()).a;
+    A a3 = new B().a;
+    new B().m5();
   }
 }

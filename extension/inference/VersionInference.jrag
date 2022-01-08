@@ -23,7 +23,7 @@ aspect ConstraintGeneration {
 
 aspect VersionInference {
 
-  public final Set<Map<Integer,TypeDecl>> Program.solutions = new HashSet();
+  public final java.util.List<Map<Integer,TypeDecl>> Program.solutions = new ArrayList();
 
   public int Program.solveConstraint() {
     long start = System.nanoTime();
@@ -59,6 +59,55 @@ aspect VersionInference {
     }
 
     return solutions.size() > 0 ? 0 : 4;
+  }
+
+}
+
+aspect LatestSolution {
+
+  public Optional<Map<Integer,TypeDecl>> Program.laterSolution(
+      Map<Integer,TypeDecl> sol1, Map<Integer,TypeDecl> sol2) {
+    boolean start = false;
+    boolean left = false;
+    Optional<Map<Integer,TypeDecl>> result = Optional.empty();
+    for (Integer key: infVarMap.keySet()) {
+      ASTNode node = infVarMap.get(key);
+      if (node instanceof TypeAccess && node.parent instanceof ClassInstanceExpr) {
+        Integer leftVer = Integer.valueOf(sol1.get(key).version());
+        Integer rightVer = Integer.valueOf(sol2.get(key).version());
+        if (start) {
+          if (left && rightVer > leftVer) {
+            return Optional.empty();
+          }
+          if (!left && leftVer > rightVer) {
+            return Optional.empty();
+          }
+        } else {
+          start = true;
+          if (leftVer >= rightVer) {
+            left = true;
+            result = Optional.of(sol1);
+          } else {
+            result = Optional.of(sol2);
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  public Optional<Map<Integer,TypeDecl>> Program.latestSolution() {
+    Optional<Map<Integer,TypeDecl>> result = Optional.of(solutions.get(0));
+    if (solutions.size() > 1) {
+      for (int i = 1; i < solutions.size(); i++) {
+        if (result.isPresent()) {
+          result = laterSolution(result.get(), solutions.get(i));
+        } else {
+          return result;
+        }
+      }
+    }
+    return result;
   }
 
 }
