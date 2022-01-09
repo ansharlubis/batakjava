@@ -97,10 +97,10 @@ aspect ImplementationCheck {
   VariableDeclarator contributes each implementationCheck() to CompilationUnit.verProblems();
 
   syn Collection<Problem> VariableDeclarator.implementationCheck() {
-    /* Checked (assign-expr)
+    /* Checked (assign-expr) */
     System.out.println(prettyPrint());
     System.out.println(constraint());
-    */
+    /**/
     return Collections.emptyList();
   }
 
@@ -141,12 +141,16 @@ aspect ImplementationCheck {
   CastExpr contributes each implementationCheck() to CompilationUnit.verProblems();
 
   syn Collection<Problem> CastExpr.implementationCheck() {
-    /* Checked
     System.out.println(prettyPrint());
-    System.out.println(getExpr().infVar());
-    System.out.println(getTypeAccess().infVar());
     System.out.println(constraint());
-    */
+    return Collections.emptyList();
+  }
+
+  VersionTypeAccess contributes each implementationCheck() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> VersionTypeAccess.implementationCheck() {
+    System.out.println(prettyPrint());
+    System.out.println(constraint());
     return Collections.emptyList();
   }
 

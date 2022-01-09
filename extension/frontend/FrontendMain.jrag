@@ -121,7 +121,7 @@ aspect BatakjavaFrontendMain {
 
   }
 
-  public java.util.List<CompilationUnit> Program.genUnits = new LinkedList();
+  public java.util.List<CompilationUnit> Program.genOverview = new LinkedList();
 
   abstract public class BatakjavaBackend extends BatakjavaFrontend {
 
@@ -214,6 +214,10 @@ aspect BatakjavaFrontendMain {
         for (CompilationUnit unit: program.getCompilationUnitList()) {
           CompilationUnit newUnit = unit.genJava(program.solutions);
           genProgram.addCompilationUnit(newUnit);
+        }
+
+        for (CompilationUnit newOverview: program.genOverview) {
+          genProgram.addCompilationUnit(newOverview);
         }
 
         program.javaGenTime += System.nanoTime() - genStart;

@@ -1,3 +1,9 @@
+aspect AccessTypes {
+
+  eq VersionTypeAccess.isTypeAccess() = true;
+
+}
+
 aspect TypeAnalysis {
 
   /**
@@ -76,8 +82,11 @@ aspect TypeAnalysis {
     return types;
   }
 
-  // A versiona access just return the type set of the qualifier expression
+  // A version access returns the type set of the qualifier expression
   eq VersionAccess.typeSet() = qualifier().typeSet();
+
+  // A version type access returns the type set of the qualifier type access
+  eq VersionTypeAccess.typeSet() = getTypeAccess().typeSet();
 
   eq ClassInstanceExpr.typeSet() = hasTypeDecl() ? this.<TypeDecl>emptySet().add(getTypeDecl()) : getAccess().typeSet();
   eq Dot.typeSet() = lastAccess().typeSet();
@@ -88,6 +97,8 @@ aspect TypeAnalysis {
   eq MethodAccess.typeSet() = constraintToTypeSet();
   eq VarAccess.typeSet() = constraintToTypeSet();
   eq ThisAccess.typeSet() = this.<TypeDecl>emptySet().add(type());
+
+  eq CastExpr.typeSet() = getTypeAccess().typeSet();
 
   syn SimpleSet<TypeDecl> FieldDecl.typeSet() = getTypeAccess().typeSet();
 

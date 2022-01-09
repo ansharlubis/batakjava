@@ -5,6 +5,6 @@ import P.C;
 public class D extends B {
   public static void main(String[] args) {
     C c = new D();
-    D d = (C) c;
+    D d1 = (D#{1}) c;
   }
 }

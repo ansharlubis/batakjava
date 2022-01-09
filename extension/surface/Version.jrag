@@ -35,6 +35,14 @@ aspect BatakjavaVersion {
     return vers;
   }
 
+  syn SimpleSet<String> VersionTypeAccess.versions() {
+    SimpleSet<String> vers = emptySet();
+    for (Version ver: getVersionList()) {
+      vers = vers.add(ver.getVersionNum());
+    }
+    return vers;
+  }
+
   /**
    *  Set of version specified by the import declaration
    */

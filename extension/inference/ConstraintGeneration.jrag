@@ -66,6 +66,7 @@ aspect ConstraintGeneration {
   eq ClassInstanceExpr.infVar() = getAccess().infVar();
   eq VarAccess.infVar() = decl().infVar();
   eq VersionAccess.infVar() = qualifier().infVar();
+  eq VersionTypeAccess.infVar() = getTypeAccess().infVar();
   eq Dot.infVar() = lastAccess().infVar();
   eq AssignExpr.infVar() = getDest().infVar();
   eq ParExpr.infVar() = getExpr().infVar();
@@ -195,6 +196,30 @@ aspect ConstraintGeneration {
     }
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
+
+  eq VersionTypeAccess.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl type: typeSet()) {
+      for (Version ver: getVersionList()) {
+        if (type.version().equals(ver.getVersionNum())) {
+          formula = formula.add(buildFormula(type));
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+  /*
+  eq VersionTypeAccess.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl type: typeSet()) {
+      if (type.version().equals(version())) {
+        formula = formula.add(buildFormula(type));
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+  */
 
   eq Dot.constraint() = lastAccess().constraint();
 
@@ -506,6 +531,8 @@ aspect ConstraintGeneration {
 
   eq CastExpr.constraint() {
     Formula formula = new Formula();
+    System.err.println(getExpr().typeSet().size());
+    System.err.println(getTypeAccess().typeSet().size());
     if (getTypeAccess().isTypeAccess()) {
       for (TypeDecl expr: getExpr().typeSet()) {
         for (TypeDecl type: getTypeAccess().typeSet()) {

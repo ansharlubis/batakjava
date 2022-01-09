@@ -18,7 +18,7 @@ aspect JavaGeneration {
 
     List<TypeDecl> types = new List();
     for (TypeDecl type: getTypeDeclList()) {
-      types = types.addAll(type.genTypes(solutions));
+      types = types.addAll(type.genTypes(solutions, imports));
     }
 
     CompilationUnit newUnit = new CompilationUnit(getPackageDecl(), imports, types);
@@ -58,20 +58,43 @@ aspect JavaGeneration {
     new List().add(new TypeImportOnDemandDecl(getAccess()));
 
   /** Type declarations **/
-  syn nta List<TypeDecl> TypeDecl.genTypes(java.util.List<Map<Integer,TypeDecl>> solutions) =
+  syn nta List<TypeDecl> TypeDecl.genTypes(java.util.List<Map<Integer,TypeDecl>> solutions, List<ImportDecl> imports) =
     new List().add(treeCopy());
 
-  eq ClassDecl.genTypes(java.util.List<Map<Integer,TypeDecl>> solutions) {
+  eq ClassDecl.genTypes(java.util.List<Map<Integer,TypeDecl>> solutions, List<ImportDecl> imports) {
     List<TypeDecl> types = new List();
+    List<TypeDecl> overviews = new List();
+    Set<String> typeNames = new HashSet();
 
     Map<TypeDecl,java.util.List<Map<Integer,TypeDecl>>> groups = groupSolutions(solutions);
 
     for (TypeDecl keyType: groups.keySet()) {
       java.util.List<Map<Integer,TypeDecl>> group = groups.get(keyType);
+      // TODO: Use the latest solution if possible
       Map<Integer,TypeDecl> sel = group.iterator().next();
       TypeDecl type = genType(sel, group);
       types = types.add(type);
+      typeNames.add(type.name());
     }
+
+    // Generate overview
+    TypeDecl compiled = program().lookupLibraryType(packageName(), getID());
+    if (compiled.isUnknown()) {
+      TypeDecl compiling = program().updateCompilingOverview(packageName(), getID());
+      if (compiling.isUnknown()) {
+        overviews = overviews.add(genOverview(typeNames));
+      } else {
+        overviews = overviews.add(updateOverview(compiling, typeNames));
+      }
+    } else {
+      overviews = overviews.add(updateOverview(compiled, typeNames));
+    }
+
+    // Adding overview units to a temporary variable
+    CompilationUnit unit = new CompilationUnit(compilationUnit().getPackageDecl(), imports, overviews);
+    unit.setFromSource(true);
+    unit.setClassSource(compilationUnit().getClassSource());
+    program().genOverview.add(unit);
 
     return types;
   }
@@ -507,6 +530,74 @@ aspect JavaGeneration {
       return className;
     }
     return name();
+  }
+
+}
+
+aspect OverviewGeneration {
+
+  syn nta TypeDecl ClassDecl.genOverview(Set<String> names) {
+    List<BodyDecl> bodies = new List();
+    bodies = bodies.add(new FieldDecl(
+      new Modifiers(new List().add(new Modifier("public"))),
+      new PrimitiveTypeAccess("boolean"),
+      new List().add(new FieldDeclarator("BATAKJAVACLASS", new List(), new Opt()))));
+
+    for (String name: names) {
+      bodies = bodies.add(new FieldDecl(
+        new Modifiers(new List().add(new Modifier("public"))),
+        new PrimitiveTypeAccess("boolean"),
+        new List().add(new FieldDeclarator(name, new List(), new Opt()))));
+    }
+
+    return new ClassDecl(new Modifiers(new List().add(new Modifier("public"))),
+      getID(), new Opt(), new List(), bodies);
+  }
+
+  syn nta TypeDecl ClassDecl.updateOverview(TypeDecl overview, Set<String> names) {
+    Set<String> foundNames = new HashSet(names.size());
+    List<BodyDecl> bodies = new List();
+    for (BodyDecl bodyDecl: overview.getBodyDeclList()) {
+      if (bodyDecl instanceof FieldDecl) {
+        bodies = bodies.add(bodyDecl);
+        FieldDecl field = (FieldDecl) bodyDecl;
+        if (field.getNumDeclarator() == 1 && names.contains(field.getDeclarator(0).getID())) {
+          foundNames.add(field.getDeclarator(0).getID());
+        }
+      }
+    }
+    for (String name: names) {
+      if (!foundNames.contains(name)) {
+        bodies = bodies.add(new FieldDecl(
+          new Modifiers(new List().add(new Modifier("public"))),
+          new PrimitiveTypeAccess("boolean"),
+          new List().add(new FieldDeclarator(name, new List(), new Opt()))));
+      }
+    }
+    return new ClassDecl(overview.getModifiers(), overview.getID(), new Opt(), new List(), bodies);
+  }
+
+  /**
+   *  If the class packageName.typeName with a different version is
+   *  being compiled at the same time, then there should already be
+   *  an overview that can be updated
+   */
+  public TypeDecl Program.updateCompilingOverview(String packageName, String typeName) {
+    int j = 0;
+    TypeDecl result = unknownType();
+    for (int i = 0; i < genOverview.size(); i++) {
+      CompilationUnit compiling = genOverview.get(i);
+      if (compiling.packageName().equals(packageName)
+          && compiling.localLookupType(typeName).isSingleton()
+          && compiling.getNumTypeDecl() > 0) {
+        j = i;
+        result = compiling.getTypeDecl(0);
+      }
+    }
+    if (!result.isUnknown()) {
+      genOverview.remove(j);
+    }
+    return result;
   }
 
 }

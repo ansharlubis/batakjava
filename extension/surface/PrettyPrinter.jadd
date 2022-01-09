@@ -152,6 +152,21 @@ aspect BatakJavaPrettyPrint {
     out.print("}");
   }
 
+  public void VersionTypeAccess.prettyPrint(PrettyPrinter out) {
+    out.print(getTypeAccess());
+    out.print("#{");
+    boolean flag = false;
+    for (Version version: getVersionList()) {
+      if (flag) {
+        out.print(", ");
+      } else {
+        flag = true;
+      }
+      out.print(version.getVersionNum());
+    }
+    out.print("}");
+  }
+
   public String Program.printInfTypeMap() {
     StringBuilder result = new StringBuilder();
     result.append("{");

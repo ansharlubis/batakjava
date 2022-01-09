@@ -9,6 +9,7 @@ TypeImportOnDemandDeclLeave : TypeImportOnDemandDecl ::= Version*;
 
 /* Version Access */
 VersionAccess : Access ::= Version*;
+VersionTypeAccess : Access ::= TypeAccess:Access Version*;
 
 /* Version Number */
 Version ::= <VersionNum:String>;

@@ -74,6 +74,10 @@ Access version_access =
     primary.p DOT LBRACE version_numbers.n RBRACE
     {: return p.qualifiesAccess(new VersionAccess(n)); :}
   ;
+Expr cast_expression =
+    LPAREN name.t SHARP LBRACE version_numbers.vs RBRACE RPAREN unary_expression_not_plus_minus.e @CAST
+    {: return new CastExpr(new VersionTypeAccess(t, vs), e); :}
+  ;
 List version_numbers =
     version_number.v                            {: return new List().add(new Version(v)); :}
   | version_numbers.vs COMMA version_number.v   {: return vs.add(new Version(v)); :}
