@@ -1,0 +1,13 @@
+package app ver 1;
+import graphics.Rectangle;
+import graphics.Point;
+
+public class Example {
+  public static void main(String[] args) {
+    Rectangle r1 = new Rectangle(1,1,2,3);
+    float p = r1.perimeter();
+    Rectangle r2 = new Rectangle(new Point(2,2),2,3);
+    float a = r2.area();
+    boolean b = r2.equal(r1);
+  }
+}

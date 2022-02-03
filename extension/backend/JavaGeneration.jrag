@@ -361,8 +361,24 @@ aspect JavaGeneration {
     return new MethodAccess(methodName, args);
   }
 
+  /*
   eq Dot.genAccess(Map<Integer,TypeDecl> sol)
     = new Dot(getLeft().genExpr(sol), getRight().genAccess(sol));
+  */
+
+  eq Dot.genAccess(Map<Integer,TypeDecl> sol) {
+    if (getLeft() instanceof VersionAccess) {
+      return getRight().genAccess(sol);
+    } else if (getRight() instanceof VersionAccess) {
+      /**
+       *  Cast should be okay because only class instance, method access,
+       *  and var access can be version accessed?
+       */
+      return (Access) getLeft().genExpr(sol);
+    } else {
+      return new Dot(getLeft().genExpr(sol), getRight().genAccess(sol));
+    }
+  }
 
   eq ClassInstanceExpr.genAccess(Map<Integer,TypeDecl> sol) {
     List<Expr> args = new List();

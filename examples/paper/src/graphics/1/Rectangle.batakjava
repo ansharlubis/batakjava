@@ -1,0 +1,20 @@
+package graphics ver 1;
+
+public class Rectangle {
+  private int x;
+  private int y;
+  private float h;
+  private float w;
+  public Rectangle(int x, int y, float h, float w) {
+    this.x = x; this.y = y;
+    this.h = h; this.w = w;
+  }
+  public int x() { return x; }
+  public int y() { return y; }
+  public float h() { return h; }
+  public float w() { return w; }
+  public float perimeter() { return 2*h + 2*w; }
+  public boolean equivalent(Rectangle r) {
+    return x == r.x() && y == r.y() && h == r.h() && w == r.w();
+  }
+}

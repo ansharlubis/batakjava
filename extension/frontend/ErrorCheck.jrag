@@ -65,7 +65,7 @@ aspect ImplementationCheck {
     // TODO: Allow using generics
     /*
     System.out.println(prettyPrint());
-    // System.out.println("access var: " + infVar());
+    System.out.println("access var: " + infVar());
     for (Expr arg: getArgList()) {
       System.out.println("arg: " + arg.infVar());
     }
@@ -97,10 +97,10 @@ aspect ImplementationCheck {
   VariableDeclarator contributes each implementationCheck() to CompilationUnit.verProblems();
 
   syn Collection<Problem> VariableDeclarator.implementationCheck() {
-    /* Checked (assign-expr) */
+    /* Checked (assign-expr)
     System.out.println(prettyPrint());
     System.out.println(constraint());
-    /**/
+    */
     return Collections.emptyList();
   }
 
@@ -141,16 +141,20 @@ aspect ImplementationCheck {
   CastExpr contributes each implementationCheck() to CompilationUnit.verProblems();
 
   syn Collection<Problem> CastExpr.implementationCheck() {
+    /* TODO: Check
     System.out.println(prettyPrint());
     System.out.println(constraint());
+    */
     return Collections.emptyList();
   }
 
   VersionTypeAccess contributes each implementationCheck() to CompilationUnit.verProblems();
 
   syn Collection<Problem> VersionTypeAccess.implementationCheck() {
+    /* TODO: Check
     System.out.println(prettyPrint());
     System.out.println(constraint());
+    */
     return Collections.emptyList();
   }
 
@@ -197,8 +201,7 @@ aspect ImplementationCheck {
   ClassDecl contributes each implementationCheck() to CompilationUnit.verProblems();
 
   syn Collection<Problem> ClassDecl.implementationCheck() {
-    // Checked
-    /*
+    /* Checked
     java.util.List<MethodDecl> methods = verMethods();
     System.err.println("type: " + verFullName());
     for (MethodDecl m: methods) {
@@ -207,8 +210,7 @@ aspect ImplementationCheck {
     System.err.println();
     */
 
-    // Checked
-    /*
+    /* Checked
     SimpleSet<Variable> fields = verMemberFields("f1");
     System.err.println("type: " + verFullName());
     for (Variable m: fields) {

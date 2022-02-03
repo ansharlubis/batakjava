@@ -1,0 +1,22 @@
+package graphics ver 2;
+
+public class Rectangle {
+  private Point p;
+  private float h;
+  private float w;
+  public Rectangle(int x, int y, float h, float w) {
+    this.p = new Point(x,y);
+    this.h = h; this.w = w;
+  }
+  public Rectangle(Point p, float h, float w) {
+    this.p = p; this.h = h; this.w = w;
+  }
+  public int x() { return p.x(); }
+  public int y() { return p.y(); }
+  public float h() { return h; }
+  public float w() { return w; }
+  public float area() { return h*w; }
+  public boolean equal(Rectangle r) {
+    return p.x() == r.x() && p.y() == r.y() && h == r.h() && w == r.w();
+  }
+}

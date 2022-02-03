@@ -34,9 +34,12 @@ aspect TypeScopePropagation {
     for (TypeDecl pkgType: pkgTypes) {
       if (pkgType.accessibleFromPackage(packageName())) {
         if (pkgType.version() != null) {
+          /*
           if (pkgType.versionNumber() >= versionNumber()) {
             result = result.add(pkgType);
           }
+          */
+          result = result.add(pkgType);
         } else {
           result = result.add(pkgType);
         }

@@ -531,8 +531,6 @@ aspect ConstraintGeneration {
 
   eq CastExpr.constraint() {
     Formula formula = new Formula();
-    System.err.println(getExpr().typeSet().size());
-    System.err.println(getTypeAccess().typeSet().size());
     if (getTypeAccess().isTypeAccess()) {
       for (TypeDecl expr: getExpr().typeSet()) {
         for (TypeDecl type: getTypeAccess().typeSet()) {
