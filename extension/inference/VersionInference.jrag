@@ -54,7 +54,7 @@ aspect VersionInference {
         Integer infType = solverSolution.getIntVal(vars[i]);
         solution.put(i, intToType(infType));
       }
-      // System.out.println(solution);
+      //System.out.println(solution);
       solutions.add(solution);
     }
 

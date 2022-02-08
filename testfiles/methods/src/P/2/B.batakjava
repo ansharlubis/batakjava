@@ -1,5 +1,0 @@
-package P ver 2;
-
-public class B extends C {
-  public A m2() { return new A(); }
-}

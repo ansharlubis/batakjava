@@ -1,5 +1,9 @@
 package P ver 2;
 
 public class C {
-  public int m1() { return 1; }
+  public int f;
+  public C(int i) { f = i; }
+  public int m2() { return f; }
+  public int get() { return m2(); }
+  public boolean compare(C o) { return f == o.get(); }
 }

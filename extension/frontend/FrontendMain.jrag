@@ -206,7 +206,7 @@ aspect BatakjavaFrontendMain {
           return compileResult;
         }
 
-        System.out.println("Type map: " + program.printInfTypeMap());
+        //System.out.println("Type map: " + program.printInfTypeMap());
 
         long genStart = System.nanoTime();
 
