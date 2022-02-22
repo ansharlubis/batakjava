@@ -185,4 +185,22 @@ aspect BatakJavaPrettyPrint {
     return result.toString();
   }
 
+  public String Program.printSolution(Map<Integer,TypeDecl> sol) {
+    StringBuilder result = new StringBuilder();
+    result.append("{");
+    boolean flag = false;
+    for (Integer var: sol.keySet()) {
+      if (flag) {
+        result.append(", ");
+      } else {
+        flag = true;
+      }
+      result.append(infVarMap.get(var).prettyPrint());
+      result.append(":");
+      result.append(sol.get(var).verFullName());
+    }
+    result.append("}");
+    return result.toString();
+  }
+
 }

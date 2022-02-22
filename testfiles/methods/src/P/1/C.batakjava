@@ -2,6 +2,5 @@ package P ver 1;
 
 public class C {
   public C() { }
-  public int m1() { return 1; }
-  public int get() { return m1(); }
+  // public int get() { return 1; }
 }

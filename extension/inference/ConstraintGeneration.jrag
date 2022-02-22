@@ -114,6 +114,7 @@ aspect ConstraintGeneration {
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
+  /*
   eq MethodAccess.constraint() {
     Formula formula = new Formula();
     Map<TypeDecl,Collection<MethodDecl>> map = verLookupMethod(name());
@@ -135,6 +136,30 @@ aspect ConstraintGeneration {
       }
     }
 
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+  */
+
+  eq MethodAccess.constraint() {
+    Formula formula = new Formula();
+    Map<TypeDecl,Collection<MethodDecl>> map = verLookupMethod(name());
+    for (TypeDecl qualifierType: map.keySet()) {
+      for (MethodDecl method: map.get(qualifierType)) {
+        Optional<Formula> trace = qualifierType.verInstanceOf(method.hostType());
+        if (trace.isPresent()) {
+          Optional<Formula> sub = polyVerApplicableAndAccessible(method);
+          if (sub.isPresent()) {
+            Formula toAdd = sub.get().multiply(trace.get());
+            if (isQualified()) {
+              formula = formula.add(
+                toAdd.multiply(qualifier().buildClause(qualifierType)));
+            } else {
+              formula = formula.add(toAdd);
+            }
+          }
+        }
+      }
+    }
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 

@@ -1,0 +1,82 @@
+aspect Polymorphic {
+
+  /**
+   *  Set of variable list for method invocations
+   **/
+  public java.util.Set<java.util.List<Integer>> MethodDecl.varListSet = new HashSet();
+
+  /**
+   *  Mapping from the assigned method declaration and its fresh variable list
+   **/
+  public Map<MethodDecl,java.util.List<Integer>> MethodAccess.varListMap = new HashMap();
+
+  public java.util.List<Integer> MethodAccess.genVarList(MethodDecl m) {
+    java.util.List<Integer> newList = new ArrayList();
+    for (ParameterDeclaration param: m.getParameterList()) {
+      newList.add(program().getInfVar(param.getTypeAccess()));
+    }
+    newList.add(program().getInfVar(m.getTypeAccess()));
+    m.varListSet.add(newList);
+    varListMap.put(m, newList);
+    return newList;
+  }
+
+  syn Optional<Formula> MethodAccess.polyVerApplicableAndAccessible(MethodDecl m) {
+    if (m.getNumParameter() != getNumArg()) {
+      return Optional.empty();
+    }
+
+    if (!accessible(m)) {
+      return Optional.empty();
+    }
+
+    Formula sub = new Formula();
+    java.util.List<Integer> varList = genVarList(m);
+    for (int i = 0; i < m.getNumParameter(); i++) {
+      Integer currentVar = varList.get(i);
+      /** Subtype check between the argument and the formal parameter
+          and add constraint to both correspondingly **/
+      Optional<Formula> arg = getArg(i).polySubtypingConstraint(m.getParameter(i).getTypeAccess(), currentVar);
+      if (arg.isPresent()) {
+        sub = sub.multiply(arg.get());
+      } else {
+        return Optional.empty();
+      }
+    }
+
+    Formula result = new Formula();
+    for (TypeDecl returnType: m.typeSet()) {
+      /** Add the constraint invocation's var = returnType and
+          return type parameter's fresh var = returnType then
+          put them in the resulting constraint **/
+      result = result.add(sub
+        .multiply(buildClause(returnType))
+        .multiply(buildClause(returnType, varList.get(varList.size()-1))));
+    }
+
+    return Optional.of(result);
+  }
+
+  public Optional<Formula> Expr.polySubtypingConstraint(Access dest, Integer destVar) {
+    Formula formula = new Formula();
+    for (TypeDecl sourceType: typeSet()) {
+      for (TypeDecl destType: dest.typeSet()) {
+        /** Checks if sourceType <: destType **/
+        Optional<Formula> trace = sourceType.verAssignConversionTo(destType, this);
+        if (trace.isPresent()) {
+          /** Grab the constraint from the subtyping check
+              and add constraint arg's var = sourceType **/
+          Formula sub = trace.get().multiply(buildClause(sourceType));
+          if (dest.hostType().isUncompiled()) {
+            /** Add constraint destVar = destType **/
+            sub = sub.multiply(dest.buildClause(destType, destVar));
+          }
+          /** Add to the resulting constraint **/
+          formula = formula.add(sub);
+        }
+      }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+
+}

@@ -1,0 +1,10 @@
+package Z ver 1;
+import X.E;
+import Y.C;
+
+public class Main {
+  public static void main(String[] args) {
+    E e = new E();
+    e.v();
+  }
+}

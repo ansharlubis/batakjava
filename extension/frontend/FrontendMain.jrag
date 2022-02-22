@@ -76,7 +76,6 @@ aspect BatakjavaFrontendMain {
 
         if (program.solveConstraint() != EXIT_SUCCESS) {
           System.err.println("No solution found for the program");
-          return compileResult;
         }
 
       } catch (Throwable t) {
@@ -206,7 +205,7 @@ aspect BatakjavaFrontendMain {
           return compileResult;
         }
 
-        //System.out.println("Type map: " + program.printInfTypeMap());
+        System.out.println("Type map: " + program.printInfTypeMap());
 
         long genStart = System.nanoTime();
 
