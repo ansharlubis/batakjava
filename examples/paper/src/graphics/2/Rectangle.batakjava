@@ -1,12 +1,13 @@
 package graphics ver 2;
 
 public class Rectangle {
-  private Point p;
-  private float h;
-  private float w;
+  public Point p;
+  public float h;
+  public float w;
   public Rectangle(int x, int y, float h, float w) {
     this.p = new Point(x,y);
-    this.h = h; this.w = w;
+    this.h = h;
+    this.w = w;
   }
   public Rectangle(Point p, float h, float w) {
     this.p = p; this.h = h; this.w = w;

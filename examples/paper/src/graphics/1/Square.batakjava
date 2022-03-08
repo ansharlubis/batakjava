@@ -1,0 +1,7 @@
+package graphics ver 1;
+
+public class Square extends Rectangle {
+  public Square(int x, int y, float h) {
+    super(x, y, h, h);
+  }
+}

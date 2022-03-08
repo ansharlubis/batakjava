@@ -20,8 +20,8 @@ aspect ConstraintClass {
   /**
    *  Build constraint clause on a specific variable infVar
    */
-  public Clause Expr.buildClause(TypeDecl type, Integer infVar) {
-    return new Clause().add(new Lit(infVar, type.infType()));
+  public Clause TypeDecl.buildClause(Integer infVar) {
+    return new Clause().add(new Lit(infVar, infType()));
   }
 
   public Clause Expr.buildClause(TypeDecl type) {

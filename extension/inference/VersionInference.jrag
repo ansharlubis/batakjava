@@ -122,10 +122,8 @@ aspect VersionInference {
         solution.put(i, intToType(infType));
       }
       solutions.add(solution);
-      System.err.println(printSolution(solution));
+      // System.err.println(printSolution(solution));
     }
-
-    System.err.println(solutions.size());
 
     return solutions.size() > 0 ? 0 : 4;
   }

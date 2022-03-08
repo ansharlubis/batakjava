@@ -260,6 +260,9 @@ aspect TypeWideningAndIdentity {
 
   eq ArrayDecl.verInstanceOf(TypeDecl type) = type.verIsSupertypeOfArrayDecl(this);
 
+  eq PrimitiveType.verInstanceOf(TypeDecl type)
+    = type.isSupertypeOfPrimitiveType(this) ? Optional.of(new Formula()) : Optional.empty();
+
   eq UnknownType.verInstanceOf(TypeDecl type) = Optional.of(new Formula());
 
   syn Optional<Formula> TypeDecl.verIsSupertypeOfClassDecl(ClassDecl type) =

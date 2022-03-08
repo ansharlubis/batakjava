@@ -87,6 +87,8 @@ aspect ConstraintGeneration {
    */
   syn lazy Optional<Formula> Expr.constraint() = Optional.empty();
 
+  eq Literal.constraint() = Optional.of(buildFormula(type()));
+
   eq TypeAccess.constraint() {
     if (parent instanceof ImportDecl) {
       return Optional.of(new Formula());

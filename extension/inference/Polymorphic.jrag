@@ -51,7 +51,7 @@ aspect Polymorphic {
           put them in the resulting constraint **/
       result = result.add(sub
         .multiply(buildClause(returnType))
-        .multiply(buildClause(returnType, varList.get(varList.size()-1))));
+        .multiply(returnType.buildClause(varList.get(varList.size()-1))));
     }
 
     return Optional.of(result);
@@ -69,7 +69,7 @@ aspect Polymorphic {
           Formula sub = trace.get().multiply(buildClause(sourceType));
           if (dest.hostType().isUncompiled()) {
             /** Add constraint destVar = destType **/
-            sub = sub.multiply(dest.buildClause(destType, destVar));
+            sub = sub.multiply(destType.buildClause(destVar));
           }
           /** Add to the resulting constraint **/
           formula = formula.add(sub);
@@ -78,5 +78,149 @@ aspect Polymorphic {
     }
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
+
+}
+
+aspect TypeWideningAndIdentity {
+
+  /**
+   *  It has to be qualified
+   */
+  public Map<Integer,Integer> ClassDecl.superclassVarMap = new HashMap();
+
+  public Integer ClassDecl.genSuperclassVar(Integer originalVar) {
+    Integer newVar = program().getInfVar(getSuperClass());
+    superclassVarMap.put(originalVar, newVar);
+    return newVar;
+  }
+
+  syn Optional<Formula> TypeDecl.verInstanceOf(TypeDecl type, Integer qualifierVar);
+
+  eq TypeDecl.verInstanceOf(TypeDecl type, Integer qualifierVar)
+    = type == this ? Optional.of(new Formula()) : Optional.empty();
+
+  eq ClassDecl.verInstanceOf(TypeDecl type, Integer qualifierVar) {
+    if (isUncompiled()) {
+      return type.verIsSupertypeOfClassDecl(this, qualifierVar);
+    }
+    return instanceOf(type) ? Optional.of(new Formula()) : Optional.empty();
+  }
+
+  eq InterfaceDecl.verInstanceOf(TypeDecl type, Integer qualifierVar)
+    = instanceOf(type) ? Optional.of(new Formula()) : Optional.empty();
+
+  eq ArrayDecl.verInstanceOf(TypeDecl type, Integer qualifierVar)
+    = type.verIsSupertypeOfArrayDecl(this, qualifierVar);
+
+  eq UnknownType.verInstanceOf(TypeDecl type, Integer qualifierVar) = Optional.of(new Formula());
+
+  syn Optional<Formula> TypeDecl.verIsSupertypeOfClassDecl(ClassDecl type, Integer qualifierVar)
+    = type == this ? Optional.of(new Formula()) : Optional.empty();
+
+  eq ClassDecl.verIsSupertypeOfClassDecl(ClassDecl type, Integer qualifierVar) {
+    if (type == this) {
+      return Optional.of(new Formula());
+    }
+
+    boolean okay = false;
+    Formula formula = new Formula();
+
+    for (TypeDecl check: type.superclassSet()) {
+      Formula sub = new Formula();
+      Optional<Formula> checkConstraint = check.verInstanceOf(this, qualifierVar);
+      if (checkConstraint.isPresent()) {
+        if (check.version() != null) {
+          sub = sub.multiply(type.getSuperClass().buildClause(check));
+        }
+        sub = sub.multiply(checkConstraint.get());
+        formula = formula.add(sub);
+        okay = true;
+      }
+    }
+
+    return okay ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq InterfaceDecl.verIsSupertypeOfClassDecl(ClassDecl type, Integer qualifierVar) {
+    if (super.verIsSupertypeOfClassDecl(type, qualifierVar).isPresent()) {
+      return super.verIsSupertypeOfClassDecl(type, qualifierVar);
+    }
+
+    for (InterfaceDecl iface: type.superInterfaces()) {
+      if (iface.instanceOf(this)) {
+        return Optional.of(new Formula());
+      }
+    }
+
+    boolean okay = false;
+    Formula formula = new Formula();
+
+    for (TypeDecl check: type.superclassSet()) {
+      Formula sub = new Formula();
+      Optional<Formula> checkConstraint = check.verInstanceOf(this, qualifierVar);
+      if (checkConstraint.isPresent()) {
+        if (check.version() != null) {
+          sub = sub.multiply(type.getSuperClass().buildClause(check));
+        }
+        sub = sub.multiply(checkConstraint.get());
+        formula = formula.add(sub);
+        okay = true;
+      }
+    }
+
+    return okay ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq UnknownType.verIsSupertypeOfClassDecl(ClassDecl type, Integer qualifierVar) = Optional.of(new Formula());
+
+  syn Optional<Formula> TypeDecl.verIsSupertypeOfArrayDecl(ArrayDecl type, Integer qualifierVar)
+    = type == this ? Optional.of(new Formula()) : Optional.empty();
+
+  eq ClassDecl.verIsSupertypeOfArrayDecl(ArrayDecl type, Integer qualifierVar) {
+    if (super.verIsSupertypeOfArrayDecl(type, qualifierVar).isPresent()) {
+      return super.verIsSupertypeOfArrayDecl(type, qualifierVar);
+    }
+
+    boolean okay = false;
+    Formula formula = new Formula();
+
+    for (TypeDecl check: type.superclassSet()) {
+      Formula sub = new Formula();
+      Optional<Formula> checkConstraint = check.verInstanceOf(this, qualifierVar);
+      if (checkConstraint.isPresent()) {
+        if (check.version() != null) {
+          sub = sub.multiply(type.getSuperClass().buildClause(check));
+        }
+        sub = sub.multiply(checkConstraint.get());
+        formula = formula.add(sub);
+        okay = true;
+      }
+    }
+
+    return okay ? Optional.of(formula) : Optional.empty();
+  }
+
+  eq InterfaceDecl.verIsSupertypeOfArrayDecl(ArrayDecl type, Integer qualifierVar) {
+    if (super.verIsSupertypeOfArrayDecl(type, qualifierVar).isPresent()) {
+      return super.verIsSupertypeOfArrayDecl(type, qualifierVar);
+    }
+    for (InterfaceDecl iface: type.superInterfaces()) {
+      if (iface.instanceOf(this)) {
+        return Optional.of(new Formula());
+      }
+    }
+    return Optional.empty();
+  }
+
+  eq ArrayDecl.verIsSupertypeOfArrayDecl(ArrayDecl type, Integer qualifierVar) {
+    if (type.elementType().isPrimitive() && elementType().isPrimitive()) {
+      if (type.dimension() == dimension() && type.elementType() == elementType()) {
+        return Optional.of(new Formula());
+      }
+    }
+    return type.componentType().verInstanceOf(componentType(), qualifierVar);
+  }
+
+
 
 }
