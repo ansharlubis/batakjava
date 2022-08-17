@@ -4,7 +4,12 @@ import Y.C;
 
 public class Main {
   public static void main(String[] args) {
-    E e = new E();
-    e.v();
+    E e1 = new E();
+    E e2 = new E();
+    C c1 = new C();
+    e1.o();
+    e2.v();
+    c1.m(e1);
+    c1.m(e2);
   }
 }

@@ -2,8 +2,8 @@ package Y ver 1;
 import X.E;
 
 public class C {
-  public E() {}
+  E fieldE;
+  public C() {}
 
-  public E m(E e) { return n(e); }
-  public E n(E e) { return e.o(); }
+  public E m(E e) { return e; }
 }
