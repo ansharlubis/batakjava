@@ -90,9 +90,9 @@ aspect TypeAnalysis {
 
   eq ClassInstanceExpr.typeSet() = hasTypeDecl() ? this.<TypeDecl>emptySet().add(getTypeDecl()) : getAccess().typeSet();
   eq Dot.typeSet() = lastAccess().typeSet();
-
-  // Allow only using parameterized class from Java
-  eq ParTypeAccess.typeSet() = this.<TypeDecl>emptySet().add(type());
+  eq ParTypeAccess.typeSet() = this.<TypeDecl>emptySet().add(type());   // only for Java classes
+  eq ClassAccess.typeSet() = this.<TypeDecl>emptySet().add(type());
+  eq DiamondAccess.typeSet() = this.<TypeDecl>emptySet().add(type());
 
   eq MethodAccess.typeSet() = constraintToTypeSet();
   eq VarAccess.typeSet() = constraintToTypeSet();

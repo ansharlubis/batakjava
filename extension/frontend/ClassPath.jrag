@@ -1,5 +1,16 @@
 aspect ClassPath {
 
+  /** Adding the newly generated Java code **/
+  public CompilationUnit Program.addNewCompilationUnit(CompilationUnit cu) {
+    if (cu != emptyCompilationUnit()) {
+      classPath.addPackage(cu.packageName());
+      synchronized (this) {
+        addCompilationUnit(cu);
+      }
+    }
+    return cu;
+  }
+
   /** Used for typeSet **/
   syn lazy List<CompilationUnit> Program.getCompilationUnitList(String prefixName, SimpleSet<String> compiledNames) {
     List<CompilationUnit> units = new List();

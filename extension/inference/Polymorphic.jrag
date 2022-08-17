@@ -30,28 +30,49 @@ aspect Polymorphic {
       return Optional.empty();
     }
 
-    Formula sub = new Formula();
-    java.util.List<Integer> varList = genVarList(m);
-    for (int i = 0; i < m.getNumParameter(); i++) {
-      Integer currentVar = varList.get(i);
-      /** Subtype check between the argument and the formal parameter
-          and add constraint to both correspondingly **/
-      Optional<Formula> arg = getArg(i).polySubtypingConstraint(m.getParameter(i).getTypeAccess(), currentVar);
-      if (arg.isPresent()) {
-        sub = sub.multiply(arg.get());
-      } else {
-        return Optional.empty();
-      }
-    }
-
     Formula result = new Formula();
-    for (TypeDecl returnType: m.typeSet()) {
-      /** Add the constraint invocation's var = returnType and
-          return type parameter's fresh var = returnType then
-          put them in the resulting constraint **/
-      result = result.add(sub
-        .multiply(buildClause(returnType))
-        .multiply(returnType.buildClause(varList.get(varList.size()-1))));
+
+    /**
+     *  Split constraint generation on methods hosted by Java classes
+     *  and methods hosted by BatakJava classes
+     */
+    if (m.hostType().isUncompiled()) {
+      Formula sub = new Formula();
+      java.util.List<Integer> varList = genVarList(m);
+      for (int i = 0; i < m.getNumParameter(); i++) {
+        Integer currentVar = varList.get(i);
+        /** Subtype check between the argument and the formal parameter
+            and add constraint to both correspondingly **/
+        Optional<Formula> arg = getArg(i).polySubtypingConstraint(m.getParameter(i).getTypeAccess(), currentVar);
+        if (arg.isPresent()) {
+          sub = sub.multiply(arg.get());
+        } else {
+          return Optional.empty();
+        }
+      }
+
+      for (TypeDecl returnType: m.typeSet()) {
+        /** Add the constraint invocation's var = returnType and
+            return type parameter's fresh var = returnType then
+            put them in the resulting constraint **/
+        result = result.add(sub
+          .multiply(buildClause(returnType))
+          .multiply(returnType.buildClause(varList.get(varList.size()-1))));
+      }
+    } else {
+      Formula sub = new Formula();
+      for (int i = 0; i < m.getNumParameter(); i++) {
+        Optional<Formula> arg = getArg(i).subtypingConstraint(m.getParameter(i).getTypeAccess());
+        if (arg.isPresent()) {
+          sub = sub.multiply(arg.get());
+        } else {
+          return Optional.empty();
+        }
+      }
+
+      for (TypeDecl returnType: m.typeSet()) {
+        result = result.add(sub.multiply(buildClause(returnType)));
+      }
     }
 
     return Optional.of(result);

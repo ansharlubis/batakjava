@@ -21,7 +21,10 @@ aspect ConstraintGeneration {
   public Collection<Formula> ClassDecl.collectConstraint() {
     Collection<Formula> result = new LinkedList<Formula>();
     if (hasSuperClass()) {
-      result.add(getSuperClass().constraint().get());
+      Optional<Formula> ancestor = getSuperClass().constraint();
+      if (ancestor.isPresent()) {
+        result.add(ancestor.get());
+      }
     }
     for (BodyDecl bodyDecl: getBodyDeclList()) {
       result.addAll(bodyDecl.collectConstraint());
@@ -65,28 +68,6 @@ aspect ConstraintGeneration {
   syn Collection<Formula> Declarator.gatherConstraint()
     = constraint().isPresent() ? constraint().get().toList() : Collections.emptyList();
 
-  /** monomorphic constraint generation
-
-  coll LinkedList<Formula> Program.collectConstraint() root Program;
-
-  Expr contributes each collectConstraint() to Program.collectConstraint();
-
-  syn Collection<Formula> Expr.collectConstraint() =
-    constraint().isPresent() ? constraint().get().toList() : Collections.emptyList();
-
-  eq Dot.collectConstraint() = Collections.emptyList();
-
-  Stmt contributes each collectConstraint() to Program.collectConstraint();
-
-  syn Collection<Formula> Stmt.collectConstraint() =
-    constraint().isPresent() ? constraint().get().toList() : Collections.emptyList();
-
-  Declarator contributes each collectConstraint() to Program.collectConstraint();
-
-  syn Collection<Formula> Declarator.collectConstraint() =
-    constraint().isPresent() ? constraint().get().toList() : Collections.emptyList();
-  */
-
 }
 
 aspect VersionInference {
@@ -108,11 +89,23 @@ aspect VersionInference {
     }
 
     for (Formula constraint: constraints) {
+      // System.err.println(constraint);
       constraint.post(model, vars).post();
     }
 
+    /*
+    System.out.println("Var count: " + infVarCount);
+    System.out.println("Type count: " + infTypeCount);
+    System.out.println("Constraint count: " + constraints.size());
+    */
+
     start = System.nanoTime();
-    java.util.List<Solution> solverSolutions = model.getSolver().findAllSolutions();
+    Solver solver = model.getSolver();
+    solver.limitSolution(2);
+
+    // solver.solve();
+
+    java.util.List<Solution> solverSolutions = solver.findAllSolutions();
     solvingTime += System.nanoTime() - start;
 
     for (Solution solverSolution: solverSolutions) {
@@ -122,7 +115,6 @@ aspect VersionInference {
         solution.put(i, intToType(infType));
       }
       solutions.add(solution);
-      // System.err.println(printSolution(solution));
     }
 
     return solutions.size() > 0 ? 0 : 4;

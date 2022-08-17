@@ -5,6 +5,32 @@ aspect BatakjavaFrontendMain {
   public long Program.javaGenTime;
   public long Program.verErrorCheckTime;
 
+  refine FrontendMain public void Program.resetStatistics() {
+    javaParseTime = 0;
+    bytecodeParseTime = 0;
+    codeGenTime = 0;
+    errorCheckTime = 0;
+    numJavaFiles = 0;
+    numClassFiles = 0;
+    constraintGenTime = 0;
+    solvingTime = 0;
+    javaGenTime = 0;
+    verErrorCheckTime = 0;
+  }
+
+  refine FrontendMain public void Program.printStatistics(PrintStream out) {
+    out.println("javaParseTime: " + javaParseTime);
+    out.println("numJavaFiles: " + numJavaFiles);
+    out.println("bytecodeParseTime: " + bytecodeParseTime);
+    out.println("numClassFiles: " + numClassFiles);
+    out.println("errorCheckTime: " + errorCheckTime);
+		out.println("verErrorCheckTime: " + verErrorCheckTime);
+    out.println("codeGenTime: " + codeGenTime);
+    out.println("constraintGenTime: " + numClassFiles);
+    out.println("solvingTime: " + solvingTime);
+    out.println("javaGenTime: " + javaGenTime);
+  }
+
   /**
    *  Frontend class for Batakjava
    */
@@ -72,11 +98,11 @@ aspect BatakjavaFrontendMain {
           return compileResult;
         }
 
-        System.out.println("Type map: " + program.printInfTypeMap());
-
         if (program.solveConstraint() != EXIT_SUCCESS) {
           System.err.println("No solution found for the program");
         }
+
+        // System.out.println("Type map: " + program.printInfTypeMap());
 
       } catch (Throwable t) {
         System.err.println("Fatal exception:");
@@ -201,18 +227,22 @@ aspect BatakjavaFrontendMain {
         }
 
         if (program.solveConstraint() != EXIT_SUCCESS) {
+          // System.out.println("Type map: " + program.printInfTypeMap());
           System.err.println("No solution found for the program");
           return compileResult;
         }
 
-        System.out.println("Type map: " + program.printInfTypeMap());
-
         long genStart = System.nanoTime();
+
+        /** Filter solutions based on field declarations **/
+        // java.util.List<Map<Integer,TypeDecl>> selectedSolutions = program.selectSolutions();
+        Map<Integer,TypeDecl> selectedSolution = program.selectSolutions().iterator().next();
 
         /** Generate Java classes **/
         for (CompilationUnit unit: program.getCompilationUnitList()) {
-          CompilationUnit newUnit = unit.genJava(program.solutions);
-          genProgram.addCompilationUnit(newUnit);
+          // CompilationUnit newUnit = unit.genJava(selectedSolutions);
+          CompilationUnit newUnit = unit.genJava(selectedSolution);
+          genProgram.addNewCompilationUnit(newUnit);
         }
 
         for (CompilationUnit newOverview: program.genOverview) {
@@ -261,6 +291,7 @@ aspect BatakjavaFrontendMain {
         t.printStackTrace(System.err);
         return EXIT_UNHANDLED_ERROR;
       } finally {
+      	program.printStatistics(System.out);
         if (program.options().hasOption("-profile")) {
           program.printStatistics(System.out);
         }
