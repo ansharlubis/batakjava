@@ -26,13 +26,13 @@ aspect BatakjavaFrontendMain {
     out.println("errorCheckTime: " + errorCheckTime);
 		out.println("verErrorCheckTime: " + verErrorCheckTime);
     out.println("codeGenTime: " + codeGenTime);
-    out.println("constraintGenTime: " + numClassFiles);
+    out.println("constraintGenTime: " + constraintGenTime);
     out.println("solvingTime: " + solvingTime);
     out.println("javaGenTime: " + javaGenTime);
   }
 
   /**
-   *  Frontend class for Batakjava
+   *  Frontend class for Batakjava, extended by the checker frontend
    */
   abstract public class BatakjavaFrontend extends Frontend {
 
@@ -117,6 +117,9 @@ aspect BatakjavaFrontendMain {
       return EXIT_SUCCESS;
     }
 
+    /**
+     *  Do type check on compilation units, while considering versions
+     */
     protected int processVerCompilationUnit(CompilationUnit unit) throws Error {
       if (unit != null && unit.fromSource()) {
         try {
@@ -146,6 +149,7 @@ aspect BatakjavaFrontendMain {
 
   }
 
+  // List of generated overview classes
   public java.util.List<CompilationUnit> Program.genOverview = new LinkedList();
 
   abstract public class BatakjavaBackend extends BatakjavaFrontend {
@@ -234,7 +238,12 @@ aspect BatakjavaFrontendMain {
 
         long genStart = System.nanoTime();
 
-        /** Filter solutions based on field declarations **/
+        /** 
+         *  Filter solutions based on field declarations 
+         *
+         *  NOTE: Getting all solutions from all options is impossible as the number of solutions
+         *  can grow uncontrollable easily.
+         */
         // java.util.List<Map<Integer,TypeDecl>> selectedSolutions = program.selectSolutions();
         Map<Integer,TypeDecl> selectedSolution = program.selectSolutions().iterator().next();
 

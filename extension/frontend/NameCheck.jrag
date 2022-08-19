@@ -1,6 +1,10 @@
 aspect NameCheck {
 
   /**
+   *  TODO: More type checks can be added
+   */
+
+  /**
    *  Check whether an applicable constructor is available
    */
   ClassInstanceExpr contributes each constraintProblems() to CompilationUnit.verProblems();
