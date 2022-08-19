@@ -1,23 +1,72 @@
 aspect ConstraintGeneration {
 
-  coll LinkedList<Formula> Program.collectConstraint() root Program;
+  private Collection<Formula> Program.collectConstraint() {
+    Collection<Formula> result = new LinkedList<Formula>();
+    for (CompilationUnit unit: getCompilationUnitList()) {
+      result.addAll(unit.collectConstraint());
+    }
+    return result;
+  }
 
-  Expr contributes each collectConstraint() to Program.collectConstraint();
+  public Collection<Formula> CompilationUnit.collectConstraint() {
+    Collection<Formula> result = new LinkedList<Formula>();
+    for (TypeDecl type: getTypeDeclList()) {
+      result.addAll(type.collectConstraint());
+    }
+    return result;
+  }
 
-  syn Collection<Formula> Expr.collectConstraint() =
-    constraint().isPresent() ? constraint().get().toList() : Collections.emptyList();
+  public Collection<Formula> TypeDecl.collectConstraint() { return Collections.emptyList(); }
 
-  eq Dot.collectConstraint() = Collections.emptyList();
+  public Collection<Formula> ClassDecl.collectConstraint() {
+    Collection<Formula> result = new LinkedList<Formula>();
+    if (hasSuperClass()) {
+      Optional<Formula> ancestor = getSuperClass().constraint();
+      if (ancestor.isPresent()) {
+        result.add(ancestor.get());
+      }
+    }
+    for (BodyDecl bodyDecl: getBodyDeclList()) {
+      result.addAll(bodyDecl.collectConstraint());
+    }
+    return result;
+  }
 
-  Stmt contributes each collectConstraint() to Program.collectConstraint();
+  public Collection<Formula> BodyDecl.collectConstraint() { return gatherConstraint(); }
 
-  syn Collection<Formula> Stmt.collectConstraint() =
-    constraint().isPresent() ? constraint().get().toList() : Collections.emptyList();
+  public Collection<Formula> MethodDecl.collectConstraint() {
+    if (varListSet.size() > 0) {
+      Collection<Formula> result = new LinkedList<Formula>();
+      for (java.util.List<Integer> varList: varListSet) {
+        for (Formula constraint: gatherConstraint()) {
+          result.add(constraint.replace(this, varList));
+        }
+      }
+      result.addAll(gatherConstraint());
+      return result;
+    } else {
+      return gatherConstraint();
+    }
+  }
 
-  Declarator contributes each collectConstraint() to Program.collectConstraint();
+  coll LinkedList<Formula> BodyDecl.gatherConstraint() root BodyDecl;
 
-  syn Collection<Formula> Declarator.collectConstraint() =
-    constraint().isPresent() ? constraint().get().toList() : Collections.emptyList();
+  Expr contributes each gatherConstraint() to BodyDecl.gatherConstraint();
+
+  syn Collection<Formula> Expr.gatherConstraint()
+    = constraint().isPresent() ? constraint().get().toList() : Collections.emptyList();
+
+  eq Dot.gatherConstraint() = Collections.emptyList();
+
+  Stmt contributes each gatherConstraint() to BodyDecl.gatherConstraint();
+
+  syn Collection<Formula> Stmt.gatherConstraint()
+    = constraint().isPresent() ? constraint().get().toList() : Collections.emptyList();
+
+  Declarator contributes each gatherConstraint() to BodyDecl.gatherConstraint();
+
+  syn Collection<Formula> Declarator.gatherConstraint()
+    = constraint().isPresent() ? constraint().get().toList() : Collections.emptyList();
 
 }
 
@@ -27,7 +76,7 @@ aspect VersionInference {
 
   public int Program.solveConstraint() {
     long start = System.nanoTime();
-    LinkedList<Formula> constraints = collectConstraint();
+    Collection<Formula> constraints = collectConstraint();
     constraintGenTime += System.nanoTime() - start;
 
     Model model = new Model("Inference");
@@ -44,8 +93,19 @@ aspect VersionInference {
       constraint.post(model, vars).post();
     }
 
+    /*
+    System.out.println("Var count: " + infVarCount);
+    System.out.println("Type count: " + infTypeCount);
+    System.out.println("Constraint count: " + constraints.size());
+    */
+
     start = System.nanoTime();
-    java.util.List<Solution> solverSolutions = model.getSolver().findAllSolutions();
+    Solver solver = model.getSolver();
+    solver.limitSolution(2);
+
+    // solver.solve();
+
+    java.util.List<Solution> solverSolutions = solver.findAllSolutions();
     solvingTime += System.nanoTime() - start;
 
     for (Solution solverSolution: solverSolutions) {
@@ -54,60 +114,10 @@ aspect VersionInference {
         Integer infType = solverSolution.getIntVal(vars[i]);
         solution.put(i, intToType(infType));
       }
-      //System.out.println(solution);
       solutions.add(solution);
     }
 
     return solutions.size() > 0 ? 0 : 4;
-  }
-
-}
-
-aspect LatestSolution {
-
-  public Optional<Map<Integer,TypeDecl>> Program.laterSolution(
-      Map<Integer,TypeDecl> sol1, Map<Integer,TypeDecl> sol2) {
-    boolean start = false;
-    boolean left = false;
-    Optional<Map<Integer,TypeDecl>> result = Optional.empty();
-    for (Integer key: infVarMap.keySet()) {
-      ASTNode node = infVarMap.get(key);
-      if (node instanceof TypeAccess && node.parent instanceof ClassInstanceExpr) {
-        Integer leftVer = Integer.valueOf(sol1.get(key).version());
-        Integer rightVer = Integer.valueOf(sol2.get(key).version());
-        if (start) {
-          if (left && rightVer > leftVer) {
-            return Optional.empty();
-          }
-          if (!left && leftVer > rightVer) {
-            return Optional.empty();
-          }
-        } else {
-          start = true;
-          if (leftVer >= rightVer) {
-            left = true;
-            result = Optional.of(sol1);
-          } else {
-            result = Optional.of(sol2);
-          }
-        }
-      }
-    }
-    return result;
-  }
-
-  public Optional<Map<Integer,TypeDecl>> Program.latestSolution() {
-    Optional<Map<Integer,TypeDecl>> result = Optional.of(solutions.get(0));
-    if (solutions.size() > 1) {
-      for (int i = 1; i < solutions.size(); i++) {
-        if (result.isPresent()) {
-          result = laterSolution(result.get(), solutions.get(i));
-        } else {
-          return result;
-        }
-      }
-    }
-    return result;
   }
 
 }

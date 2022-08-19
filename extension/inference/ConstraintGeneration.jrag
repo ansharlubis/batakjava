@@ -59,8 +59,8 @@ aspect ConstraintGeneration {
    *  Inference variables for expressions and variables.
    *  Stored using lazy attribute.
    *
-   *  NOTE:
-   *  -- Super access' variable depends on the previous expression (if it exists)
+   *  - Super access' variable depends on the previous expression
+   *    (if it exists)
    */
   syn lazy Integer Expr.infVar() = program().getInfVar(this);
   eq ClassInstanceExpr.infVar() = getAccess().infVar();
@@ -74,8 +74,8 @@ aspect ConstraintGeneration {
 
   syn lazy Integer Variable.infVar();
   eq ParameterDeclaration.infVar() = getTypeAccess().infVar();
-  // eq Declarator.infVar() = declarationType().infVar();
-  eq Declarator.infVar() = program().getInfVar(this);
+  eq Declarator.infVar() = declarationType().infVar();
+  // eq Declarator.infVar() = program().getInfVar(this);
 
   /** Not supported variable **/
   eq EnumConstant.infVar() = program().getInfVar(this);
@@ -87,6 +87,8 @@ aspect ConstraintGeneration {
    */
   syn lazy Optional<Formula> Expr.constraint() = Optional.empty();
 
+  eq Literal.constraint() = Optional.of(buildFormula(type()));
+
   eq TypeAccess.constraint() {
     if (parent instanceof ImportDecl) {
       return Optional.of(new Formula());
@@ -97,6 +99,14 @@ aspect ConstraintGeneration {
       }
       return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
     }
+  }
+
+  eq ParTypeAccess.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl type: typeSet()) {
+      formula = formula.add(buildClause(type));
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
   eq ThisAccess.constraint() = Optional.of(buildFormula(type()));
@@ -114,6 +124,7 @@ aspect ConstraintGeneration {
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
+  /*
   eq MethodAccess.constraint() {
     Formula formula = new Formula();
     Map<TypeDecl,Collection<MethodDecl>> map = verLookupMethod(name());
@@ -134,7 +145,30 @@ aspect ConstraintGeneration {
         }
       }
     }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+  */
 
+  eq MethodAccess.constraint() {
+    Formula formula = new Formula();
+    Map<TypeDecl,Collection<MethodDecl>> map = verLookupMethod(name());
+    for (TypeDecl qualifierType: map.keySet()) {
+      for (MethodDecl method: map.get(qualifierType)) {
+        Optional<Formula> trace = qualifierType.verInstanceOf(method.hostType());
+        if (trace.isPresent()) {
+          Optional<Formula> sub = polyVerApplicableAndAccessible(method);
+          if (sub.isPresent()) {
+            Formula toAdd = sub.get().multiply(trace.get());
+            if (isQualified()) {
+              formula = formula.add(
+                toAdd.multiply(qualifier().buildClause(qualifierType)));
+            } else {
+              formula = formula.add(toAdd);
+            }
+          }
+        }
+      }
+    }
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
@@ -203,30 +237,19 @@ aspect ConstraintGeneration {
       for (Version ver: getVersionList()) {
         if (type.version().equals(ver.getVersionNum())) {
           formula = formula.add(buildFormula(type));
+          System.err.println(prettyPrint());
+          System.err.println(formula);
         }
       }
     }
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
-  /*
-  eq VersionTypeAccess.constraint() {
-    Formula formula = new Formula();
-    for (TypeDecl type: typeSet()) {
-      if (type.version().equals(version())) {
-        formula = formula.add(buildFormula(type));
-      }
-    }
-    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
-  }
-  */
-
   eq Dot.constraint() = lastAccess().constraint();
 
   /**
    *  Array expressions
    */
-  // DONE: Array constraints
   eq ArrayInit.constraint() {
     Formula formula = new Formula();
     if (getNumInit() == 0) { return Optional.of(formula); }
@@ -614,6 +637,5 @@ aspect ConstraintGeneration {
     }
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
-
 
 }

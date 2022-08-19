@@ -1,3 +1,223 @@
+aspect SingleSolutionGeneration {
+
+  syn nta CompilationUnit CompilationUnit.genJava(Map<Integer,TypeDecl> sol) = treeCopy();
+
+  eq BatakjavaCompilationUnit.genJava(Map<Integer,TypeDecl> sol) {
+    List<ImportDecl> imports = new List();
+    for (ImportDecl imp: getImportDeclList()) {
+      imports = imports.addAll(imp.genImport(sol));
+    }
+
+    List<TypeDecl> types = new List();
+    for (TypeDecl type: getTypeDeclList()) {
+      types = types.add(type.genType(sol, imports));
+    }
+
+    CompilationUnit newUnit = new CompilationUnit(getPackageDecl(), imports, types);
+    newUnit.setFromSource(true);
+    newUnit.setClassSource(getClassSource());
+
+    return newUnit;
+  }
+
+  /** Import declarations **/
+  // DONE: lookup type set from import decl is problematic -> doesn't need to use it directly
+  // DONE: handle versions for single import declaration
+  syn nta List<ImportDecl> ImportDecl.genImport(Map<Integer,TypeDecl> sol) = new List().add(treeCopy());
+
+  eq SingleTypeImportDecl.genImport(Map<Integer,TypeDecl> sol) {
+    List<ImportDecl> imports = new List();
+    SimpleSet<String> addedTypes = emptySet();
+    for (TypeDecl type: getAccess().typeSet()) {
+      for (Integer infType: sol.keySet()) {
+        if (type == sol.get(infType) && type.version() != null
+            && !addedTypes.contains(type.compiledName(sol))) {
+          imports = imports.add(
+            new SingleTypeImportDecl(getAccess().genImportAccess(type, sol)));
+          addedTypes = addedTypes.add(type.compiledName(sol));
+        }
+      }
+    }
+    return imports;
+  }
+
+  eq TypeImportOnDemandDeclTake.genImport(Map<Integer,TypeDecl> sol) =
+    new List().add(new TypeImportOnDemandDecl(getAccess()));
+
+  eq TypeImportOnDemandDeclLeave.genImport(Map<Integer,TypeDecl> sol) =
+    new List().add(new TypeImportOnDemandDecl(getAccess()));
+
+  /** Type declarations **/
+  syn nta TypeDecl TypeDecl.genType(Map<Integer,TypeDecl> sol, List<ImportDecl> imports) = treeCopy();
+
+  eq ClassDecl.genType(Map<Integer,TypeDecl> sol, List<ImportDecl> imports) {
+    List<TypeDecl> overviews = new List();
+
+    String className = compiledName(sol);
+    Opt<Access> superAccess = hasSuperClass() ? new Opt(getSuperClass().genAccess(sol)) : new Opt();
+
+    List<BodyDecl> bodies = new List();
+    for (BodyDecl body: getBodyDeclList()) {
+      bodies = bodies.addAll(body.genBodies(sol));
+    }
+
+    TypeDecl type = new ClassDecl(getModifiers(), className, superAccess, getImplementsList(), bodies);
+
+    TypeDecl compiled = program().lookupLibraryType(packageName(), getID());
+    if (compiled.isUnknown()) {
+      TypeDecl compiling = program().updateCompilingOverview(packageName(), getID());
+      if (compiling.isUnknown()) {
+        overviews = overviews.add(genOverview(type.name()));
+      } else {
+        overviews = overviews.add(updateOverview(compiling, type.name()));
+      }
+    } else {
+      overviews = overviews.add(updateOverview(compiled, type.name()));
+    }
+
+    CompilationUnit unit = new CompilationUnit(compilationUnit().getPackageDecl(), imports, overviews);
+    unit.setFromSource(true);
+    unit.setClassSource(compilationUnit().getClassSource());
+    program().genOverview.add(unit);
+
+    return type;
+  }
+
+  syn nta List<BodyDecl> BodyDecl.genBodies(Map<Integer,TypeDecl> sol) = new List().add(treeCopy());
+
+  eq FieldDecl.genBodies(Map<Integer,TypeDecl> sol) {
+    List<BodyDecl> bodies = new List();
+    for (FieldDeclarator decl: getDeclaratorList()) {
+      bodies = bodies.add(
+        new FieldDecl(getModifiers(), getTypeAccess().genAccess(sol), new List().add(decl.genDeclarator(sol))));
+    }
+    return bodies;
+  }
+
+  eq ConstructorDecl.genBodies(Map<Integer,TypeDecl> sol) {
+    List<ParameterDeclaration> params = new List();
+    for (ParameterDeclaration param: getParameterList()) {
+      params = params.add(param.genParameter(sol));
+    }
+
+    Opt<Stmt> parsed = hasParsedConstructorInvocation()
+      ? new Opt(getParsedConstructorInvocation().genStmt(sol)) : new Opt();
+
+    return new List().add(new ConstructorDecl(
+      getModifiers(), ((ClassDecl) hostType()).compiledName(sol), params,
+      getExceptionList(), parsed, getBlock().genBlock(sol)
+    ));
+  }
+
+  eq MethodDecl.genBodies(Map<Integer,TypeDecl> sol) {
+    List<BodyDecl> bodies = new List();
+
+    if (varListSet.size() > 0) {
+      java.util.Set<java.util.List<TypeDecl>> generatedSignature = new HashSet(varListSet.size());
+      for (java.util.List<Integer> varList: varListSet) {
+        java.util.List<TypeDecl> varTypeList = new ArrayList(varList.size());
+        for (Integer var: varList) {
+          varTypeList.add(sol.get(var));
+        }
+        if (!generatedSignature.contains(varTypeList)) {
+          generatedSignature.add(varTypeList);
+
+          List<ParameterDeclaration> params = new List();
+          for (int i = 0; i < getNumParameter(); i++) {
+            params = params.add(getParameter(i).genParameter(sol, varList.get(i)));
+          }
+
+          Access returnAccess = getTypeAccess().genAccess(sol, varList.get(varList.size()-1));
+
+          String methodName = getID();
+          TypeDecl returnType = sol.get(varList.get(varList.size()-1));
+          if (returnType.isCompiled()) {
+            methodName += "$" + returnType.name();
+          } else if (returnType.isUncompiled()) {
+            methodName += "$" + returnType.compiledName(sol);
+          }
+
+          bodies = bodies.add(new MethodDecl(getModifiers(), returnAccess, methodName, params,
+            getExceptionList(), hasBlock() ? new Opt(getBlock().genBlock(sol)) : new Opt()));
+        }
+      }
+    } else {
+      List<ParameterDeclaration> params = new List();
+      for (ParameterDeclaration param: getParameterList()) {
+        params = params.add(param.genParameter(sol));
+      }
+
+      String methodName = getID();
+      TypeDecl returnType = sol.get(getTypeAccess().infVar());
+      if (returnType.isCompiled()) {
+        methodName += "$" + returnType.name();
+      } else if (returnType.isUncompiled()) {
+        methodName += "$" + returnType.compiledName(sol);
+      }
+
+      bodies = bodies.add(new MethodDecl(getModifiers(), getTypeAccess().genAccess(sol),
+        methodName, params, getExceptionList(), hasBlock() ? new Opt(getBlock().genBlock(sol)) : new Opt()));
+    }
+
+    return bodies;
+  }
+
+  syn nta ParameterDeclaration ParameterDeclaration.genParameter(Map<Integer,TypeDecl> sol, Integer var)
+    = new ParameterDeclaration(getModifiers(), getTypeAccess().genAccess(sol, var), getID());
+
+  syn nta Access Access.genAccess(Map<Integer,TypeDecl> sol, Integer var) = treeCopy();
+
+  eq TypeAccess.genAccess(Map<Integer,TypeDecl> sol, Integer var) {
+    TypeDecl type = sol.get(var);
+    if (type.isUncompiled()) {
+      return new TypeAccess(getPackage(), type.compiledName(sol));
+    }
+    if (type.isCompiled()) {
+      return new TypeAccess(getPackage(), type.name());
+    }
+    return treeCopy();
+  }
+
+  syn nta TypeDecl ClassDecl.genOverview(String name) {
+    List<BodyDecl> bodies = new List();
+    bodies = bodies.add(new FieldDecl(
+      new Modifiers(new List().add(new Modifier("public"))),
+      new PrimitiveTypeAccess("boolean"),
+      new List().add(new FieldDeclarator("BATAKJAVACLASS", new List(), new Opt()))));
+
+    bodies = bodies.add(new FieldDecl(
+      new Modifiers(new List().add(new Modifier("public"))),
+      new PrimitiveTypeAccess("boolean"),
+      new List().add(new FieldDeclarator(name, new List(), new Opt()))));
+
+    return new ClassDecl(new Modifiers(new List().add(new Modifier("public"))),
+      getID(), new Opt(), new List(), bodies);
+  }
+
+  syn nta TypeDecl ClassDecl.updateOverview(TypeDecl overview, String name) {
+    Set<String> foundNames = new HashSet();
+    List<BodyDecl> bodies = new List();
+    for (BodyDecl bodyDecl: overview.getBodyDeclList()) {
+      if (bodyDecl instanceof FieldDecl) {
+        bodies = bodies.add(bodyDecl);
+        FieldDecl field = (FieldDecl) bodyDecl;
+        if (field.getNumDeclarator() == 1 && !foundNames.contains(field.getDeclarator(0).getID())) {
+          foundNames.add(field.getDeclarator(0).getID());
+        }
+      }
+    }
+    if (!foundNames.contains(name)) {
+      bodies = bodies.add(new FieldDecl(
+        new Modifiers(new List().add(new Modifier("public"))),
+        new PrimitiveTypeAccess("boolean"),
+        new List().add(new FieldDeclarator(name, new List(), new Opt()))));
+    }
+    return new ClassDecl(overview.getModifiers(), overview.getID(), new Opt(), new List(), bodies);
+  }
+
+}
+
+
 aspect JavaGeneration {
 
   /**
@@ -29,8 +249,6 @@ aspect JavaGeneration {
   }
 
   /** Import declarations **/
-  // DONE: lookup type set from import decl is problematic -> doesn't need to use it directly
-  // DONE: handle versions for single import declaration
   syn nta List<ImportDecl> ImportDecl.genImport(java.util.List<Map<Integer,TypeDecl>> solutions) = new List().add(treeCopy());
 
   eq SingleTypeImportDecl.genImport(java.util.List<Map<Integer,TypeDecl>> solutions) {
@@ -66,13 +284,13 @@ aspect JavaGeneration {
     List<TypeDecl> overviews = new List();
     Set<String> typeNames = new HashSet();
 
-    Map<TypeDecl,java.util.List<Map<Integer,TypeDecl>>> groups = groupSolutions(solutions);
+    Map<Set<TypeDecl>,java.util.List<Map<Integer,TypeDecl>>> groups = groupSolutions(solutions);
 
-    for (TypeDecl keyType: groups.keySet()) {
-      java.util.List<Map<Integer,TypeDecl>> group = groups.get(keyType);
+    for (Set<TypeDecl> ancestorType: groups.keySet()) {
+      java.util.List<Map<Integer,TypeDecl>> group = groups.get(ancestorType);
       // TODO: Use the latest solution if possible
-      Map<Integer,TypeDecl> sel = group.iterator().next();
-      TypeDecl type = genType(sel, group);
+      Map<Integer,TypeDecl> sol = group.iterator().next();
+      TypeDecl type = genType(sol, group);
       types = types.add(type);
       typeNames.add(type.name());
     }
@@ -117,13 +335,9 @@ aspect JavaGeneration {
 
   eq FieldDecl.genBodies(Map<Integer,TypeDecl> sel, java.util.List<Map<Integer,TypeDecl>> sols) {
     List<BodyDecl> bodies = new List();
-    for (Map<Integer,TypeDecl> sol: filterSolutions(sel, sols)) {
-      for (FieldDeclarator decl: getDeclaratorList()) {
-        bodies = bodies.add(new FieldDecl(
-          getModifiers(), getTypeAccess().genAccess(sol),
-          new List().add(decl.genDeclarator(sol))
-        ));
-      }
+    for (FieldDeclarator decl: getDeclaratorList()) {
+      bodies = bodies.add(
+        new FieldDecl(getModifiers(), getTypeAccess().genAccess(sel), new List().add(decl.genDeclarator(sel))));
     }
     return bodies;
   }
@@ -326,6 +540,7 @@ aspect JavaGeneration {
     return treeCopy();
   }
 
+  /*
   eq VarAccess.genAccess(Map<Integer,TypeDecl> sol) {
     if (isFieldAccess() && sol.get(infVar()) != null) {
       TypeDecl type = sol.get(infVar());
@@ -339,6 +554,9 @@ aspect JavaGeneration {
     }
     return treeCopy();
   }
+  */
+
+  eq VarAccess.genAccess(Map<Integer,TypeDecl> sol) = treeCopy();
 
   eq MethodAccess.genAccess(Map<Integer,TypeDecl> sol) {
     String methodName = getID();
@@ -360,11 +578,6 @@ aspect JavaGeneration {
 
     return new MethodAccess(methodName, args);
   }
-
-  /*
-  eq Dot.genAccess(Map<Integer,TypeDecl> sol)
-    = new Dot(getLeft().genExpr(sol), getRight().genAccess(sol));
-  */
 
   eq Dot.genAccess(Map<Integer,TypeDecl> sol) {
     if (getLeft() instanceof VersionAccess) {
@@ -429,6 +642,7 @@ aspect JavaGeneration {
   syn nta VariableDeclarator VariableDeclarator.genDeclarator(Map<Integer,TypeDecl> sol)
     = new VariableDeclarator(getID(), getDimsList(), hasInit() ? new Opt(getInit().genExpr(sol)) : new Opt());
 
+  /*
   syn nta FieldDeclarator FieldDeclarator.genDeclarator(Map<Integer,TypeDecl> sol) {
     TypeDecl type = sol.get(infVar());
     Opt<Expr> init = hasInit() ? new Opt(getInit().genExpr(sol)) : new Opt();
@@ -440,6 +654,10 @@ aspect JavaGeneration {
     }
     return treeCopy();
   }
+  */
+
+  syn nta FieldDeclarator FieldDeclarator.genDeclarator(Map<Integer,TypeDecl> sol)
+    = new FieldDeclarator(getID(), getDimsList(), hasInit() ? new Opt(getInit().genExpr(sol)) : new Opt());
 
   /** ArrayInit **/
   syn nta ArrayInit ArrayInit.genArrayInit(Map<Integer,TypeDecl> sol) {
@@ -453,6 +671,141 @@ aspect JavaGeneration {
 
 aspect JavaGeneration {
 
+  public String TypeDecl.compiledName(Map<Integer,TypeDecl> sol) { return name(); }
+
+  public String ClassDecl.compiledName(Map<Integer,TypeDecl> sol) {
+    if (isUncompiled()) {
+      String className = getID() + "_ver_" + version();
+      if (hasSuperClass()) {
+        TypeDecl superclass = sol.get(getSuperClass().infVar());
+        if (superclass.isCompiled()) {
+          className += "$" + superclass.name();
+        } else if (superclass.isUncompiled()) {
+          className += "$" + superclass.compiledName(sol);
+        }
+      }
+      return className;
+    }
+    return name();
+  }
+
+}
+
+aspect Solutions {
+
+  public java.util.List<Map<Integer,TypeDecl>> Program.selectSolutions() {
+    java.util.List<Map<Integer,TypeDecl>> sols = solutions;
+    for (CompilationUnit unit: getCompilationUnitList()) {
+      for (TypeDecl type: unit.getTypeDeclList()) {
+        sols = type.selectSolutions(sols);
+      }
+    }
+    return sols;
+  }
+
+  public java.util.List<Map<Integer,TypeDecl>> TypeDecl.selectSolutions(
+      java.util.List<Map<Integer,TypeDecl>> sols) {
+    return sols;
+  }
+
+  public java.util.List<Map<Integer,TypeDecl>> ClassDecl.selectSolutions(
+      java.util.List<Map<Integer,TypeDecl>> group) {
+    java.util.List<Integer> fieldVarList = new ArrayList();
+    for (BodyDecl body: getBodyDeclList()) {
+      if (body instanceof FieldDecl) {
+        fieldVarList.add(((FieldDecl) body).getTypeAccess().infVar());
+      }
+    }
+
+    java.util.List<Map<Integer,TypeDecl>> fieldMapList = new ArrayList();
+    Map<Map<Integer,TypeDecl>, java.util.List<Map<Integer,TypeDecl>>> fieldGroups = new HashMap();
+    for (Map<Integer,TypeDecl> sol: group) {
+      Map<Integer,TypeDecl> fieldMap = new HashMap(fieldVarList.size());
+      for (Integer solKey: sol.keySet()) {
+        if (fieldVarList.contains(solKey)) {
+          fieldMap.put(solKey, sol.get(solKey));
+        }
+      }
+      if (!fieldMapList.contains(fieldMap)) {
+        ListIterator<Map<Integer,TypeDecl>> listIter = fieldMapList.listIterator();
+        boolean flag = true;
+        while (listIter.hasNext()) {
+          Map<Integer,TypeDecl> otherMap = listIter.next();
+          Optional<Boolean> check = isLargerSolution(otherMap, fieldMap);
+          if (check.isPresent()) {
+            if (check.get()) {
+              flag = false;
+              break;
+            } else {
+              Optional<Boolean> checkReverse = isLargerSolution(fieldMap, otherMap);
+              if (checkReverse.isPresent() && checkReverse.get()) {
+                listIter.remove();
+                fieldGroups.remove(otherMap);
+              }
+            }
+          }
+        }
+        if (flag) {
+          fieldMapList.add(fieldMap);
+          java.util.List<Map<Integer,TypeDecl>> newGroup = new ArrayList();
+          newGroup.add(sol);
+          fieldGroups.put(fieldMap, newGroup);
+        }
+      } else {
+        fieldGroups.get(fieldMap).add(sol);
+      }
+    }
+
+    // Returns an arbitrary solution from the filtered list
+    return fieldGroups.get(fieldMapList.iterator().next());
+  }
+
+  private Optional<Boolean> ClassDecl.isLargerSolution(Map<Integer,TypeDecl> a, Map<Integer,TypeDecl> b) {
+    if (a.size() != b.size()) {
+      return Optional.empty();
+    }
+
+    boolean start = false;
+    boolean aIsLargerOrEqual = true;
+
+    for (Integer keyA: a.keySet()) {
+      if (!b.containsKey(keyA)) {
+        return Optional.empty();
+      }
+
+      if (a.get(keyA).versionNumber() == null) {
+        if (b.get(keyA).versionNumber() != null) {
+          return Optional.empty();
+        }
+      } else if (b.get(keyA).versionNumber() == null) {
+        return Optional.empty();
+      } else if (a.get(keyA).versionNumber() >= b.get(keyA).versionNumber()) {
+        if (start) {
+          if (!aIsLargerOrEqual) {
+            return Optional.of(false);
+          }
+        } else {
+          start = true;
+          aIsLargerOrEqual = true;
+        }
+      } else {
+        if (start) {
+          if (aIsLargerOrEqual) {
+            return Optional.of(false);
+          }
+        } else {
+          start = true;
+          aIsLargerOrEqual = false;
+        }
+      }
+    }
+
+    return Optional.of(aIsLargerOrEqual);
+  }
+
+  /**
+   *  Group solutions for class declaration based on its superclass
+   *
   private Map<TypeDecl,java.util.List<Map<Integer,TypeDecl>>> ClassDecl.groupSolutions(
       java.util.List<Map<Integer,TypeDecl>> solutions) {
     Map<TypeDecl,java.util.List<Map<Integer,TypeDecl>>> result = new HashMap(solutions.size());
@@ -470,6 +823,41 @@ aspect JavaGeneration {
       }
     } else {
       result.put(typeObject(), solutions);
+    }
+    return result;
+  }
+   */
+
+  private Map<Set<TypeDecl>,java.util.List<Map<Integer,TypeDecl>>> ClassDecl.groupSolutions(
+      java.util.List<Map<Integer,TypeDecl>> sols) {
+    Map<Set<TypeDecl>, java.util.List<Map<Integer,TypeDecl>>> result = new HashMap(sols.size());
+    for (Map<Integer,TypeDecl> sol: sols) {
+      Set<TypeDecl> ancestorSet = ancestorTypeSet(sol);
+      if (result.containsKey(ancestorSet)) {
+        result.get(ancestorSet).add(sol);
+      } else {
+        java.util.List<Map<Integer,TypeDecl>> solList = new ArrayList();
+        solList.add(sol);
+        result.put(ancestorSet, solList);
+      }
+    }
+    return result;
+  }
+
+  public java.util.Set<TypeDecl> TypeDecl.ancestorTypeSet(Map<Integer,TypeDecl> sol) {
+    return Collections.emptySet();
+  }
+
+  public java.util.Set<TypeDecl> ClassDecl.ancestorTypeSet(Map<Integer,TypeDecl> sol) {
+    java.util.Set<TypeDecl> result = new HashSet();
+    if (hasSuperClass()) {
+      TypeDecl superType = sol.get(getSuperClass().infVar());
+      result.add(superType);
+      if (superType.isUncompiled()) {
+        result.addAll(superType.ancestorTypeSet(sol));
+      }
+    } else {
+      result.add(typeObject());
     }
     return result;
   }
@@ -530,24 +918,6 @@ aspect JavaGeneration {
     return map;
   }
 
-  public String TypeDecl.compiledName(Map<Integer,TypeDecl> sol) { return name(); }
-
-  public String ClassDecl.compiledName(Map<Integer,TypeDecl> sol) {
-    if (isUncompiled()) {
-      String className = getID() + "_ver_" + version();
-      if (hasSuperClass()) {
-        TypeDecl superclass = sol.get(getSuperClass().infVar());
-        if (superclass.isCompiled()) {
-          className += "$" + superclass.name();
-        } else if (superclass.isUncompiled()) {
-          className += "$" + superclass.compiledName(sol);
-        }
-      }
-      return className;
-    }
-    return name();
-  }
-
 }
 
 aspect OverviewGeneration {
@@ -577,7 +947,7 @@ aspect OverviewGeneration {
       if (bodyDecl instanceof FieldDecl) {
         bodies = bodies.add(bodyDecl);
         FieldDecl field = (FieldDecl) bodyDecl;
-        if (field.getNumDeclarator() == 1 && names.contains(field.getDeclarator(0).getID())) {
+        if (field.getNumDeclarator() == 1 && !foundNames.contains(field.getDeclarator(0).getID())) {
           foundNames.add(field.getDeclarator(0).getID());
         }
       }

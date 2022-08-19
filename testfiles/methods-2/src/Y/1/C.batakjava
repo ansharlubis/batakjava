@@ -1,0 +1,9 @@
+package Y ver 1;
+import X.E;
+
+public class C {
+  E fieldE;
+  public C() {}
+
+  public E m(E e) { return e; }
+}

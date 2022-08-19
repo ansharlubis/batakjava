@@ -1,6 +1,10 @@
 aspect NameCheck {
 
   /**
+   *  TODO: More type checks can be added
+   */
+
+  /**
    *  Check whether an applicable constructor is available
    */
   ClassInstanceExpr contributes each constraintProblems() to CompilationUnit.verProblems();
@@ -13,11 +17,13 @@ aspect NameCheck {
         problems.add(errorf("*** Can only instantiate classes, which %s is not", type.typeName()));
       }
     }
-    boolean flag = true;
+    boolean flag = false;
     for (Expr arg: getArgList()) {
-      if (!arg.constraint().isPresent()) { flag = false; }
+      if (!arg.constraint().isPresent()) {
+        flag = true;
+      }
     }
-    if (flag && !constraint().isPresent()) {
+    if (flag || !constraint().isPresent()) {
       problems.add(errorf("no candidate constructor found for %s", prettyPrint()));
     }
     return problems;

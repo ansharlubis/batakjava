@@ -1,10 +1,10 @@
 package graphics ver 1;
 
 public class Rectangle {
-  private int x;
-  private int y;
-  private float h;
-  private float w;
+  public int x;
+  public int y;
+  public float h;
+  public float w;
   public Rectangle(int x, int y, float h, float w) {
     this.x = x; this.y = y;
     this.h = h; this.w = w;

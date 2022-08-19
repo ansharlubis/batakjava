@@ -14,7 +14,6 @@ aspect LookupMethod {
 
   eq TypeDecl.getBodyDecl(int i).verLookupMethod(String name) = verUnqualifiedLookupMethod(name);
 
-
   syn lazy Map<TypeDecl,Collection<MethodDecl>> TypeDecl.verUnqualifiedLookupMethod(String name) {
     Collection<MethodDecl> methods = verMemberMethods(name);
     TypeDecl host = this;

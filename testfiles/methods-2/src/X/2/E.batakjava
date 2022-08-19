@@ -1,0 +1,7 @@
+package X ver 2;
+
+public class E {
+  public E() {}
+
+  public void v() { return; }
+}

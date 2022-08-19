@@ -2,6 +2,7 @@ import org.chocosolver.solver.constraints.Constraint;
 import org.chocosolver.solver.Model;
 import org.chocosolver.solver.Solution;
 import org.chocosolver.solver.variables.IntVar;
+import org.chocosolver.solver.Solver;
 import com.google.common.primitives.Ints;
 
 /**
@@ -17,6 +18,13 @@ aspect ConstraintClass {
     return new Formula().add(new Clause().add(new Lit(infVar(), type.infType())));
   }
 
+  /**
+   *  Build constraint clause on a specific variable infVar
+   */
+  public Clause TypeDecl.buildClause(Integer infVar) {
+    return new Clause().add(new Lit(infVar, infType()));
+  }
+
   public Clause Expr.buildClause(TypeDecl type) {
     return new Clause().add(new Lit(infVar(), type.infType()));
   }
@@ -28,7 +36,6 @@ aspect ConstraintClass {
   public Clause Declarator.buildClause(TypeDecl type) {
     return new Clause().add(new Lit(infVar(), type.infType()));
   }
-
 
   /** The disjunction of clauses **/
   public class Formula {
@@ -108,7 +115,13 @@ aspect ConstraintClass {
       return new Formula(newClauses);
     }
 
-    public boolean isUnknown() { return false; }
+    public Formula replace(MethodDecl method, java.util.List<Integer> varList) {
+      java.util.List<Clause> newClauses = new LinkedList();
+      for (Clause clause: clauses) {
+        newClauses.add(clause.replace(method, varList));
+      }
+      return new Formula(newClauses);
+    }
 
     public Constraint post(Model model, IntVar[] vars) {
       Constraint[] toPost = new Constraint[size()];
@@ -185,6 +198,14 @@ aspect ConstraintClass {
 
     public int size() { return literals.size(); }
 
+    public Clause replace(MethodDecl method, java.util.List<Integer> varList) {
+      java.util.List<Lit> newLits = new LinkedList();
+      for (Lit lit: literals) {
+        newLits.add(lit.replace(method, varList));
+      }
+      return new Clause(newLits);
+    }
+
     public Constraint post(Model model, IntVar[] vars) {
       Constraint[] toPost = new Constraint[size()];
       for (int i = 0; i < size(); i++) {
@@ -215,7 +236,7 @@ aspect ConstraintClass {
    *  typeInt represents a type.
    */
   public class Lit {
-    public final Integer var;
+    public Integer var;
     public final Integer typeInt;
 
     public Lit(Integer var, Integer typeInt) {
@@ -225,6 +246,18 @@ aspect ConstraintClass {
 
     public Optional<Integer> getTypeInt(Integer arg) {
       return var == arg ? Optional.of(typeInt) : Optional.empty();
+    }
+
+    public Lit replace(MethodDecl method, java.util.List<Integer> varList) {
+      for (int i = 0; i < method.getNumParameter(); i++) {
+        if (var == method.getParameter(i).infVar()) {
+          return new Lit(varList.get(i), typeInt);
+        }
+      }
+      if (var == method.getTypeAccess().infVar()) {
+        return new Lit(varList.get(varList.size()-1), typeInt);
+      }
+      return new Lit(var, typeInt);
     }
 
     public Constraint post(Model model, IntVar[] vars) {
@@ -237,6 +270,5 @@ aspect ConstraintClass {
     }
 
   }
-
 
 }

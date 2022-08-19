@@ -2,10 +2,6 @@ aspect ErrorCheck {
 
   coll LinkedList<Problem> CompilationUnit.verProblems() root CompilationUnit;
 
-  /**
-   *  Maybe declare new syn attributes for the extension
-   *  instead of refining old definitions
-   */
   syn Collection<Problem> CompilationUnit.verErrors() {
     Collection<Problem> errors = new LinkedList();
     for (Problem problem: verProblems()) {
