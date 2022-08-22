@@ -1,0 +1,6 @@
+package P ver 1;
+import java.math.BigInteger;
+
+public class C {
+    static BigInteger zero = BigInteger.ZERO;
+}
