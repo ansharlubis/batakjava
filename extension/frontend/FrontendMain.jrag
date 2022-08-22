@@ -300,7 +300,6 @@ aspect BatakjavaFrontendMain {
         t.printStackTrace(System.err);
         return EXIT_UNHANDLED_ERROR;
       } finally {
-      	program.printStatistics(System.out);
         if (program.options().hasOption("-profile")) {
           program.printStatistics(System.out);
         }

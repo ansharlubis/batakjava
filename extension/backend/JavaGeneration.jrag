@@ -21,8 +21,6 @@ aspect SingleSolutionGeneration {
   }
 
   /** Import declarations **/
-  // DONE: lookup type set from import decl is problematic -> doesn't need to use it directly
-  // DONE: handle versions for single import declaration
   syn nta List<ImportDecl> ImportDecl.genImport(Map<Integer,TypeDecl> sol) = new List().add(treeCopy());
 
   eq SingleTypeImportDecl.genImport(Map<Integer,TypeDecl> sol) {
@@ -30,11 +28,16 @@ aspect SingleSolutionGeneration {
     SimpleSet<String> addedTypes = emptySet();
     for (TypeDecl type: getAccess().typeSet()) {
       for (Integer infType: sol.keySet()) {
-        if (type == sol.get(infType) && type.version() != null
-            && !addedTypes.contains(type.compiledName(sol))) {
-          imports = imports.add(
-            new SingleTypeImportDecl(getAccess().genImportAccess(type, sol)));
-          addedTypes = addedTypes.add(type.compiledName(sol));
+        if (type == sol.get(infType)) {
+          if (type.version() != null) {
+            if (!addedTypes.contains(type.compiledName(sol))) {
+              imports = imports.add(
+                new SingleTypeImportDecl(getAccess().genImportAccess(type, sol)));
+              addedTypes = addedTypes.add(type.compiledName(sol));
+            }
+          } else {
+            imports = imports.add(new SingleTypeImportDecl(getAccess().treeCopy()));
+          }
         }
       }
     }
