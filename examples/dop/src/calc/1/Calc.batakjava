@@ -14,12 +14,13 @@ public class Calc {
     }
 
     void clear() {
-        e0 = e1;
-        e1 = e2;
         e2 = zero;
+        e1 = e2;        
+        e0 = e1;
     }
 
     String top() {
         return e0.toString();
     }
+
 }
