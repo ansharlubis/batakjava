@@ -5,7 +5,7 @@ TypeDecl version_class_declaration =
     modifiers.m CLASS IDENTIFIER VER version_number.v super.s? interfaces.i? class_body.b
     {: return new VersionClassDecl(new Modifiers(m), IDENTIFIER, s, i, b, new Version(v)); :}
   ;
-Access class_or_interface :=
+Access class_or_interface_type =
     class_or_interface.n LBRACE version_numbers.vs RBRACE
     {: return new VersionTypeAccess(n, vs); :}
   ;

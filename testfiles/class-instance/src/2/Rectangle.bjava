@@ -1,0 +1,8 @@
+package graphics;
+
+public class Rectangle ver 2 {
+  public Point p;
+  public Rectangle(int x, int y) {
+    this.p = new Point(x, y);
+  }
+}

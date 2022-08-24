@@ -1,0 +1,8 @@
+import graphics.Rectangle;
+
+public class Example ver 1 {
+  public static void main(String[] args) {
+    Rectangle rec1 = new Rectangle(1,2);
+    Rectangle{1} rec2 = new Rectangle(1,2);
+  }
+}

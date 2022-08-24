@@ -4,7 +4,7 @@ aspect BatakjavaVersion {
    *  Get version from the nodes.
    */
   syn String CompilationUnit.version() = null;
-
+  
   syn String TypeDecl.version() = null;
 
   /**
@@ -32,11 +32,6 @@ aspect BatakjavaVersion {
   }
 
   /**
-   *  Set of version specified by the import declaration
-   */
-  syn SimpleSet<String> ImportDecl.versions() = emptySet();
-
-  /**
    *  Version number is a version casted
    */
   public Integer CompilationUnit.versionNumber() { return version() != null ? Integer.valueOf(version()) : null; }
@@ -46,7 +41,6 @@ aspect BatakjavaVersion {
    *  Host version is defined through inh attribute
    *  checking through the unit
    */
-  inh String ImportDecl.hostVersion();
   inh String TypeDecl.hostVersion();
   inh String BodyDecl.hostVersion();
   inh String Expr.hostVersion();

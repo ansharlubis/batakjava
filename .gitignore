@@ -16,3 +16,6 @@
 
 # Vim swap files.
 *.swp
+
+# Test files compiled files
+/testfiles/class-instance/class
