@@ -1,10 +1,14 @@
-package Q ver 1;
+package Q;
 import P.B;
 import P.C;
 
-public class D extends B {
+public class D ver 1 extends B {
+  private void test() { 
+    System.out.println("test"); 
+  }
   public static void main(String[] args) {
     C c = new D();
-    D d1 = (D#{1}) c;
+    D d1 = (D{1}) c;
+    d1.test();
   }
 }

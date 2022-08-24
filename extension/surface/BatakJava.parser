@@ -9,6 +9,10 @@ Access class_or_interface_type =
     class_or_interface.n LBRACE version_numbers.vs RBRACE
     {: return new VersionTypeAccess(n, vs); :}
   ;
+Expr cast_expression =
+    LPAREN name.t LBRACE version_numbers.vs RBRACE RPAREN unary_expression_not_plus_minus.e @CAST
+    {: return new CastExpr(new VersionTypeAccess(t, vs), e); :}
+  ;
 List version_numbers =
     version_number.v                            {: return new List().add(new Version(v)); :}
   | version_numbers.vs COMMA version_number.v   {: return vs.add(new Version(v)); :}

@@ -533,6 +533,7 @@ aspect ConstraintGeneration {
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
+  /*
   eq CastExpr.constraint() {
     Formula formula = new Formula();
     if (getTypeAccess().isTypeAccess()) {
@@ -546,6 +547,15 @@ aspect ConstraintGeneration {
           }
         }
       }
+    }
+    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+  }
+  */
+
+  eq CastExpr.constraint() {
+    Formula formula = new Formula();
+    for (TypeDecl type: getTypeAccess().typeSet()) {
+      formula = formula.add(buildFormula(type));
     }
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
