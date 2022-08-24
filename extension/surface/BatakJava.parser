@@ -1,82 +1,13 @@
-CompilationUnit compilation_unit =
-    doc_comment_list? PACKAGE name_decl.n VER version_number.v SEMICOLON
-    import_declarations.i? batakjava_class_declarations.t? doc_comment_list?
-    {: return new BatakjavaCompilationUnit(n.getID(), v, i, t); :}
-/**
- *  No static import
- */
-ImportDecl import_declaration =
-    single_type_import_declaration_take
-  | single_type_import_declaration_leave
-  | type_import_on_demand_declaration_take
-  | type_import_on_demand_declaration_leave
+TypeDecl type_declaration :=
+    version_class_declaration
   ;
-ImportDecl single_type_import_declaration_take =
-    IMPORT name TAKE VER version_numbers.vl SEMICOLON
-    {: return new SingleTypeImportDeclTake(name, vl); :}
+TypeDecl version_class_declaration =
+    modifiers.m CLASS IDENTIFIER VER version_number.v super.s? interfaces.i? class_body.b
+    {: return new VersionClassDecl(new Modifiers(m), IDENTIFIER, s, i, b, new Version(v)); :}
   ;
-ImportDecl single_type_import_declaration_leave =
-    IMPORT name LEAVE VER version_numbers.vl SEMICOLON
-    {: return new SingleTypeImportDeclLeave(name, vl); :}
-  ;
-ImportDecl type_import_on_demand_declaration_take =
-    IMPORT name DOT MULT TAKE VER version_numbers.vl SEMICOLON
-    {: return new TypeImportOnDemandDeclTake(name, vl); :}
-  ;
-ImportDecl type_import_on_demand_declaration_leave =
-    IMPORT name DOT MULT LEAVE VER version_numbers.vl SEMICOLON
-    {: return new TypeImportOnDemandDeclLeave(name, vl); :}
-  ;
-List batakjava_class_declarations =
-    batakjava_class_with_comment.t                                  {: return new List().add(t); :}
-  | batakjava_class_declarations.l batakjava_class_with_comment.t   {: return l.add(t); :}
-  ;
-TypeDecl batakjava_class_with_comment =
-    batakjava_class_declaration
-  | doc_comment_list.dc batakjava_class_declaration.d
-    {:
-      d.docComment = dc;
-      return d;
-    :}
-  ;
-TypeDecl batakjava_class_declaration =
-    modifiers.m? CLASS IDENTIFIER super.s? batakjava_class_body.b
-    {: return new ClassDecl(new Modifiers(m), IDENTIFIER, s, new List(), b); :}
-  ;
-List batakjava_class_body =
-    LBRACE batakjava_body_declarations.c? doc_comment_list? RBRACE    {: return c; :}
-  ;
-List batakjava_body_declarations =
-    batakjava_body_decl_with_comment.c                                  {: return new List().add(c); :}
-  | batakjava_body_declarations.l batakjava_body_decl_with_comment.c    {: return l.add(c); :}
-  ;
-BodyDecl batakjava_body_decl_with_comment =
-    batakjava_body_declaration
-  | doc_comment_list.dc batakjava_body_declaration.d
-    {:
-      d.docComment = dc;
-      return d;
-    :}
-  ;
-BodyDecl batakjava_body_declaration =
-    constructor_declaration
-  | batakjava_field_declaration
-  | method_declaration
-  | SEMICOLON                     {: return new InstanceInitializer(new Block()); :}
-  ;
-BodyDecl batakjava_field_declaration =
-    modifiers.m? type.t field_declarator.f SEMICOLON   {: return new FieldDecl(new Modifiers(m), t, new List().add(f)); :}
-  ;
-Expr primary_no_new_array =
-    version_access
-  ;
-Access version_access =
-    primary.p DOT LBRACE version_numbers.n RBRACE
-    {: return p.qualifiesAccess(new VersionAccess(n)); :}
-  ;
-Expr cast_expression =
-    LPAREN name.t SHARP LBRACE version_numbers.vs RBRACE RPAREN unary_expression_not_plus_minus.e @CAST
-    {: return new CastExpr(new VersionTypeAccess(t, vs), e); :}
+Access class_or_interface :=
+    class_or_interface.n LBRACE version_numbers.vs RBRACE
+    {: return new VersionTypeAccess(n, vs); :}
   ;
 List version_numbers =
     version_number.v                            {: return new List().add(new Version(v)); :}

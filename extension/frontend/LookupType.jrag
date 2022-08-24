@@ -111,28 +111,6 @@ aspect TypeScopePropagation {
     return result;
   }
 
-  eq SingleTypeImportDeclTake.importedTypeSet(String name) {
-    SimpleSet<TypeDecl> result = emptySet();
-    for (TypeDecl type: getAccess().typeSet()) {
-      if (type.name().equals(name) && type.version() != null
-          && versions().contains(type.version())) {
-        result = result.add(type);
-      }
-    }
-    return result;
-  }
-
-  eq SingleTypeImportDeclLeave.importedTypeSet(String name) {
-    SimpleSet<TypeDecl> result = emptySet();
-    for (TypeDecl type: getAccess().typeSet()) {
-      if (type.name().equals(name) && type.version() != null
-          && !versions().contains(type.version())) {
-        result = result.add(type);
-      }
-    }
-    return result;
-  }
-
   /**
    *  Attributes related to getting types from TypeImportOnDemandDecl
    */
@@ -159,26 +137,6 @@ aspect TypeScopePropagation {
             && type.typeName().equals(packageName + "." + name)) {
           result = result.add(type);
         }
-      }
-    }
-    return result;
-  }
-
-  eq TypeImportOnDemandDeclTake.importedTypeSet(String name) {
-    SimpleSet<TypeDecl> result = emptySet();
-    for (TypeDecl type: super.importedTypeSet(name)) {
-      if (type.version() != null && versions().contains(type.version())) {
-        result = result.add(type);
-      }
-    }
-    return result;
-  }
-
-  eq TypeImportOnDemandDeclLeave.importedTypeSet(String name) {
-    SimpleSet<TypeDecl> result = emptySet();
-    for (TypeDecl type: super.importedTypeSet(name)) {
-      if (type.version() != null && !versions().contains(type.version())) {
-        result = result.add(type);
       }
     }
     return result;

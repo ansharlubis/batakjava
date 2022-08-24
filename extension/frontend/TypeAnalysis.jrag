@@ -36,6 +36,7 @@ aspect TypeAnalysis {
    *  A class is compiled if its name contains 'ver'.
    */
   syn boolean TypeDecl.isCompiled() = false;
+  eq VersionClassDecl.isCompiled() = false;
 
   eq ClassDecl.isCompiled() {
     String[] splitName = name().split("\\$");
@@ -47,7 +48,7 @@ aspect TypeAnalysis {
    *  A class is uncompiled if its host version is not null.
    */
   syn lazy boolean TypeDecl.isUncompiled() = false;
-  eq ClassDecl.isUncompiled() = !isOverview() && (hostVersion() != null);
+  eq VersionClassDecl.isUncompiled() = true;
 
   /**
    *  Get the set of type from constraint
@@ -82,11 +83,18 @@ aspect TypeAnalysis {
     return types;
   }
 
-  // A version access returns the type set of the qualifier expression
-  eq VersionAccess.typeSet() = qualifier().typeSet();
-
   // A version type access returns the type set of the qualifier type access
-  eq VersionTypeAccess.typeSet() = getTypeAccess().typeSet();
+  eq VersionTypeAccess.typeSet() {
+    SimpleSet<TypeDecl> types = emptySet();
+    for (TypeDecl type: getTypeAccess().typeSet()) {
+      for (Version ver: getVersionList()) {
+        if (ver.getNum().equals(type.version())) {
+          types = types.add(type); break;
+        }
+      }
+    }
+    return types;
+  }
 
   eq ClassInstanceExpr.typeSet() = hasTypeDecl() ? this.<TypeDecl>emptySet().add(getTypeDecl()) : getAccess().typeSet();
   eq Dot.typeSet() = lastAccess().typeSet();
