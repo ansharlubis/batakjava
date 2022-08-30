@@ -18,5 +18,15 @@
 *.swp
 
 # Test files compiled files
-/testfiles/class-instance/class
+/testfiles/array/class
+/testfiles/assign/class
 /testfiles/cast/class
+/testfiles/class-instance/class
+/testfiles/fields/class
+/testfiles/generics/class
+/testfiles/if-stmt/class
+/testfiles/import/class
+/testfiles/instance-of/class
+/testfiles/methods/class
+/testfiles/methods-2/class
+/testfiles/super-constructor/class
