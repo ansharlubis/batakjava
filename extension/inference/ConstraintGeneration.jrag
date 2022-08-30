@@ -255,6 +255,8 @@ aspect ConstraintGeneration {
         formula = formula.add(sub.multiply(buildClause(initializerType)));
       }
     }
+    System.out.println(prettyPrint());
+    System.out.println(formula);
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
@@ -599,9 +601,8 @@ aspect ConstraintGeneration {
               componentType = declType.componentType();
             }
             formula = formula.add(trace.get()
-              .multiply(buildClause(declType))
-              .multiply(getInit().buildClause(initType))
-              .multiply(declarationType().buildClause(componentType)));
+              .multiply(buildClause(componentType))
+              .multiply(getInit().buildClause(initType)));
           }
         }
       }

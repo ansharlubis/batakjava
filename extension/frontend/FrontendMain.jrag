@@ -231,7 +231,7 @@ aspect BatakjavaFrontendMain {
         }
 
         if (program.solveConstraint() != EXIT_SUCCESS) {
-          // System.out.println("Type map: " + program.printInfTypeMap());
+          System.out.println("Type map: " + program.printInfTypeMap());
           System.err.println("No solution found for the program");
           return compileResult;
         }

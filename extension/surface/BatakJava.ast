@@ -1,4 +1,5 @@
 VersionClassDecl : ClassDecl ::= Version;
+VersionArrayDecl : VersionClassDecl;
 
 VersionTypeAccess : Access ::= TypeAccess:Access Version*;
 

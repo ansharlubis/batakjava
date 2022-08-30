@@ -47,7 +47,6 @@ aspect BatakJavaPrettyPrint {
     out.print(getID());
     out.print(" ver ");
     out.print(getVersion());
-    out.print(" ");
     if (hasSuperClass()) {
       out.print(" extends ");
       out.print(getSuperClass());
