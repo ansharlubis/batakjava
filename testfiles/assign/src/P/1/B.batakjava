@@ -1,5 +1,5 @@
-package P ver 1;
+package P;
 
-public class B extends C {
+public class B ver 1 extends C {
 
 }
