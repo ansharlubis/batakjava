@@ -1,8 +1,7 @@
-package Y ver 1;
+package Y ;
 import X.E;
 
-public class C {
-  E fieldE;
+public class C ver 1 {
   public C() {}
 
   public E m(E e) { return e; }

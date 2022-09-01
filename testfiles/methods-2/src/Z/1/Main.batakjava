@@ -1,8 +1,8 @@
-package Z ver 1;
+package Z ;
 import X.E;
 import Y.C;
 
-public class Main {
+public class Main ver 1 {
   public static void main(String[] args) {
     E e1 = new E();
     E e2 = new E();
@@ -10,6 +10,6 @@ public class Main {
     e1.o();
     e2.v();
     c1.m(e1);
-    c1.m(e2);
+    //c1.m(e2);
   }
 }

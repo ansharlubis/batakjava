@@ -1,5 +1,0 @@
-package P ver 1;
-
-public class B extends C {
-
-}

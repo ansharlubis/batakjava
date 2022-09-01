@@ -1,6 +1,7 @@
-package P ver 1;
+package P;
 
-public class C {
-  public C() { }
-  // public int get() { return 1; }
+public class C ver 1 {
+  public int get() { 
+    return 1; 
+  }
 }

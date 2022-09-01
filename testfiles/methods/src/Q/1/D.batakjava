@@ -1,13 +1,13 @@
-package Q ver 1;
+package Q;
 import P.C;
 
-public class D {
+public class D ver 1 {
 
   public static void main(String[] args) {
     C c1 = new C();
     C c2 = new C(1);
-    C c3 = new C(1);
-    C b1 = c2.compare(c1);
-    C b2 = c2.compare(c3);
+    boolean b1 = c2.compare(c1);
+    //C c3 = new C(1);
+    //boolean b2 = c2.compare(c3);
   }
 }

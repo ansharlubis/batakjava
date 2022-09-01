@@ -1,6 +1,6 @@
-package P ver 2;
+package P;
 
-public class C {
+public class C ver 2 {
   private A a;
   public C(A f) {
     a = f;

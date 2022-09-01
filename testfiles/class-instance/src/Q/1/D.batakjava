@@ -1,6 +1,0 @@
-package Q ver 1;
-import P.B;
-
-public class D extends B {
-
-}
