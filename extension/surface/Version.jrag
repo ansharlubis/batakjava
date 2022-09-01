@@ -4,78 +4,29 @@ aspect BatakjavaVersion {
    *  Get version from the nodes.
    */
   syn String CompilationUnit.version() = null;
-  eq BatakjavaCompilationUnit.version() = getVersionNum();
-
+  
   syn String TypeDecl.version() = null;
 
   /**
-   *  An uncompiled Batakjava class' version is the unit's version,
-   *  a compiled Batakjava class' version is found from its name.
+   *  A compiled Batakjava class' version is found from its name.
+   *  Otherwise the version is null.
    */
   eq ClassDecl.version() {
-    if (isUncompiled()) {
-      return hostVersion();
-    }
-    if (isCompiled()) {
-      String[] splitName = name().split("\\$");
-      String[] splitClassName = splitName[0].split("_");
-      if (splitClassName.length > 2
-          && splitClassName[splitClassName.length-2].equals("ver")) {
-        return splitClassName[splitClassName.length-1];
-      }
+    String[] splitName = name().split("\\$");
+    String[] splitClassName = splitName[0].split("_");
+    if (splitClassName.length > 2
+        && splitClassName[splitClassName.length-2].equals("ver")) {
+      return splitClassName[splitClassName.length-1];
     }
     return null;
   }
 
-  syn SimpleSet<String> VersionAccess.versions() {
-    SimpleSet<String> vers = emptySet();
-    for (Version ver: getVersionList()) {
-      vers = vers.add(ver.getVersionNum());
-    }
-    return vers;
-  }
+  eq VersionClassDecl.version() = getVersion().getNum();
 
   syn SimpleSet<String> VersionTypeAccess.versions() {
     SimpleSet<String> vers = emptySet();
     for (Version ver: getVersionList()) {
-      vers = vers.add(ver.getVersionNum());
-    }
-    return vers;
-  }
-
-  /**
-   *  Set of version specified by the import declaration
-   */
-  syn SimpleSet<String> ImportDecl.versions() = emptySet();
-
-  eq SingleTypeImportDeclTake.versions() {
-    SimpleSet<String> vers = emptySet();
-    for (Version ver: getVersionList()) {
-      vers = vers.add(ver.getVersionNum());
-    }
-    return vers;
-  }
-
-  eq SingleTypeImportDeclLeave.versions() {
-    SimpleSet<String> vers = emptySet();
-    for (Version ver: getVersionList()) {
-      vers = vers.add(ver.getVersionNum());
-    }
-    return vers;
-  }
-
-  eq TypeImportOnDemandDeclTake.versions() {
-    SimpleSet<String> vers = emptySet();
-    for (Version ver: getVersionList()) {
-      vers = vers.add(ver.getVersionNum());
-    }
-    return vers;
-  }
-
-  eq TypeImportOnDemandDeclLeave.versions() {
-    SimpleSet<String> vers = emptySet();
-    for (Version ver: getVersionList()) {
-      vers = vers.add(ver.getVersionNum());
+      vers = vers.add(ver.getNum());
     }
     return vers;
   }
@@ -90,13 +41,13 @@ aspect BatakjavaVersion {
    *  Host version is defined through inh attribute
    *  checking through the unit
    */
-  inh String ImportDecl.hostVersion();
   inh String TypeDecl.hostVersion();
   inh String BodyDecl.hostVersion();
   inh String Expr.hostVersion();
   inh String Variable.hostVersion();
-
+ 
   eq CompilationUnit.getChild().hostVersion() = version();
+  eq VersionClassDecl.getChild().hostVersion() = version();
 
   /**
    *  Grab set of compiled batakjava class names.

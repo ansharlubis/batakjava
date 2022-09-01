@@ -1,15 +1,6 @@
-/* Compilation Unit */
-BatakjavaCompilationUnit : CompilationUnit ::= <PackageDecl:String> <VersionNum:String> ImportDecl* TypeDecl*;
+VersionClassDecl : ClassDecl ::= Version;
+VersionArrayDecl : VersionClassDecl;
 
-/* Import Declaration */
-SingleTypeImportDeclTake : SingleTypeImportDecl ::= Version*;
-SingleTypeImportDeclLeave : SingleTypeImportDecl ::= Version*;
-TypeImportOnDemandDeclTake : TypeImportOnDemandDecl ::= Version*;
-TypeImportOnDemandDeclLeave : TypeImportOnDemandDecl ::= Version*;
-
-/* Version Access */
-VersionAccess : Access ::= Version*;
 VersionTypeAccess : Access ::= TypeAccess:Access Version*;
 
-/* Version Number */
-Version ::= <VersionNum:String>;
+Version ::= <Num:String>;

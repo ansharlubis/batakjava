@@ -1,8 +1,6 @@
 aspect SingleSolutionGeneration {
 
-  syn nta CompilationUnit CompilationUnit.genJava(Map<Integer,TypeDecl> sol) = treeCopy();
-
-  eq BatakjavaCompilationUnit.genJava(Map<Integer,TypeDecl> sol) {
+  syn nta CompilationUnit CompilationUnit.genJava(Map<Integer,TypeDecl> sol) {
     List<ImportDecl> imports = new List();
     for (ImportDecl imp: getImportDeclList()) {
       imports = imports.addAll(imp.genImport(sol));
@@ -44,16 +42,10 @@ aspect SingleSolutionGeneration {
     return imports;
   }
 
-  eq TypeImportOnDemandDeclTake.genImport(Map<Integer,TypeDecl> sol) =
-    new List().add(new TypeImportOnDemandDecl(getAccess()));
-
-  eq TypeImportOnDemandDeclLeave.genImport(Map<Integer,TypeDecl> sol) =
-    new List().add(new TypeImportOnDemandDecl(getAccess()));
-
   /** Type declarations **/
   syn nta TypeDecl TypeDecl.genType(Map<Integer,TypeDecl> sol, List<ImportDecl> imports) = treeCopy();
 
-  eq ClassDecl.genType(Map<Integer,TypeDecl> sol, List<ImportDecl> imports) {
+  eq VersionClassDecl.genType(Map<Integer,TypeDecl> sol, List<ImportDecl> imports) {
     List<TypeDecl> overviews = new List();
 
     String className = compiledName(sol);
@@ -62,7 +54,7 @@ aspect SingleSolutionGeneration {
     List<BodyDecl> bodies = new List();
     for (BodyDecl body: getBodyDeclList()) {
       bodies = bodies.addAll(body.genBodies(sol));
-    }
+    }    
 
     TypeDecl type = new ClassDecl(getModifiers(), className, superAccess, getImplementsList(), bodies);
 
@@ -181,6 +173,11 @@ aspect SingleSolutionGeneration {
     return treeCopy();
   }
 
+  eq VersionTypeAccess.genAccess(Map<Integer,TypeDecl> sol, Integer var) {
+    TypeDecl type = sol.get(var);
+    return new TypeAccess(((TypeAccess) getTypeAccess()).getPackage(), type.compiledName(sol));
+  }
+
   syn nta TypeDecl ClassDecl.genOverview(String name) {
     List<BodyDecl> bodies = new List();
     bodies = bodies.add(new FieldDecl(
@@ -230,10 +227,7 @@ aspect JavaGeneration {
    *  type. There is no possible way to compare the order
    *  of types in the context of which is more prioritized.
    */
-
-  syn nta CompilationUnit CompilationUnit.genJava(java.util.List<Map<Integer,TypeDecl>> solutions) = treeCopy();
-
-  eq BatakjavaCompilationUnit.genJava(java.util.List<Map<Integer,TypeDecl>> solutions) {
+  syn nta CompilationUnit CompilationUnit.genJava(java.util.List<Map<Integer,TypeDecl>> solutions) {
     List<ImportDecl> imports = new List();
     for (ImportDecl imp: getImportDeclList()) {
       imports = imports.addAll(imp.genImport(solutions));
@@ -242,7 +236,7 @@ aspect JavaGeneration {
     List<TypeDecl> types = new List();
     for (TypeDecl type: getTypeDeclList()) {
       types = types.addAll(type.genTypes(solutions, imports));
-    }
+    }    
 
     CompilationUnit newUnit = new CompilationUnit(getPackageDecl(), imports, types);
     newUnit.setFromSource(true);
@@ -272,17 +266,11 @@ aspect JavaGeneration {
     return imports;
   }
 
-  eq TypeImportOnDemandDeclTake.genImport(java.util.List<Map<Integer,TypeDecl>> solutions) =
-    new List().add(new TypeImportOnDemandDecl(getAccess()));
-
-  eq TypeImportOnDemandDeclLeave.genImport(java.util.List<Map<Integer,TypeDecl>> solutions) =
-    new List().add(new TypeImportOnDemandDecl(getAccess()));
-
   /** Type declarations **/
   syn nta List<TypeDecl> TypeDecl.genTypes(java.util.List<Map<Integer,TypeDecl>> solutions, List<ImportDecl> imports) =
     new List().add(treeCopy());
 
-  eq ClassDecl.genTypes(java.util.List<Map<Integer,TypeDecl>> solutions, List<ImportDecl> imports) {
+  eq VersionClassDecl.genTypes(java.util.List<Map<Integer,TypeDecl>> solutions, List<ImportDecl> imports) {
     List<TypeDecl> types = new List();
     List<TypeDecl> overviews = new List();
     Set<String> typeNames = new HashSet();
@@ -320,7 +308,7 @@ aspect JavaGeneration {
     return types;
   }
 
-  syn nta TypeDecl ClassDecl.genType(Map<Integer,TypeDecl> sel, java.util.List<Map<Integer,TypeDecl>> sols) {
+  syn nta TypeDecl VersionClassDecl.genType(Map<Integer,TypeDecl> sel, java.util.List<Map<Integer,TypeDecl>> sols) {
     String className = compiledName(sel);
     Opt<Access> superAccess = hasSuperClass() ? new Opt(getSuperClass().genAccess(sel)) : new Opt();
 
@@ -543,6 +531,20 @@ aspect JavaGeneration {
     return treeCopy();
   }
 
+  eq VersionTypeAccess.genAccess(Map<Integer,TypeDecl> sol) {
+    TypeDecl type = sol.get(infVar());
+    return new TypeAccess(((TypeAccess) getTypeAccess()).getPackage(), type.compiledName(sol));
+  }
+
+  eq ParTypeAccess.genAccess(Map<Integer,TypeDecl> sol) {
+    Access typeAccess = getTypeAccess().genAccess(sol);
+    List<Access> typeArgs = new List();
+    for (Access typeArg: getTypeArgumentList()) {
+      typeArgs = typeArgs.add(typeArg.genAccess(sol));
+    }
+    return new ParTypeAccess(typeAccess, typeArgs);
+  }
+
   /*
   eq VarAccess.genAccess(Map<Integer,TypeDecl> sol) {
     if (isFieldAccess() && sol.get(infVar()) != null) {
@@ -583,17 +585,7 @@ aspect JavaGeneration {
   }
 
   eq Dot.genAccess(Map<Integer,TypeDecl> sol) {
-    if (getLeft() instanceof VersionAccess) {
-      return getRight().genAccess(sol);
-    } else if (getRight() instanceof VersionAccess) {
-      /**
-       *  Cast should be okay because only class instance, method access,
-       *  and var access can be version accessed?
-       */
-      return (Access) getLeft().genExpr(sol);
-    } else {
-      return new Dot(getLeft().genExpr(sol), getRight().genAccess(sol));
-    }
+    return new Dot(getLeft().genExpr(sol), getRight().genAccess(sol));
   }
 
   eq ClassInstanceExpr.genAccess(Map<Integer,TypeDecl> sol) {
@@ -676,20 +668,17 @@ aspect JavaGeneration {
 
   public String TypeDecl.compiledName(Map<Integer,TypeDecl> sol) { return name(); }
 
-  public String ClassDecl.compiledName(Map<Integer,TypeDecl> sol) {
-    if (isUncompiled()) {
-      String className = getID() + "_ver_" + version();
-      if (hasSuperClass()) {
-        TypeDecl superclass = sol.get(getSuperClass().infVar());
-        if (superclass.isCompiled()) {
-          className += "$" + superclass.name();
-        } else if (superclass.isUncompiled()) {
-          className += "$" + superclass.compiledName(sol);
-        }
+  public String VersionClassDecl.compiledName(Map<Integer,TypeDecl> sol) {
+    String className = getID() + "_ver_" + version();
+    if (hasSuperClass()) {
+      TypeDecl superclass = sol.get(getSuperClass().infVar());
+      if (superclass.isCompiled()) {
+        className += "$" + superclass.name();
+      } else if (superclass.isUncompiled()) {
+        className += "$" + superclass.compiledName(sol);
       }
-      return className;
     }
-    return name();
+    return className;
   }
 
 }
@@ -831,7 +820,7 @@ aspect Solutions {
   }
    */
 
-  private Map<Set<TypeDecl>,java.util.List<Map<Integer,TypeDecl>>> ClassDecl.groupSolutions(
+  private Map<Set<TypeDecl>,java.util.List<Map<Integer,TypeDecl>>> VersionClassDecl.groupSolutions(
       java.util.List<Map<Integer,TypeDecl>> sols) {
     Map<Set<TypeDecl>, java.util.List<Map<Integer,TypeDecl>>> result = new HashMap(sols.size());
     for (Map<Integer,TypeDecl> sol: sols) {

@@ -63,9 +63,8 @@ aspect ConstraintGeneration {
    *    (if it exists)
    */
   syn lazy Integer Expr.infVar() = program().getInfVar(this);
+
   eq ClassInstanceExpr.infVar() = getAccess().infVar();
-  eq VarAccess.infVar() = decl().infVar();
-  eq VersionAccess.infVar() = qualifier().infVar();
   eq VersionTypeAccess.infVar() = getTypeAccess().infVar();
   eq Dot.infVar() = lastAccess().infVar();
   eq AssignExpr.infVar() = getDest().infVar();
@@ -75,7 +74,9 @@ aspect ConstraintGeneration {
   syn lazy Integer Variable.infVar();
   eq ParameterDeclaration.infVar() = getTypeAccess().infVar();
   eq Declarator.infVar() = declarationType().infVar();
-  // eq Declarator.infVar() = program().getInfVar(this);
+
+  /** not entirely sure **/
+  //eq ParTypeAccess.infVar() = getTypeAccess().infVar();
 
   /** Not supported variable **/
   eq EnumConstant.infVar() = program().getInfVar(this);
@@ -124,31 +125,6 @@ aspect ConstraintGeneration {
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
-  /*
-  eq MethodAccess.constraint() {
-    Formula formula = new Formula();
-    Map<TypeDecl,Collection<MethodDecl>> map = verLookupMethod(name());
-
-    for (TypeDecl qualifierType: map.keySet()) {
-      for (MethodDecl method: map.get(qualifierType)) {
-        Optional<Formula> trace = qualifierType.verInstanceOf(method.hostType());
-        Optional<Formula> sub = verApplicableAndAccessible(method);
-        if (trace.isPresent() && sub.isPresent()) {
-          for (TypeDecl returnType: method.typeSet()) {
-            Formula add = sub.get().multiply(trace.get()).multiply(buildClause(returnType));
-            if (isQualified()) {
-              formula = formula.add(add.multiply(qualifier().buildClause(qualifierType)));
-            } else {
-              formula = formula.add(add);
-            }
-          }
-        }
-      }
-    }
-    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
-  }
-  */
-
   eq MethodAccess.constraint() {
     Formula formula = new Formula();
     Map<TypeDecl,Collection<MethodDecl>> map = verLookupMethod(name());
@@ -175,27 +151,26 @@ aspect ConstraintGeneration {
   eq VarAccess.constraint() {
     Formula formula = new Formula();
     Map<TypeDecl,SimpleSet<Variable>> map = verLookupVariable(name());
-
     for (TypeDecl qualifierType: map.keySet()) {
       for (Variable var: map.get(qualifierType)) {
         for (TypeDecl varType: var.typeSet()) {
           if (qualifierType.isUnknown()) {
-            Formula sub = buildFormula(varType);
+            Formula sub = var.buildFormula(varType)
+              .multiply(buildClause(varType));
             formula = formula.add(sub);
           } else {
             Optional<Formula> trace = qualifierType.verInstanceOf(var.hostType());
             if (trace.isPresent()) {
-              Formula sub = isQualified()
-                ? trace.get().multiply(buildClause(varType))
-                             .multiply(qualifier().buildClause(qualifierType))
-                : trace.get().multiply(buildClause(varType));
+              Formula sub = isQualified() 
+                ? trace.get().multiply(qualifier().buildClause(qualifierType)) : trace.get();
+              sub = sub.multiply(var.buildClause(varType))
+                       .multiply(buildClause(varType));
               formula = formula.add(sub);
             }
           }
         }
       }
     }
-
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
@@ -219,28 +194,10 @@ aspect ConstraintGeneration {
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
-  eq VersionAccess.constraint() {
-    Formula formula = new Formula();
-    for (TypeDecl type: typeSet()) {
-      for (Version ver: getVersionList()) {
-        if (type.version().equals(ver.getVersionNum())) {
-          formula = formula.add(buildFormula(type));
-        }
-      }
-    }
-    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
-  }
-
   eq VersionTypeAccess.constraint() {
     Formula formula = new Formula();
     for (TypeDecl type: typeSet()) {
-      for (Version ver: getVersionList()) {
-        if (type.version().equals(ver.getVersionNum())) {
-          formula = formula.add(buildFormula(type));
-          System.err.println(prettyPrint());
-          System.err.println(formula);
-        }
-      }
+      formula = formula.add(buildFormula(type));
     }
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
@@ -554,17 +511,8 @@ aspect ConstraintGeneration {
 
   eq CastExpr.constraint() {
     Formula formula = new Formula();
-    if (getTypeAccess().isTypeAccess()) {
-      for (TypeDecl expr: getExpr().typeSet()) {
-        for (TypeDecl type: getTypeAccess().typeSet()) {
-          Optional<Formula> cast = expr.verCastingConversionTo(type);
-          if (cast.isPresent()) {
-            formula = formula.add(cast.get()
-              .multiply(getExpr().buildClause(expr))
-              .multiply(getTypeAccess().buildClause(type)));
-          }
-        }
-      }
+    for (TypeDecl type: getTypeAccess().typeSet()) {
+      formula = formula.add(buildFormula(type));
     }
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
@@ -608,9 +556,8 @@ aspect ConstraintGeneration {
               componentType = declType.componentType();
             }
             formula = formula.add(trace.get()
-              .multiply(buildClause(declType))
-              .multiply(getInit().buildClause(initType))
-              .multiply(declarationType().buildClause(componentType)));
+              .multiply(buildClause(componentType))
+              .multiply(getInit().buildClause(initType)));
           }
         }
       }

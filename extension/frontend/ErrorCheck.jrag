@@ -80,16 +80,6 @@ aspect ImplementationCheck {
     return Collections.emptyList();
   }
 
-  VersionAccess contributes each implementationCheck() to CompilationUnit.verProblems();
-
-  syn Collection<Problem> VersionAccess.implementationCheck() {
-    /* Checked
-    System.out.println(qualifier().prettyPrint() + prettyPrint());
-    System.out.println(constraint());
-    */
-    return Collections.emptyList();
-  }
-
   VariableDeclarator contributes each implementationCheck() to CompilationUnit.verProblems();
 
   syn Collection<Problem> VariableDeclarator.implementationCheck() {

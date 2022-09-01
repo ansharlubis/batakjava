@@ -60,31 +60,6 @@ aspect NameCheck {
   }
 
   /**
-   *  Check whether the selected versions apply with the qualifier
-   */
-  VersionAccess contributes each constraintProblems() to CompilationUnit.verProblems();
-
-  syn Collection<Problem> VersionAccess.constraintProblems() {
-    Collection<Problem> problems = new LinkedList();
-    java.util.List<String> strings = new ArrayList<String>();
-    for (String ver: versions()) {
-      boolean flag = true;
-      for (TypeDecl type: typeSet()) {
-        if (type.version().equals(ver)) {
-          flag = false;
-        }
-      }
-      if (flag) {
-        strings.add(ver);
-      }
-    }
-    if (strings.size() > 0) {
-      problems.add(errorf("version(s) %s not found in %s", String.join(", ", strings), qualifier().prettyPrint()));
-    }
-    return problems;
-  }
-
-  /**
    *  Check whether the selection versions apply for the type access
    */
   VersionTypeAccess contributes each constraintProblems() to CompilationUnit.verProblems();
@@ -105,6 +80,21 @@ aspect NameCheck {
     }
     if (strings.size() > 0) {
       problems.add(errorf("version(s) %s not found in %s", String.join(", ", strings), prettyPrint()));
+    }
+    return problems;
+  }
+
+  /**
+   *  Check whether the initialization is applicable to the variable
+   */
+  Declarator contributes each constraintProblems() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> Declarator.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    if (hasInit() && getInit().constraint().isPresent() &&
+        !constraint().isPresent()) {
+      problems.add(errorf("%s is unassignable to %s", 
+        getInit().prettyPrint(), getID()));
     }
     return problems;
   }

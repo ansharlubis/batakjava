@@ -89,7 +89,7 @@ aspect VersionInference {
     }
 
     for (Formula constraint: constraints) {
-      // System.err.println(constraint);
+      //System.err.println(constraint);
       constraint.post(model, vars).post();
     }
 
@@ -101,9 +101,8 @@ aspect VersionInference {
 
     start = System.nanoTime();
     Solver solver = model.getSolver();
+    solver.showContradiction();
     solver.limitSolution(2);
-
-    // solver.solve();
 
     java.util.List<Solution> solverSolutions = solver.findAllSolutions();
     solvingTime += System.nanoTime() - start;

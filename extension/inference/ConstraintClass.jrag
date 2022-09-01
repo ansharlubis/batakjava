@@ -12,28 +12,28 @@ import com.google.common.primitives.Ints;
 aspect ConstraintClass {
 
   /**
+   *  Build constraint clause on a specific variable infVar
+   */
+   public Clause TypeDecl.buildClause(Integer infVar) {
+    return new Clause().add(new Lit(infVar, infType()));
+  }
+
+  /**
    *  Methods to simplify constraint generation
    */
   public Formula Expr.buildFormula(TypeDecl type) {
     return new Formula().add(new Clause().add(new Lit(infVar(), type.infType())));
   }
-
-  /**
-   *  Build constraint clause on a specific variable infVar
-   */
-  public Clause TypeDecl.buildClause(Integer infVar) {
-    return new Clause().add(new Lit(infVar, infType()));
-  }
+  
+  public Formula Variable.buildFormula(TypeDecl type) {
+    return new Formula().add(new Clause().add(new Lit(infVar(), type.infType())));
+  }  
 
   public Clause Expr.buildClause(TypeDecl type) {
     return new Clause().add(new Lit(infVar(), type.infType()));
   }
 
-  public Formula Declarator.buildFormula(TypeDecl type) {
-    return new Formula().add(new Clause().add(new Lit(infVar(), type.infType())));
-  }
-
-  public Clause Declarator.buildClause(TypeDecl type) {
+  public Clause Variable.buildClause(TypeDecl type) {
     return new Clause().add(new Lit(infVar(), type.infType()));
   }
 

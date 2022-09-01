@@ -1,172 +1,4 @@
 aspect BatakJavaPrettyPrint {
-
-  public void BatakjavaCompilationUnit.prettyPrint(PrettyPrinter out) {
-    if (hasPackageDecl()) {
-      out.print("package ");
-      out.print(getPackageDecl());
-      out.print(" ver ");
-      out.print(getVersionNum());
-      out.print(";");
-      out.println();
-    }
-    if (!out.isNewLine()) {
-      out.println();
-    }
-    out.print(getImportDeclList());
-    if (!out.isNewLine()) {
-      out.println();
-    }
-    out.println();
-    out.join(getTypeDecls(), new PrettyPrinter.Joiner() {
-      @Override
-      public void printSeparator(PrettyPrinter out) {
-        out.println();
-        out.println();
-      }
-    });
-    out.println();
-  }
-
-  public void TypeImportOnDemandDeclTake.prettyPrint(PrettyPrinter out) {
-    out.print("import ");
-    out.print(getAccess());
-    out.print(".* ");
-    boolean flag = false;
-    for (Version ver: getVersionList()) {
-      if (flag) {
-        out.print(", ");
-      } else {
-        out.print("take ver ");
-        flag = true;
-      }
-      out.print(ver);
-    }
-    out.print(";");
-    out.println();
-  }
-
-  public void TypeImportOnDemandDeclLeave.prettyPrint(PrettyPrinter out) {
-    out.print("import ");
-    out.print(getAccess());
-    out.print(".* ");
-    boolean flag = false;
-    for (Version ver: getVersionList()) {
-      if (flag) {
-        out.print(", ");
-      } else {
-        out.print("leave ver ");
-        flag = true;
-      }
-      out.print(ver);
-    }
-    out.print(";");
-    out.println();
-  }
-
-  public void SingleTypeImportDeclTake.prettyPrint(PrettyPrinter out) {
-    out.print("import ");
-    out.print(getAccess());
-    boolean flag = false;
-    for (Version ver: getVersionList()) {
-      if (flag) {
-        out.print(", ");
-      } else {
-        out.print(" take ver ");
-        flag = true;
-      }
-      out.print(ver);
-    }
-    out.print(";");
-    out.println();
-  }
-
-  public void SingleTypeImportDeclLeave.prettyPrint(PrettyPrinter out) {
-    out.print("import ");
-    out.print(getAccess());
-    boolean flag = false;
-    for (Version ver: getVersionList()) {
-      if (flag) {
-        out.print(", ");
-      } else {
-        out.print("leave ver ");
-        flag = true;
-      }
-      out.print(ver);
-    }
-    out.print(";");
-    out.println();
-  }
-
-  refine Java4PrettyPrint
-  public void ClassDecl.prettyPrint(PrettyPrinter out) {
-    if (hasDocComment()) {
-      out.print(docComment());
-    }
-    if (!out.isNewLine()) {
-      out.println();
-    }
-    out.print(getModifiers());
-    out.print("class ");
-    out.print(getID());
-    if (hasSuperClass()) {
-      out.print(" extends ");
-      out.print(getSuperClass());
-    }
-    if (hasImplements()) {
-      out.print(" implements ");
-      out.join(getImplementss(), new PrettyPrinter.Joiner() {
-        @Override
-        public void printSeparator(PrettyPrinter out) {
-          out.print(", ");
-        }
-      });
-    }
-    out.print(" {");
-    out.println();
-    out.indent(1);
-    out.join(getBodyDecls(), new PrettyPrinter.Joiner() {
-      @Override
-      public void printSeparator(PrettyPrinter out) {
-        out.println();
-        out.println();
-      }
-    });
-    if (!out.isNewLine()) {
-      out.println();
-    }
-    out.print("}");
-    out.println();
-  }
-
-  public void VersionAccess.prettyPrint(PrettyPrinter out) {
-    out.print("{");
-    boolean flag = false;
-    for (Version version: getVersionList()) {
-      if (flag) {
-        out.print(", ");
-      } else {
-        flag = true;
-      }
-      out.print(version.getVersionNum());
-    }
-    out.print("}");
-  }
-
-  public void VersionTypeAccess.prettyPrint(PrettyPrinter out) {
-    out.print(getTypeAccess());
-    out.print("#{");
-    boolean flag = false;
-    for (Version version: getVersionList()) {
-      if (flag) {
-        out.print(", ");
-      } else {
-        flag = true;
-      }
-      out.print(version.getVersionNum());
-    }
-    out.print("}");
-  }
-
   public String Program.printInfTypeMap() {
     StringBuilder result = new StringBuilder();
     result.append("{");
@@ -201,6 +33,65 @@ aspect BatakJavaPrettyPrint {
     }
     result.append("}");
     return result.toString();
+  }
+  
+  public void VersionClassDecl.prettyPrint(PrettyPrinter out) {
+    if (hasDocComment()) {
+      out.print(docComment());
+    }
+    if (!out.isNewLine()) {
+      out.println();
+    }
+    out.print(getModifiers());
+    out.print("class ");
+    out.print(getID());
+    out.print(" ver ");
+    out.print(getVersion());
+    if (hasSuperClass()) {
+      out.print(" extends ");
+      out.print(getSuperClass());
+    }
+    if (hasImplements()) {
+      out.print(" implements ");
+      out.join(getImplementss(), new PrettyPrinter.Joiner() {
+        @Override
+        public void printSeparator(PrettyPrinter out) {
+          out.print(", ");
+        }
+      });
+    }
+    out.print(" {");
+    out.println();
+    out.indent(1);
+    out.join(getBodyDecls(), new PrettyPrinter.Joiner() {
+      @Override
+      public void printSeparator(PrettyPrinter out) {
+        out.println();
+        out.println();
+      }
+    });
+    if (!out.isNewLine()) {
+      out.println();
+    }
+    out.print("}");
+  }
+  
+  public void VersionTypeAccess.prettyPrint(PrettyPrinter out) {
+    out.print(getTypeAccess());
+    out.print("{");
+    boolean flag = false;
+    for (Version version: getVersionList()) {
+      if (flag) {
+        out.print(", ");
+      } else {
+        flag = true;
+      }
+      out.print(version);
+    }    
+    out.print("}");
+  }
+  public void Version.prettyPrint(PrettyPrinter out) {
+    out.print(getNum());
   }
 
 }
