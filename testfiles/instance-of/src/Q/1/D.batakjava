@@ -1,12 +1,11 @@
-package Q ver 1;
+package Q;
 import P.B;
-import P.C;
-import P.A;
 
-public class D extends B {
+/** It would be impossible to use instanceof 
+    without properly specifying the version **/
+public class D ver 1 extends B {
   public static void main(String[] args) {
-    bool a = new A() instanceof A;
-    bool b = new D() instanceof B;
-    bool c = new D() instanceof C;
+    B b = new D{1}();
+    System.out.println(b instanceof D{1});
   }
 }

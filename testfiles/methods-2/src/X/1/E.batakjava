@@ -1,6 +1,6 @@
-package X ver 1;
+package X ;
 
-public class E {
+public class E ver 1 {
   public E() {}
 
   public E o() { return new E(); }

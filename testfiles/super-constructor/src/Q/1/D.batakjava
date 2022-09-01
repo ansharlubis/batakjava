@@ -1,11 +1,10 @@
-package Q ver 1;
+package Q;
 import P.B;
 import P.C;
 
-public class D extends B {
+public class D ver 1 extends B {
   public static void main(String[] args) {
-    int i = new B().f1;
-    C c = new C();
-    C d = c;
+    C c = new B();
+    int i = c.f1;
   }
 }

@@ -1,6 +1,6 @@
-package Q ver 1;
+package Q;
 
-public class D  {
+public class D ver 1 {
   private boolean bool() { return true; }
 
   public static void main(String[] args) {

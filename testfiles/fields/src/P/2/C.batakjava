@@ -1,5 +1,5 @@
-package P ver 2;
+package P;
 
-public class C {
+public class C ver 2 {
   public double f1;
 }
