@@ -63,8 +63,8 @@ aspect ConstraintGeneration {
    *    (if it exists)
    */
   syn lazy Integer Expr.infVar() = program().getInfVar(this);
+
   eq ClassInstanceExpr.infVar() = getAccess().infVar();
-  eq VarAccess.infVar() = decl().infVar();
   eq VersionTypeAccess.infVar() = getTypeAccess().infVar();
   eq Dot.infVar() = lastAccess().infVar();
   eq AssignExpr.infVar() = getDest().infVar();
@@ -74,7 +74,9 @@ aspect ConstraintGeneration {
   syn lazy Integer Variable.infVar();
   eq ParameterDeclaration.infVar() = getTypeAccess().infVar();
   eq Declarator.infVar() = declarationType().infVar();
-  // eq Declarator.infVar() = program().getInfVar(this);
+
+  /** not entirely sure **/
+  //eq ParTypeAccess.infVar() = getTypeAccess().infVar();
 
   /** Not supported variable **/
   eq EnumConstant.infVar() = program().getInfVar(this);
@@ -174,27 +176,26 @@ aspect ConstraintGeneration {
   eq VarAccess.constraint() {
     Formula formula = new Formula();
     Map<TypeDecl,SimpleSet<Variable>> map = verLookupVariable(name());
-
     for (TypeDecl qualifierType: map.keySet()) {
       for (Variable var: map.get(qualifierType)) {
         for (TypeDecl varType: var.typeSet()) {
           if (qualifierType.isUnknown()) {
-            Formula sub = buildFormula(varType);
+            Formula sub = var.buildFormula(varType)
+              .multiply(buildClause(varType));
             formula = formula.add(sub);
           } else {
             Optional<Formula> trace = qualifierType.verInstanceOf(var.hostType());
             if (trace.isPresent()) {
-              Formula sub = isQualified()
-                ? trace.get().multiply(buildClause(varType))
-                             .multiply(qualifier().buildClause(qualifierType))
-                : trace.get().multiply(buildClause(varType));
+              Formula sub = isQualified() 
+                ? trace.get().multiply(qualifier().buildClause(qualifierType)) : trace.get();
+              sub = sub.multiply(var.buildClause(varType))
+                       .multiply(buildClause(varType));
               formula = formula.add(sub);
             }
           }
         }
       }
     }
-
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
@@ -226,7 +227,13 @@ aspect ConstraintGeneration {
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
-  eq Dot.constraint() = lastAccess().constraint();
+  //eq Dot.constraint() = lastAccess().constraint();
+  eq Dot.constraint() {
+    Optional<Formula> formula = lastAccess().constraint();
+    //System.err.println(prettyPrint());
+    //System.err.println(formula.get());
+    return formula;
+  }
 
   /**
    *  Array expressions
@@ -255,8 +262,6 @@ aspect ConstraintGeneration {
         formula = formula.add(sub.multiply(buildClause(initializerType)));
       }
     }
-    System.out.println(prettyPrint());
-    System.out.println(formula);
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
@@ -610,6 +615,34 @@ aspect ConstraintGeneration {
     }
     return Optional.of(new Formula());
   }
+
+  /*
+  syn lazy Optional<Formula> Declarator.constraint() {
+    if (hasInit()) {
+      Formula formula = new Formula();
+      Map<Integer,SimpleSet<TypeDecl>> typeMap = getInit().typeMap();
+      for (Integer infVar: typeMap.keySet()) {
+        for (TypeDecl initType: typeMap.get(infVar)) {
+          for (TypeDecl declType: typeSet()) {
+            Optional<Formula> trace = initType.verAssignConversionTo(declType, getInit());
+            if (trace.isPresent()) {
+              // Add constraint to the type access
+              TypeDecl componentType = declType;
+              for (int i = 0; i < getNumDims(); i++) {
+                componentType = declType.componentType();
+              }
+              formula = formula.add(trace.get()
+                .multiply(buildClause(componentType))
+                .multiply(initType.buildClause(infVar)));
+            }
+          }
+        }
+      }
+      return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
+    }
+    return Optional.of(new Formula());
+  }
+  */
 
   public Optional<Formula> Expr.subtypingConstraint(Access dest) {
     Formula formula = new Formula();

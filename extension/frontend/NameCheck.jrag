@@ -83,4 +83,19 @@ aspect NameCheck {
     }
     return problems;
   }
+
+  /**
+   *  Check whether the initialization is applicable to the variable
+   */
+  Declarator contributes each constraintProblems() to CompilationUnit.verProblems();
+
+  syn Collection<Problem> Declarator.constraintProblems() {
+    Collection<Problem> problems = new LinkedList();
+    if (hasInit() && getInit().constraint().isPresent() &&
+        !constraint().isPresent()) {
+      problems.add(errorf("%s is unassignable to %s", 
+        getInit().prettyPrint(), getID()));
+    }
+    return problems;
+  }
 }

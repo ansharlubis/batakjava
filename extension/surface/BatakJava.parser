@@ -1,4 +1,4 @@
-TypeDecl type_declaration :=
+TypeDecl type_declaration =
     version_class_declaration
   ;
 TypeDecl version_class_declaration =
@@ -6,8 +6,12 @@ TypeDecl version_class_declaration =
     {: return new VersionClassDecl(new Modifiers(m), IDENTIFIER, s, i, b, new Version(v)); :}
   ;
 Access class_or_interface_type =
-    class_or_interface.n LBRACE version_numbers.vs RBRACE
+    name.n LBRACE version_numbers.vs RBRACE
     {: return new VersionTypeAccess(n, vs); :}
+  ;
+Expr class_instance_creation_expression =
+    NEW name.n LBRACE version_numbers.vs RBRACE LPAREN argument_list.l? RPAREN
+    {: return new ClassInstanceExpr(new VersionTypeAccess(n, vs), l, new Opt()); :}
   ;
 Expr cast_expression =
     LPAREN name.t LBRACE version_numbers.vs RBRACE RPAREN unary_expression_not_plus_minus.e @CAST

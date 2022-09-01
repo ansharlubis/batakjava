@@ -98,27 +98,130 @@ aspect TypeAnalysis {
 
   eq ClassInstanceExpr.typeSet() = hasTypeDecl() ? this.<TypeDecl>emptySet().add(getTypeDecl()) : getAccess().typeSet();
   eq Dot.typeSet() = lastAccess().typeSet();
-  eq ParTypeAccess.typeSet() = this.<TypeDecl>emptySet().add(type());   // only for Java classes
-  eq ClassAccess.typeSet() = this.<TypeDecl>emptySet().add(type());
-  eq DiamondAccess.typeSet() = this.<TypeDecl>emptySet().add(type());
-
   eq MethodAccess.typeSet() = constraintToTypeSet();
   eq VarAccess.typeSet() = constraintToTypeSet();
   eq ThisAccess.typeSet() = this.<TypeDecl>emptySet().add(type());
-
+  eq ParTypeAccess.typeSet() = this.<TypeDecl>emptySet().add(type());   // only for Java classes
+  eq ClassAccess.typeSet() = this.<TypeDecl>emptySet().add(type());
+  
+  eq ArrayInit.typeSet() = declTypeSet();
   eq CastExpr.typeSet() = getTypeAccess().typeSet();
+
+  //eq DiamondAccess.typeSet() = this.<TypeDecl>emptySet().add(type());
 
   syn SimpleSet<TypeDecl> FieldDecl.typeSet() = getTypeAccess().typeSet();
 
   syn lazy SimpleSet<TypeDecl> MethodDecl.typeSet() = getTypeAccess().typeSet();
 
   syn lazy SimpleSet<TypeDecl> Variable.typeSet();
-
   eq ParameterDeclaration.typeSet() = getTypeAccess().typeSet();
   eq Declarator.typeSet() = getTypeAccess().typeSet();
   eq CatchParameterDeclaration.typeSet() = emptySet();
   eq EnumConstant.typeSet() = emptySet();
   eq InferredParameterDeclaration.typeSet() = emptySet();
+
+  /** map from inference variable to type set **/
+  /*
+  syn Map<Integer,SimpleSet<TypeDecl>> Expr.typeMap() {
+    SimpleSet<TypeDecl> typeSet = this.<TypeDecl>emptySet().add(type());
+    return new HashMap() {{ put(infVar(), typeSet); }};
+  }
+
+  eq Access.typeMap() = new HashMap() {{ put(infVar(), emptySet()); }};
+  eq TypeAccess.typeMap() = new HashMap() {{ put(infVar(), declSet()); }};
+  
+  eq ArrayAccess.typeMap() {
+    Map<Integer,SimpleSet<TypeDecl>> map = new HashMap();
+    SimpleSet<TypeDecl> typeSet = emptySet();
+    if (isQualified()) {
+      Map<Integer,SimpleSet<TypeDecl>> qualifierMap = qualifier().typeMap();
+      for (Integer var: qualifierMap.keySet()) {
+        for (TypeDecl type: qualifierMap.get(var)) {
+          typeSet = typeSet.add(type.componentType());
+        }
+      }
+    }
+    map.put(infVar(), typeSet);
+    return map;
+  }
+
+  eq VersionTypeAccess.typeMap() {
+    Map<Integer,SimpleSet<TypeDecl>> map = new HashMap();
+    Map<Integer,SimpleSet<TypeDecl>> typeAccessMap = getTypeAccess().typeMap();
+    SimpleSet<TypeDecl> typeSet = emptySet();
+    for (Integer var: typeAccessMap.keySet()) {
+      for (TypeDecl type: typeAccessMap.get(var)) {
+        for (Version ver: getVersionList()) {
+          if (ver.getNum().equals(type.version())) {
+            typeSet = typeSet.add(type); break;
+          }
+        }
+      }
+    }
+    map.put(infVar(), typeSet);
+    return map;
+  }
+
+  eq ClassInstanceExpr.typeMap() {
+    SimpleSet<TypeDecl> typeSet = hasTypeDecl() 
+      ? this.<TypeDecl>emptySet().add(getTypeDecl()) : getAccess().typeSet();
+    return new HashMap() {{ put(infVar(), typeSet); }};
+  }
+
+  eq Dot.typeMap() = lastAccess().typeMap();
+
+  eq ParTypeAccess.typeMap() {
+    SimpleSet<TypeDecl> typeSet = this.<TypeDecl>emptySet().add(type());
+    return new HashMap() {{ put(infVar(), typeSet); }};
+  }
+
+  eq ClassAccess.typeMap() {
+    SimpleSet<TypeDecl> typeSet = this.<TypeDecl>emptySet().add(type());
+    return new HashMap() {{ put(infVar(), typeSet); }};
+  }
+
+  eq MethodAccess.typeMap() = constraintToTypeMap();
+  eq VarAccess.typeMap() = constraintToTypeMap();
+
+  eq ThisAccess.typeMap() {
+    SimpleSet<TypeDecl> typeSet = this.<TypeDecl>emptySet().add(type());
+    return new HashMap() {{ put(infVar(), typeSet); }};
+  }
+
+  eq CastExpr.typeMap() = getTypeAccess().typeMap();
+
+  protected Map<Integer,SimpleSet<TypeDecl>> Expr.constraintToTypeMap() {
+    Map<Integer,SimpleSet<TypeDecl>> map = new HashMap();
+    SimpleSet<TypeDecl> typeSet = emptySet();
+    Optional<Formula> constraint = constraint();
+    if (constraint.isPresent()) {
+      for (Integer typeInt: constraint.get().getTypeInt(infVar())) {
+        typeSet = typeSet.add(intToType(typeInt));
+      }
+    } 
+    map.put(infVar(), typeSet);
+    return map;    
+  }
+
+  protected Map<Integer,SimpleSet<TypeDecl>> VarAccess.constraintToTypeMap() {
+    Map<Integer,SimpleSet<TypeDecl>> map = new HashMap();
+    Map<TypeDecl,SimpleSet<Variable>> varMap = verLookupVariable(name());
+    Optional<Formula> constraint = constraint();
+    for (TypeDecl ownerType: varMap.keySet()) {
+      for (Variable var: varMap.get(ownerType)) {
+        SimpleSet<TypeDecl> typeSet = emptySet();
+        if (constraint.isPresent()) {
+          for (Integer typeInt: constraint.get().getTypeInt(var.infVar())) {
+            typeSet = typeSet.add(intToType(typeInt));
+          }
+        }
+        map.put(var.infVar(), typeSet);
+      }
+    }
+    return map;
+  }
+  */
+
 
   inh lazy SimpleSet<TypeDecl> ArrayInit.declTypeSet();
   eq Program.getChild(int i).declTypeSet() = emptySet();
@@ -134,8 +237,6 @@ aspect TypeAnalysis {
     }
     return types;
   }
-
-  eq ArrayInit.typeSet() = declTypeSet();
 
 }
 

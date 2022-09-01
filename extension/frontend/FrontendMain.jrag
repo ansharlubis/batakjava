@@ -25,7 +25,7 @@ aspect BatakjavaFrontendMain {
     out.println("errorCheckTime: " + errorCheckTime);
     out.println("numJavaFiles: " + numJavaFiles);
     out.println("numClassFiles: " + numClassFiles);
-	out.println("verErrorCheckTime: " + verErrorCheckTime);
+	  out.println("verErrorCheckTime: " + verErrorCheckTime);
     out.println("constraintGenTime: " + constraintGenTime);
     out.println("solvingTime: " + solvingTime);
     out.println("javaGenTime: " + javaGenTime);
@@ -235,6 +235,8 @@ aspect BatakjavaFrontendMain {
           System.err.println("No solution found for the program");
           return compileResult;
         }
+
+        //System.out.println("Type map: " + program.printInfTypeMap());
 
         long genStart = System.nanoTime();
 
