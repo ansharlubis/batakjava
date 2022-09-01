@@ -104,8 +104,6 @@ aspect VersionInference {
     solver.showContradiction();
     solver.limitSolution(2);
 
-    // solver.solve();
-
     java.util.List<Solution> solverSolutions = solver.findAllSolutions();
     solvingTime += System.nanoTime() - start;
 

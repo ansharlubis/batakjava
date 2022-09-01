@@ -125,31 +125,6 @@ aspect ConstraintGeneration {
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
-  /*
-  eq MethodAccess.constraint() {
-    Formula formula = new Formula();
-    Map<TypeDecl,Collection<MethodDecl>> map = verLookupMethod(name());
-
-    for (TypeDecl qualifierType: map.keySet()) {
-      for (MethodDecl method: map.get(qualifierType)) {
-        Optional<Formula> trace = qualifierType.verInstanceOf(method.hostType());
-        Optional<Formula> sub = verApplicableAndAccessible(method);
-        if (trace.isPresent() && sub.isPresent()) {
-          for (TypeDecl returnType: method.typeSet()) {
-            Formula add = sub.get().multiply(trace.get()).multiply(buildClause(returnType));
-            if (isQualified()) {
-              formula = formula.add(add.multiply(qualifier().buildClause(qualifierType)));
-            } else {
-              formula = formula.add(add);
-            }
-          }
-        }
-      }
-    }
-    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
-  }
-  */
-
   eq MethodAccess.constraint() {
     Formula formula = new Formula();
     Map<TypeDecl,Collection<MethodDecl>> map = verLookupMethod(name());
@@ -227,13 +202,7 @@ aspect ConstraintGeneration {
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
-  //eq Dot.constraint() = lastAccess().constraint();
-  eq Dot.constraint() {
-    Optional<Formula> formula = lastAccess().constraint();
-    //System.err.println(prettyPrint());
-    //System.err.println(formula.get());
-    return formula;
-  }
+  eq Dot.constraint() = lastAccess().constraint();
 
   /**
    *  Array expressions
@@ -540,25 +509,6 @@ aspect ConstraintGeneration {
     return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
   }
 
-  /*
-  eq CastExpr.constraint() {
-    Formula formula = new Formula();
-    if (getTypeAccess().isTypeAccess()) {
-      for (TypeDecl expr: getExpr().typeSet()) {
-        for (TypeDecl type: getTypeAccess().typeSet()) {
-          Optional<Formula> cast = expr.verCastingConversionTo(type);
-          if (cast.isPresent()) {
-            formula = formula.add(cast.get()
-              .multiply(getExpr().buildClause(expr))
-              .multiply(getTypeAccess().buildClause(type)));
-          }
-        }
-      }
-    }
-    return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
-  }
-  */
-
   eq CastExpr.constraint() {
     Formula formula = new Formula();
     for (TypeDecl type: getTypeAccess().typeSet()) {
@@ -615,34 +565,6 @@ aspect ConstraintGeneration {
     }
     return Optional.of(new Formula());
   }
-
-  /*
-  syn lazy Optional<Formula> Declarator.constraint() {
-    if (hasInit()) {
-      Formula formula = new Formula();
-      Map<Integer,SimpleSet<TypeDecl>> typeMap = getInit().typeMap();
-      for (Integer infVar: typeMap.keySet()) {
-        for (TypeDecl initType: typeMap.get(infVar)) {
-          for (TypeDecl declType: typeSet()) {
-            Optional<Formula> trace = initType.verAssignConversionTo(declType, getInit());
-            if (trace.isPresent()) {
-              // Add constraint to the type access
-              TypeDecl componentType = declType;
-              for (int i = 0; i < getNumDims(); i++) {
-                componentType = declType.componentType();
-              }
-              formula = formula.add(trace.get()
-                .multiply(buildClause(componentType))
-                .multiply(initType.buildClause(infVar)));
-            }
-          }
-        }
-      }
-      return formula.size() > 0 ? Optional.of(formula) : Optional.empty();
-    }
-    return Optional.of(new Formula());
-  }
-  */
 
   public Optional<Formula> Expr.subtypingConstraint(Access dest) {
     Formula formula = new Formula();
