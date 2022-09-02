@@ -3,8 +3,23 @@ package P ver 2;
 public class C {
   public int f;
   public C(int i) { f = i; }
+<<<<<<< Updated upstream
   // public boolean get() { return true; }
   // public boolean compare(C o) { return f == o.get(); }
   // public boolean compare(C o) { return get(); }
   public C compare(C o) { return o; }
+=======
+
+  public int get() { 
+    return f; 
+  }
+
+  public boolean compare_a(C o) { 
+    return f == o.get(); 
+  }
+
+  public boolean compare_b(C o) { 
+    return f == o.get(); 
+  } 
+>>>>>>> Stashed changes
 }
