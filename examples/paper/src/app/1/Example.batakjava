@@ -1,9 +1,9 @@
-package app ver 1;
+package app;
 import graphics.Rectangle;
 import graphics.Point;
 import graphics.Square;
 
-public class Example {
+public class Example ver 1 {
   public static void main(String[] args) {
     Rectangle rec = new Rectangle(1,1,2,3);
     float area = rec.area();

@@ -1,6 +1,6 @@
-package graphics ver 1;
+package graphics;
 
-public class Rectangle {
+public class Rectangle ver 1 {
   public int x;
   public int y;
   public float h;

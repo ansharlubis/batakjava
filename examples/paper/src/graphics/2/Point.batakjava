@@ -1,6 +1,6 @@
-package graphics ver 2;
+package graphics;
 
-public class Point {
+public class Point ver 2 {
   public int x;
   public int y;
   public Point(int x, int y) {

@@ -1,6 +1,6 @@
-package graphics ver 1;
+package graphics;
 
-public class Square extends Rectangle {
+public class Square ver 1 extends Rectangle {
   public Square(int x, int y, float h) {
     super(x, y, h, h);
   }
