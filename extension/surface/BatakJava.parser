@@ -6,11 +6,11 @@ TypeDecl version_class_declaration =
     {: return new VersionClassDecl(new Modifiers(m), IDENTIFIER, s, i, b, new Version(v)); :}
   ;
 Access class_or_interface_type =
-    name.n LBRACE version_numbers.vs RBRACE
+    name.n SHARP version_numbers.vs SHARP
     {: return new VersionTypeAccess(n, vs); :}
   ;
 Expr class_instance_creation_expression =
-    NEW name.n LBRACE version_numbers.vs RBRACE LPAREN argument_list.l? RPAREN
+    NEW name.n SHARP version_numbers.vs SHARP LPAREN argument_list.l? RPAREN
     {: return new ClassInstanceExpr(new VersionTypeAccess(n, vs), l, new Opt()); :}
   ;
 Expr cast_expression =
