@@ -6,8 +6,14 @@ public class D ver 1 {
   public static void main(String[] args) {
     C c1 = new C();
     C c2 = new C(1);
+<<<<<<< HEAD
     boolean b1 = c2.compare(c1);
     //C c3 = new C(1);
     //boolean b2 = c2.compare(c3);
+=======
+    boolean b1 = c2.compare_a(c1);
+    //C c3 = new C(1);
+    //boolean b2 = c2.compare_b(c3);
+>>>>>>> dop-example
   }
 }

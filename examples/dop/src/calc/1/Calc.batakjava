@@ -1,0 +1,26 @@
+package calc ver 1;
+import java.math.BigInteger;
+
+public class Calc {
+    static BigInteger zero = BigInteger.ZERO;
+    BigInteger e0 = zero;
+    BigInteger e1 = zero;
+    BigInteger e2 = zero;
+
+    public void enter(String val) {
+        e2 = e1;
+        e1 = e0;
+        e0 = new BigInteger(val);
+    }
+
+    void clear() {
+        e2 = zero;
+        e1 = e2;        
+        e0 = e1;
+    }
+
+    String top() {
+        return e0.toString();
+    }
+
+}

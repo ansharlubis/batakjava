@@ -1,0 +1,25 @@
+package calc ver 2;
+import java.math.BigDecimal;
+
+public class Calc {
+    static BigDecimal zero = new BigDecimal("0");
+    protected BigDecimal e0 = zero;
+    protected BigDecimal e1 = zero;
+    protected BigDecimal e2 = zero;
+
+    void enter(String val) {
+        e2 = e1;
+        e1 = e0;
+        e0 = new BigDecimal(val);
+    }
+
+    void clear() {
+        e2 = zero;
+        e1 = e2;
+        e0 = e1;
+    }
+
+    String top() {
+        return e0.toString();
+    }
+}

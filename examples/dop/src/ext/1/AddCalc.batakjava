@@ -1,0 +1,9 @@
+package ext ver 1;
+import calc.Calc;
+
+public class AddCalc extends Calc {
+    public void add() {
+        e0 = e0.add(e1);
+        e1 = e2;
+    }
+}

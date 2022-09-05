@@ -8,7 +8,7 @@ public class C ver 2 {
     return f; 
   }
 
-  public boolean compare(C o) { 
+  public boolean compare_a(C o) { 
     return f == o.get(); 
   }
 }
