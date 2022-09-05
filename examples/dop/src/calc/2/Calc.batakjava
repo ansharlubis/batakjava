@@ -1,7 +1,7 @@
-package calc ver 2;
+package calc;
 import java.math.BigDecimal;
 
-public class Calc {
+public class Calc ver 2 {
     static BigDecimal zero = new BigDecimal("0");
     protected BigDecimal e0 = zero;
     protected BigDecimal e1 = zero;
