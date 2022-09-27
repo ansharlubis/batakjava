@@ -1,3 +1,8 @@
+SingleTypeImportDeclTake : SingleTypeImportDecl ::= Version*;
+SingleTypeImportDeclLeave : SingleTypeImportDecl ::= Version*;
+TypeImportOnDemandDeclTake : TypeImportOnDemandDecl ::= Version*;
+TypeImportOnDemandDeclLeave : TypeImportOnDemandDecl ::= Version*;
+
 VersionClassDecl : ClassDecl ::= Version;
 VersionArrayDecl : VersionClassDecl;
 

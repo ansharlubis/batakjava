@@ -1,3 +1,25 @@
+ImportDecl import_declaration =
+    single_type_import_declaration_take
+  | single_type_import_declaration_leave
+  | type_import_on_demand_declaration_take
+  | type_import_on_demand_declaration_leave
+  ;
+ImportDecl single_type_import_declaration_take =
+    IMPORT name TAKE VER version_numbers.vl SEMICOLON
+    {: return new SingleTypeImportDeclTake(name, vl); :}
+  ;
+ImportDecl single_type_import_declaration_leave =
+    IMPORT name LEAVE VER version_numbers.vl SEMICOLON
+    {: return new SingleTypeImportDeclLeave(name, vl); :}
+  ;
+ImportDecl type_import_on_demand_declaration_take =
+    IMPORT name DOT MULT TAKE VER version_numbers.vl SEMICOLON
+    {: return new TypeImportOnDemandDeclTake(name, vl); :}
+  ;
+ImportDecl type_import_on_demand_declaration_leave =
+    IMPORT name DOT MULT LEAVE VER version_numbers.vl SEMICOLON
+    {: return new TypeImportOnDemandDeclLeave(name, vl); :}
+  ;
 TypeDecl type_declaration =
     version_class_declaration
   ;

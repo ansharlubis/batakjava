@@ -42,6 +42,12 @@ aspect SingleSolutionGeneration {
     return imports;
   }
 
+  eq TypeImportOnDemandDeclTake.genImport(Set<Map<Integer,TypeDecl>> solutions) =
+    new List().add(new TypeImportOnDemandDecl(getAccess()));
+
+  eq TypeImportOnDemandDeclLeave.genImport(Set<Map<Integer,TypeDecl>> solutions) =
+    new List().add(new TypeImportOnDemandDecl(getAccess()));  
+
   /** Type declarations **/
   syn nta TypeDecl TypeDecl.genType(Map<Integer,TypeDecl> sol, List<ImportDecl> imports) = treeCopy();
 
