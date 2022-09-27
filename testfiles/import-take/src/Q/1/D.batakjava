@@ -1,8 +1,8 @@
 package Q;
-import P.C;
+import P.C take ver 2;
 
 public class D ver 1 {
   public static void main(String[] args) {
-    C cArray[] = {new C()};
+    C c = new C();
   }
 }
