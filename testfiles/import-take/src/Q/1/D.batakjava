@@ -1,0 +1,8 @@
+package Q;
+import P.C take ver 2;
+
+public class D ver 1 {
+  public static void main(String[] args) {
+    C c = new C();
+  }
+}
