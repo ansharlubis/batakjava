@@ -42,10 +42,10 @@ aspect SingleSolutionGeneration {
     return imports;
   }
 
-  eq TypeImportOnDemandDeclTake.genImport(Set<Map<Integer,TypeDecl>> solutions) =
+  eq TypeImportOnDemandDeclTake.genImport(Map<Integer,TypeDecl> sol) =
     new List().add(new TypeImportOnDemandDecl(getAccess()));
 
-  eq TypeImportOnDemandDeclLeave.genImport(Set<Map<Integer,TypeDecl>> solutions) =
+  eq TypeImportOnDemandDeclLeave.genImport(Map<Integer,TypeDecl> sol) =
     new List().add(new TypeImportOnDemandDecl(getAccess()));  
 
   /** Type declarations **/
