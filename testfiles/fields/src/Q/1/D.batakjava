@@ -1,11 +1,8 @@
 package Q;
-import P.B;
-import P.C;
+import P.* take ver 2;
 
-public class D ver 1 extends B {
+public class D ver 1 {
   public static void main(String[] args) {
-    int i = new B().f1;
-    //C c = new C();
-    //C d = c;
+    A a = new B().f2;
   }
 }
