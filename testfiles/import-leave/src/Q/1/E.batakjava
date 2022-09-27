@@ -1,0 +1,8 @@
+package Q;
+import P.* leave ver 2;
+
+public class E ver 1 {
+  public static void main(String[] args) {
+    C c = new C();
+  }
+}
