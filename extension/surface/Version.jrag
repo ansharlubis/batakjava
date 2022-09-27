@@ -32,6 +32,43 @@ aspect BatakjavaVersion {
   }
 
   /**
+   *  Set of version specified by the import declaration
+   */
+   syn SimpleSet<String> ImportDecl.versions() = emptySet();
+
+   eq SingleTypeImportDeclTake.versions() {
+     SimpleSet<String> vers = emptySet();
+     for (Version ver: getVersionList()) {
+       vers = vers.add(ver.getNum());
+     }
+     return vers;
+   }
+ 
+   eq SingleTypeImportDeclLeave.versions() {
+     SimpleSet<String> vers = emptySet();
+     for (Version ver: getVersionList()) {
+       vers = vers.add(ver.getNum());
+     }
+     return vers;
+   }
+ 
+   eq TypeImportOnDemandDeclTake.versions() {
+     SimpleSet<String> vers = emptySet();
+     for (Version ver: getVersionList()) {
+       vers = vers.add(ver.getNum());
+     }
+     return vers;
+   }
+ 
+   eq TypeImportOnDemandDeclLeave.versions() {
+     SimpleSet<String> vers = emptySet();
+     for (Version ver: getVersionList()) {
+       vers = vers.add(ver.getNum());
+     }
+     return vers;
+   }
+
+  /**
    *  Version number is a version casted
    */
   public Integer CompilationUnit.versionNumber() { return version() != null ? Integer.valueOf(version()) : null; }

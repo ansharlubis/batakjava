@@ -34,7 +34,77 @@ aspect BatakJavaPrettyPrint {
     result.append("}");
     return result.toString();
   }
-  
+
+  public void TypeImportOnDemandDeclTake.prettyPrint(PrettyPrinter out) {
+    out.print("import ");
+    out.print(getAccess());
+    out.print(".*");
+    boolean flag = false;
+    for (Version ver: getVersionList()) {
+      if (flag) {
+        out.print(", ");
+      } else {
+        out.print(" take ver ");
+        flag = true;
+      }
+      out.print(ver);
+    }
+    out.print(";");
+    out.println();
+  }
+
+  public void TypeImportOnDemandDeclLeave.prettyPrint(PrettyPrinter out) {
+    out.print("import ");
+    out.print(getAccess());
+    out.print(".*");
+    boolean flag = false;
+    for (Version ver: getVersionList()) {
+      if (flag) {
+        out.print(", ");
+      } else {
+        out.print(" leave ver ");
+        flag = true;
+      }
+      out.print(ver);
+    }
+    out.print(";");
+    out.println();
+  }
+
+  public void SingleTypeImportDeclTake.prettyPrint(PrettyPrinter out) {
+    out.print("import ");
+    out.print(getAccess());
+    boolean flag = false;
+    for (Version ver: getVersionList()) {
+      if (flag) {
+        out.print(", ");
+      } else {
+        out.print(" take ver ");
+        flag = true;
+      }
+      out.print(ver);
+    }
+    out.print(";");
+    out.println();
+  }
+
+  public void SingleTypeImportDeclLeave.prettyPrint(PrettyPrinter out) {
+    out.print("import ");
+    out.print(getAccess());
+    boolean flag = false;
+    for (Version ver: getVersionList()) {
+      if (flag) {
+        out.print(", ");
+      } else {
+        out.print(" leave ver ");
+        flag = true;
+      }
+      out.print(ver);
+    }
+    out.print(";");
+    out.println();
+  }
+
   public void VersionClassDecl.prettyPrint(PrettyPrinter out) {
     if (hasDocComment()) {
       out.print(docComment());
