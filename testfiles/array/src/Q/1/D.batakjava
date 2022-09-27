@@ -1,7 +1,5 @@
 package Q;
-import P.B;
 import P.C;
-import P.A;
 
 public class D ver 1 {
   public static void main(String[] args) {
