@@ -1,0 +1,23 @@
+aspect AccessControl {
+
+  syn lazy boolean Variable.verAccessibleFrom(TypeDecl type) = false;
+
+  eq FieldDeclarator.verAccessibleFrom(TypeDecl type) {
+    if (isPublic()) {
+      return true;
+    } else if (isProtected()) {
+      if (hostPackage().equals(type.hostPackage())) {
+        return true;
+      }
+      if (type.verInstanceOf(hostType()).isPresent()) {
+        return true;
+      }
+      return false;
+    } else if (isPrivate()) {
+      return hostType().topLevelType() == type.topLevelType();
+    } else {
+      return hostPackage().equals(type.hostPackage());
+    }
+  }
+
+}
