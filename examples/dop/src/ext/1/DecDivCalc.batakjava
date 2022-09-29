@@ -1,0 +1,9 @@
+package ext;
+import calc.Calc;
+
+public class DecDivCalc ver 1 extends Calc {
+    public void divide() {
+        e0 = e0.divide(e1, BigDecimal.ROUND_DOWN);
+        e1 = e2;
+    }
+}
