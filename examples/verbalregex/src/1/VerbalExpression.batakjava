@@ -1,0 +1,70 @@
+package verbalregex;
+
+import java.util.*;
+import java.util.regex.*;
+
+public class VerbalExpression ver 1 {
+
+    private final Pattern pattern;
+
+    public Pattern getPattern() { return this.pattern; }
+
+    public VerbalExpression(Pattern pattern) {
+        this.pattern = pattern;
+    }
+
+    public static Builder regex(Builder pBuilder) {
+        Builder builder = new Builder();
+        builder.prefixes.append(pBuilder.prefixes.toString());
+        builder.source.append(pBuilder.source.toString());
+        builder.suffixes.append(pBuilder.suffixes.toString());
+        builder.modifiers = pBuilder.modifiers;
+
+        return builder;
+    }
+
+    public boolean test(final String pToTest) {
+        boolean ret = false;
+        if (pToTest != null) {
+            ret = pattern.matcher(pToTest).matches();
+        }
+        return ret;
+    }
+
+    public String getText(String toTest) {
+      return getText(toTest, 0);
+    }
+
+    public String getText(String toTest, int group) {
+      Matcher m = this.pattern.matcher(toTest);
+      StringBuilder result = new StringBuilder();
+      while (m.find()) {
+        result.append(m.group(group));
+      }
+      return result.toString();
+    }
+
+    public String getText(String toTest, String group) {
+      Matcher m = this.pattern.matcher(toTest);
+      StringBuilder result = new StringBuilder();
+      while (m.find()) {
+        result.append(m.group(group));
+      }
+      return result.toString();
+    }
+
+    public ArrayList<String> getTextGroups(String toTest, int group) {
+      ArrayList<String> groups = new ArrayList<String>();
+      Matcher m = this.pattern.matcher(toTest);
+      while (m.find()) {
+        groups.add(m.group(group));
+      }
+      return groups;
+    }
+
+    public String toString() {
+      return this.pattern.pattern();
+    }
+
+
+}
