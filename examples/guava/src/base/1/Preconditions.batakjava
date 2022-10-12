@@ -1,0 +1,13 @@
+package guava.base;
+
+import java.util.regex.*;
+
+public class Preconditions ver 1 {
+
+  public static String checkNotNull(String reference) { return reference; }
+
+  public static Matcher checkNotNull(Matcher reference) { return reference; }
+
+  public static Pattern checkNotNull(Pattern reference) { return reference; }
+
+}

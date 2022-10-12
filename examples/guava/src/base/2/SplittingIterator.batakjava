@@ -1,0 +1,122 @@
+package guava.base;
+
+public class SplittingIterator ver 2 {
+
+  private Splitter splitter;
+  private String toSplit;
+  private JdkMatcher matcher;
+
+  private CharMatcher trimmer;
+  private boolean omitEmptyStrings;
+
+  int offset = 0;
+  int limit;
+
+  public SplittingIterator(Splitter splitter, String toSplit, JdkMatcher matcher) {
+    this.splitter = splitter;
+    this.trimmer = splitter.getTrimmer();
+    this.omitEmptyStrings = splitter.getOmitEmptyStrings();
+    this.limit = splitter.getLimit();
+    this.toSplit = toSplit;
+    this.matcher = matcher;
+  }
+
+  public int separatorStart(int start) {
+    if (this.matcher.find(start)) {
+      return this.matcher.start();
+    } else {
+      return -1;
+    }
+  }
+
+  public int separatorEnd(int separatorPosition) {
+    return this.matcher.end();
+  }
+
+  private int state = 2;
+
+  protected String computeNext() {
+    int nextStart = offset;
+    while (offset != -1) {
+      int start = nextStart;
+      int end;
+
+      int separatorPosition = this.separatorStart(offset);
+      if (separatorPosition == -1) {
+        end = this.toSplit.length();
+        offset = -1;
+      } else {
+        end = separatorPosition;
+        offset = this.separatorEnd(separatorPosition);
+      }
+      if (offset == nextStart) {
+        offset++;
+        if (offset > this.toSplit.length()) {
+          offset = -1;
+        }
+        continue;
+      }
+
+      while (start < end && trimmer.matches(this.toSplit.charAt(start))) {
+        start++;
+      }
+      while (end > start && trimmer.matches(this.toSplit.charAt(end - 1))) {
+        end--;
+      }
+
+      if (omitEmptyStrings && start == end) {
+        nextStart = offset;
+        continue;
+      }
+
+      if (limit == 1) {
+        end = this.toSplit.length();
+        offset = 1;
+        while (end > start && trimmer.matches(this.toSplit.charAt(end - 1))) {
+          end--;
+        }
+      } else {
+        limit--;
+      }
+
+      return this.toSplit.subSequence(start, end).toString();
+    }
+    return endOfData();
+  }
+
+  private String next;
+
+  protected String endOfData() {
+    state = 3;
+    return null;
+  }
+
+  public boolean hasNext() {
+    switch (state) {
+      case 3:
+        return false;
+      case 1:
+        return true;
+      default:
+    }
+    return tryToComputeNext();
+  }
+
+  private boolean tryToComputeNext() {
+    state = 4; // temporary pessimism
+    next = this.computeNext();
+    if (state != 3) {
+      state = 1;
+      return true;
+    }
+    return false;
+  }
+
+  public String next() {
+    state = 2;
+    String result = next;
+    next = null;
+    return result;
+  }
+
+}

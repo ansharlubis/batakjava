@@ -6,9 +6,8 @@ import graphics.Square;
 public class Example ver 1 {
   public static void main(String[] args) {
     Rectangle rec = new Rectangle(1,1,2,3);
-    float area = rec.area();
     Square sq = new Square(1,1,2);
     float perSq = sq.perimeter();
-    boolean eq = rec.equal(sq);
+    boolean eq = rec.equivalent(sq);
   }
 }

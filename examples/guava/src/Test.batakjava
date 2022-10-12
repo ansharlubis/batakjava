@@ -1,0 +1,46 @@
+package guava;
+
+import java.io.*;
+import java.util.*;
+import java.util.regex.Pattern;
+import verbalregex.*;
+import guava.base.*;
+import guava.io.*;
+
+public class Test ver 1 {
+
+  public static void main(String[] args) throws IOException {
+    File file = new File("/home/lubis/projects/batakjava/examples/guava/fradulent_emails.txt");
+    List<String> result = new Files().readLines(file, new Charsets().UTF8());
+    
+    List<String> emails = new ArrayList<String>();
+    VerbalExpression regex = new Builder()
+        .startOfLine()
+        .then("From: ")
+        .anythingBut("<")
+        .oneOrMore()
+        .then("<")
+        .capture().anythingBut(">").endCapture()
+        .anything().oneOrMore().endOfLine()
+        .build();
+
+    for (int i = 0; i < 1000; i++) {
+      if (regex.test(result.get(i))) {
+        emails.add(regex.getText(result.get(i), 1));
+      }
+    }
+
+    Pattern splitPattern = Pattern.compile("@");
+    VerbalExpression splitRegex = new Builder().add("@").build();
+
+    Splitter oldSplitter = Splitter.on(splitPattern);
+    Splitter newSplitter = Splitter.on(splitRegex);
+
+    for (int i = 0; i < emails.size(); i++) {
+      oldSplitter.split(emails.get(i));
+      newSplitter.split(emails.get(i));
+    }
+
+  }
+
+}

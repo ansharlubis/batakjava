@@ -1,0 +1,11 @@
+package guava.io;
+
+import java.util.logging.*;
+
+public class Closeables ver 1 {
+  private Logger logger = Logger.getLogger(Closeables.class.getName());
+
+  public Logger getLogger() {
+    return this.logger;
+  }
+}

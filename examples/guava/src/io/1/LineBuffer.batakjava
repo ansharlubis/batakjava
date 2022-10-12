@@ -1,0 +1,70 @@
+package guava.io;
+
+import java.io.*;
+import java.util.*;
+
+public class LineBuffer ver 1 {
+
+  private StringBuilder line = new StringBuilder();
+  private boolean sawReturn;
+  private Queue<String> lines;
+
+  LineBuffer(Queue<String> lines) {
+    this.lines = lines;
+  }
+
+  protected void handleLine(String difLine, String end) {
+    this.lines.add(difLine);
+  }
+
+  private boolean finishLine(boolean sawNewline) throws IOException {
+    String separator = this.sawReturn ? (sawNewline ? "\r\n" : "\r") : (sawNewline ? "\n" : "");
+    this.handleLine(this.line.toString(), separator);
+    this.line = new StringBuilder();
+    this.sawReturn = false;
+    return sawNewline;
+  }
+
+  public void add(char[] cbuf, int off, int len) throws IOException {
+
+    int pos = off;
+    if (this.sawReturn && len > 0) {
+      // Last call to add ended with a CR; we can handle the line now.
+      if (this.finishLine(cbuf[pos] == '\n')) {
+        pos++;
+      }
+    }
+
+    int start = pos;
+    for (int end = off + len; pos < end; pos++) {
+      switch (cbuf[pos]) {
+        case '\r':
+          this.line.append(cbuf, start, pos - start);
+          this.sawReturn = true;
+          if (pos + 1 < end) {
+            if (this.finishLine(cbuf[pos + 1] == '\n')) {
+              pos++;
+            }
+          }
+          start = pos + 1;
+          break;
+
+        case '\n':
+          this.line.append(cbuf, start, pos - start);
+          this.finishLine(true);
+          start = pos + 1;
+          break;
+
+        default:
+          // do nothing
+      }
+    }
+    this.line.append(cbuf, start, off + len - start);
+  }
+
+  public void finish() throws IOException {
+    if (this.sawReturn || this.line.length() > 0) {
+      this.finishLine(false);
+    }
+  }
+}

@@ -1,0 +1,20 @@
+package guava.io;
+
+import java.io.*;
+import java.nio.charset.*;
+import java.util.*;
+
+public class Files ver 1 {
+  public List<String> readLines(File file, Charset charset) throws IOException {
+    return asCharSource(file, charset).readLines(new LineProcessor(new ArrayList<String>()));
+  }
+
+  public CharSource asCharSource(File file, Charset charset) {
+    return asByteSource(file).asCharSource(charset);
+  }
+
+  public ByteSource asByteSource(File file) {
+    return new ByteSource(file);
+  }
+
+}

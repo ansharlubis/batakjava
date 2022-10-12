@@ -76,7 +76,7 @@ aspect ConstraintGeneration {
   eq Declarator.infVar() = declarationType().infVar();
 
   /** not entirely sure **/
-  //eq ParTypeAccess.infVar() = getTypeAccess().infVar();
+  // eq ParTypeAccess.infVar() = getTypeAccess().infVar();
 
   /** Not supported variable **/
   eq EnumConstant.infVar() = program().getInfVar(this);

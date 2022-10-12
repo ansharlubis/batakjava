@@ -1,0 +1,17 @@
+package verbalregex;
+
+public class Test ver 1 {
+
+  public static void main(String[] args) {
+    VerbalExpression regex = new Builder()
+        .startOfLine()
+        .then("From: ")
+        .anythingBut("<")
+        .oneOrMore()
+        .then("<")
+        .capture().anythingBut(">").endCapture()
+        .anything().oneOrMore().endOfLine()
+        .build();
+  }
+
+}

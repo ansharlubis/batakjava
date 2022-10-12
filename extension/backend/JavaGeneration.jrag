@@ -542,6 +542,7 @@ aspect JavaGeneration {
     return new TypeAccess(((TypeAccess) getTypeAccess()).getPackage(), type.compiledName(sol));
   }
 
+  /*
   eq ParTypeAccess.genAccess(Map<Integer,TypeDecl> sol) {
     Access typeAccess = getTypeAccess().genAccess(sol);
     List<Access> typeArgs = new List();
@@ -550,6 +551,9 @@ aspect JavaGeneration {
     }
     return new ParTypeAccess(typeAccess, typeArgs);
   }
+  */
+
+  eq ParTypeAccess.genAccess(Map<Integer,TypeDecl> sol) = treeCopy();
 
   /*
   eq VarAccess.genAccess(Map<Integer,TypeDecl> sol) {

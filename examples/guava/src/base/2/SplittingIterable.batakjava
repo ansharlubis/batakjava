@@ -1,0 +1,25 @@
+package guava.base;
+
+import java.util.*;
+
+public class SplittingIterable ver 2 extends ArrayList<String> {
+
+  private Splitter splitter;
+  private String sequence;
+
+  public SplittingIterable(Splitter splitter, String sequence) {
+    this.splitter = splitter;
+    this.sequence = sequence;
+  }
+
+  public SplittingIterator iterate() {
+    return this.splitter.splittingIterator(this.sequence);
+  }
+
+  public String toString() {
+    return new Joiner(", ")
+                .appendTo(new StringBuilder().append('['), this)
+                .append(']')
+                .toString();
+  }
+}

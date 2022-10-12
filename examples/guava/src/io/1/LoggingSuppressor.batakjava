@@ -1,0 +1,13 @@
+package guava.io;
+
+import java.io.*;
+import java.util.logging.*;
+
+public class LoggingSuppressor ver 1 extends Suppressor {
+
+  public LoggingSuppressor() {}
+
+  public void suppress(Closeable closeable, Throwable thrown, Throwable suppressed) {
+    new Closeables().getLogger().log(Level.WARNING, "Suppressing exception thrown when closing " + closeable.toString(), suppressed);
+  }
+}

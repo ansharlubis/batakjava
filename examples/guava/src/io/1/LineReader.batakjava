@@ -1,0 +1,38 @@
+package guava.io;
+
+import java.io.*;
+import java.nio.*;
+import java.util.*;
+
+public class LineReader ver 1 {
+
+  private Readable readable;
+  private Reader reader;
+  private Queue<String> lines;
+  private CharBuffer cbuf;
+  private char[] buf;
+  private LineBuffer lineBuf;
+
+  public LineReader(Readable readable) {
+    lines = new LinkedList<String>();
+    cbuf = CharStreams.createBuffer();
+    buf = this.cbuf.array();
+    lineBuf = new LineBuffer(this.lines);
+    this.reader = (readable instanceof Reader) ? (Reader) readable : null;
+  }
+
+  public String readLine() throws IOException {
+    while (this.lines.peek() == null) {
+      this.cbuf.clear();
+      int read = (this.reader != null) ? this.reader.read(buf, 0, this.buf.length) : this.readable.read(this.cbuf);
+      if (read == -1) {
+        this.lineBuf.finish();
+        break;
+      }
+      this.lineBuf.add(this.buf, 0, read);
+    }
+    return this.lines.poll();
+  }
+
+
+}

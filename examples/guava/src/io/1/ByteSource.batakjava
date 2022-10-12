@@ -1,0 +1,18 @@
+package guava.io;
+
+import java.io.*;
+import java.nio.charset.*;
+
+public final class ByteSource ver 1 {
+
+  private File file;
+
+  public ByteSource(File file) {
+    this.file = file;
+  }
+
+  public CharSource asCharSource(Charset charset) {
+    return new CharSource(this.file, charset);
+  }
+
+}

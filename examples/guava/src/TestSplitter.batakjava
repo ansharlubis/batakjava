@@ -1,0 +1,12 @@
+package guava;
+
+import java.util.regex.Pattern;
+import guava.base.Splitter;
+
+public class TestSplitter ver 1 {
+  public static void main(String[] args) {
+    Pattern pattern = Pattern.compile("@");
+    Splitter splitter = Splitter.on(pattern); 
+    splitter.split("x@y.com");
+  }
+}
