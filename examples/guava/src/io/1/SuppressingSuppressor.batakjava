@@ -1,0 +1,33 @@
+package guava.io;
+
+import java.io.*;
+import java.lang.reflect.*;
+
+public class SuppressingSuppressor ver 1 {
+
+  public boolean isAvailable() {
+    return true;
+  }
+
+  private Method addSuppressedMethodOrNull() {
+    try {
+      return Throwable.class.getMethod("addSuppressed", Throwable.class);
+    } catch (Throwable e) {
+      return null;
+    }
+  }
+
+  public void suppress(Closeable closeable, Throwable thrown, Throwable suppressed) {
+    // ensure no exceptions from addSuppressed
+    if (thrown == suppressed) {
+      return;
+    }
+    try {
+      this.addSuppressedMethodOrNull().invoke(thrown, suppressed);
+    } catch (Throwable e) {
+      // if, somehow, IllegalAccessException or another exception is thrown, fall back to logging
+      new LoggingSuppressor().suppress(closeable, thrown, suppressed);
+    }
+  }
+
+}

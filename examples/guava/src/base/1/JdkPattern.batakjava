@@ -1,0 +1,19 @@
+package guava.base;
+
+import java.util.regex.*;
+
+public class JdkPattern ver 1 {
+
+  private Pattern pattern;
+
+  public JdkPattern(Pattern pattern) {
+    this.pattern = Preconditions.checkNotNull(pattern);
+  }
+
+  public Pattern getPattern() { return this.pattern; }
+
+  public JdkMatcher matcher(String t) {
+    return new JdkMatcher(this.pattern.matcher(t));
+  }
+
+}

@@ -1,0 +1,61 @@
+package guava.base;
+
+import java.util.regex.*;
+
+public class Splitter ver 1 {
+  private Strategy strategy;
+  private CharMatcher trimmer = new CharMatcher();
+  private boolean omitEmptyStrings = false;
+  private int limit = Integer.MAX_VALUE;
+
+  public Splitter(Strategy strategy) {
+    this.strategy = strategy;
+  }
+
+  public Splitter(Strategy strat, CharMatcher trim, boolean omit, int lim) {
+    strategy = strat;
+    trimmer = trim;
+    omitEmptyStrings = omit;
+    limit = lim;
+  }
+
+  public CharMatcher getTrimmer() {
+    return this.trimmer;
+  }
+
+  public boolean getOmitEmptyStrings() {
+    return this.omitEmptyStrings;
+  }
+
+  public int getLimit() {
+    return this.limit;
+  }
+
+  public static Splitter on(Pattern separator) {
+    return on(new JdkPattern(separator));
+  }
+
+  public static Splitter on(JdkPattern separator) {
+    return new Splitter(new Strategy(separator));
+  }
+
+  /*
+  public SplittingIterable split(String sequence) {
+    return new SplittingIterable(this, sequence);
+  }
+  */
+
+  public SplittingIterable split(String sequence) {
+    return new SplittingIterable(new Splitter(this.strategy, this.trimmer, this.omitEmptyStrings, this.limit), sequence);
+  }
+
+  /*
+  public SplittingIterator splittingIterator(String sequence) {
+    return this.strategy.iterator(this, sequence);
+  }
+  */
+
+  public SplittingIterator splittingIterator(String sequence) {
+    return this.strategy.iterator(new Splitter(this.strategy, this.trimmer, this.omitEmptyStrings, this.limit), sequence);
+  }
+}

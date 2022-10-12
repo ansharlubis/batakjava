@@ -1,0 +1,25 @@
+package guava.base;
+
+import java.util.regex.*;
+
+public class JdkMatcher ver 1 {
+
+  private Matcher matcher;
+
+  public JdkMatcher(Matcher matcher) {
+    this.matcher = Preconditions.checkNotNull(matcher);
+  }
+
+  public boolean find(int index) {
+    return this.matcher.find(index);
+  }
+
+  public int start() {
+    return this.matcher.start();
+  }
+
+  public int end() {
+    return this.matcher.end();
+  }
+
+}

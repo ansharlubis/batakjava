@@ -1,0 +1,16 @@
+package guava;
+
+import java.io.*;
+import java.util.*;
+import guava.base.*;
+import guava.io.*;
+
+public class TestFiles ver 1 {
+
+  public static void main(String[] args) throws IOException {
+    File file = new File("/home/lubis/projects/batakjava/examples/guava/fradulent_emails.txt");
+    List<String> result = new Files().readLines(file, new Charsets().UTF8());
+    System.out.println(result.get(0));
+  }
+
+}

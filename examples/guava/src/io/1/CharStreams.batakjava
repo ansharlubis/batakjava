@@ -1,0 +1,24 @@
+package guava.io;
+
+import java.io.*;
+import java.nio.*;
+import java.util.*;
+
+public class CharStreams ver 1 {
+  public static List<String> readLines(Readable readable, LineProcessor processor) throws IOException {
+    LineReader lineReader = new LineReader(readable);
+    String line;
+    while ((line = lineReader.readLine()) != null) {
+      if (!processor.processLine(line)) {
+        break;
+      }
+    }
+    return processor.getResult();
+  }
+
+  private static int DEFAULTBUFSIZE = 0x800;
+
+  public static CharBuffer createBuffer() {
+    return CharBuffer.allocate(DEFAULTBUFSIZE);
+  }
+}

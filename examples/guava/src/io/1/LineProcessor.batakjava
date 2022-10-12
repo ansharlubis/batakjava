@@ -1,0 +1,22 @@
+package guava.io;
+
+import java.util.*;
+
+public class LineProcessor ver 1 {
+
+  List<String> result;
+
+  LineProcessor(List<String> result) {
+    this.result = result;
+  }
+
+  public boolean processLine(String line) {
+    this.result.add(line);
+    return true;
+  }
+
+  public List<String> getResult() {
+    return this.result;
+  }
+
+}
